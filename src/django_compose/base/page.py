@@ -1,7 +1,8 @@
-from compose.base.component_base import (
+from django_compose.base.components import (
     Component,
     Context,
     Body,
+    DocumentLevelComponent,
     Head,
     Html,
 )
@@ -18,14 +19,15 @@ class Page:
         self, *, name: str, head: Component | None = None, body: Component | None = None
     ):
         self.name = name
-        self.head = Head[head]
-        self.body = Body[body]
+        self.head = head
+        self.body = body
+
+    def build(self, context: Context) -> DocumentLevelComponent:
+        return Html[Head[self.head], Body[self.body]]
 
     def render(self) -> htpy.Renderable:
         context = Context()
-        doc = Html[self.head, self.body]
-        print(doc)
-        return doc.build(context).render(context)
+        return self.build(context).render(context)
 
 
 class DjangoApp:

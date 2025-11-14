@@ -6,6 +6,9 @@ name = "pypi"
 [packages]
 django = "*"
 htpy = "*"
+setuptools = "*"
+build = "*"
+django-compose = {file = "src", editable = true}
 
 [dev-packages]
 

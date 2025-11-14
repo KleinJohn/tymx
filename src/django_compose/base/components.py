@@ -1,7 +1,6 @@
 from typing import Iterable, Self, TypeAlias, Union
-import htpy
-
 from abc import ABCMeta, abstractmethod
+import htpy
 
 
 ComponentLike: TypeAlias = Union["ComponentBase", type["ComponentBase"], str]
@@ -13,7 +12,6 @@ class Context:
 
 
 def _component_validate_child(child: ComponentLike) -> "ComponentBase":
-    print(child)
     if isinstance(child, type):
         return child()
     elif isinstance(child, str):
