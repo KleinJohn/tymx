@@ -1,109 +1,21 @@
-from typing import Iterable, Self, TypeAlias, Union
-from abc import ABCMeta, abstractmethod
-import htpy
+from .base_components import *
+from .base_components import _fill_component_children  # type: ignore
 
 
-ComponentLike: TypeAlias = Union["ComponentBase", type["ComponentBase"], str]
-ComponentOrComponents: TypeAlias = Union[None, ComponentLike, Iterable[ComponentLike]]
-
-
-class Context:
-    pass
-
-
-def _component_validate_child(child: ComponentLike) -> "ComponentBase":
-    if isinstance(child, type):
-        return child()
-    elif isinstance(child, str):
-        return Text(child)
-    return child
-
-
-def _fill_component_children(
-    component: "ComponentBase",
-    children: ComponentOrComponents,
-) -> None:
-    if not children:
-        return
-    if isinstance(children, Iterable):
-        component._children.extend(  # type: ignore
-            map(_component_validate_child, children)
-        )
-    else:
-        component._children.append(_component_validate_child(children))  # type: ignore
-
-
-class ComponentBaseMeta(type):
-
-    def __getitem__(cls, *children: ComponentOrComponents) -> "ComponentBase":
-        instance = cls()
-        _fill_component_children(instance, *children)
-        return instance
-
-    def __str__(cls) -> str:
-        return cls.__name__
-
-
-class AbstractComponentBaseMeta(ABCMeta, ComponentBaseMeta):
-    pass
-
-
-class AbstractComponentMeta(AbstractComponentBaseMeta):
-    def __getitem__(cls, *children: ComponentOrComponents) -> "Component":
+class AbstractHtmlComponentMeta(AbstractComponentMeta):
+    def __getitem__(cls, *children: ComponentOrComponentsBase) -> "HtmlComponent":
         instance = cls()
         _fill_component_children(instance, *children)
         return instance
 
 
 class AbstractDocumentComponentMeta(AbstractComponentBaseMeta):
-    def __getitem__(cls, *children: ComponentOrComponents) -> "DocumentLevelComponent":
+    def __getitem__(
+        cls, *children: ComponentOrComponentsBase
+    ) -> "DocumentLevelComponent":
         instance = cls()
         _fill_component_children(instance, *children)
         return instance
-
-
-class AbstractHtmlComponentMeta(AbstractComponentMeta):
-    def __getitem__(cls, *children: ComponentOrComponents) -> "HtmlComponent":
-        instance = cls()
-        _fill_component_children(instance, *children)
-        return instance
-
-
-class ComponentBase(metaclass=AbstractComponentBaseMeta):
-    is_html_element = False
-
-    # All Components that allow zero children have to provide an empty constructor.
-    def __init__(self, *, child: ComponentOrComponents = None):
-        super().__init__()
-        self._children: list["ComponentBase"] = []
-        _fill_component_children(self, child)
-
-    def __getitem__(self, *children: ComponentOrComponents) -> Self:
-        _fill_component_children(self, *children)
-        return self
-
-    @abstractmethod
-    def build(self, context: Context) -> "ComponentBase":
-        raise NotImplementedError()
-
-    def render(self, context: Context) -> htpy.Node:
-        return self.build(context).render(context)
-
-    @property
-    def children(self) -> list["ComponentBase"]:
-        return self._children
-
-    def __str__(self) -> str:
-        if not self._children:
-            return self.__class__.__name__
-        return f"{self.__class__.__name__}({", ".join(map(str, self._children))})"
-
-
-class Component(ComponentBase, metaclass=AbstractComponentMeta):
-
-    @abstractmethod
-    def build(self, context: Context) -> "ComponentBase":
-        raise NotImplementedError()
 
 
 # Reserved for document-level components like Html, Head, Body, etc.
@@ -117,47 +29,6 @@ class DocumentLevelComponent(ComponentBase, metaclass=AbstractDocumentComponentM
         return self.element[
             (child.build(context).render(context) for child in self.children)
         ]
-
-
-class LeafComponent(Component):
-    def __getitem__(
-        self, *children: ComponentLike | Iterable["ComponentLike"] | None
-    ) -> ComponentBase:
-        if children:
-            raise ValueError(
-                f"{self.__class__.__name__} does not accept any children, got {len(children)}"
-            )
-        return super().__getitem__(*children)
-
-
-class SingleChildComponent(Component):
-    @property
-    def child(self) -> ComponentBase:
-        return self._children[0]
-
-    def __getitem__(
-        self, *children: ComponentLike | Iterable["ComponentLike"] | None
-    ) -> ComponentBase:
-        if len(children) != 1:
-            raise ValueError(
-                f"{self.__class__.__name__} only accepts a single child, got {len(children)}"
-            )
-        return super().__getitem__(*children)
-
-
-class Text(LeafComponent):
-    def __init__(self, text: str):
-        super().__init__()
-        self.text = text
-
-    def build(self, context: Context) -> "ComponentBase":
-        return self
-
-    def render(self, context: Context) -> htpy.Node:
-        return self.text
-
-    def __str__(self) -> str:
-        return self.text
 
 
 class HtmlBaseComponent(Component, metaclass=AbstractHtmlComponentMeta):

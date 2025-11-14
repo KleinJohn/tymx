@@ -1,10 +1,10 @@
-from django_compose.base.components import (
-    Component,
-    Context,
+from .components import Context
+from .components.html_components import (
     Body,
     DocumentLevelComponent,
     Head,
     Html,
+    ComponentOrComponents,
 )
 import htpy
 
@@ -16,7 +16,11 @@ class Router:
 
 class Page(DocumentLevelComponent):
     def __init__(
-        self, *, name: str, head: Component | None = None, body: Component | None = None
+        self,
+        *,
+        name: str,
+        head: ComponentOrComponents = None,
+        body: ComponentOrComponents = None,
     ):
         self.name = name
         self.head = head
