@@ -14,7 +14,7 @@ class Router:
         self.pages = pages
 
 
-class Page:
+class Page(DocumentLevelComponent):
     def __init__(
         self, *, name: str, head: Component | None = None, body: Component | None = None
     ):
@@ -25,8 +25,7 @@ class Page:
     def build(self, context: Context) -> DocumentLevelComponent:
         return Html[Head[self.head], Body[self.body]]
 
-    def render(self) -> htpy.Renderable:
-        context = Context()
+    def render(self, context: Context) -> htpy.Renderable:
         return self.build(context).render(context)
 
 
@@ -34,3 +33,7 @@ class DjangoApp:
     def __init__(self, *, style: str | None = None, starts_on: Page):
         self.style = style
         self.starts_on = starts_on
+
+    def render(self) -> htpy.Renderable:
+        context = Context()
+        return self.starts_on.render(context)

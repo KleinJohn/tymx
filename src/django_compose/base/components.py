@@ -25,12 +25,12 @@ def _fill_component_children(
 ) -> None:
     if not children:
         return
-    if isinstance(children, str) or isinstance(children, type):
-        component._children.append(_component_validate_child(children))  # type: ignore
-    elif isinstance(children, Iterable):
+    if isinstance(children, Iterable):
         component._children.extend(  # type: ignore
             map(_component_validate_child, children)
         )
+    else:
+        component._children.append(_component_validate_child(children))  # type: ignore
 
 
 class ComponentBaseMeta(type):
@@ -39,6 +39,9 @@ class ComponentBaseMeta(type):
         instance = cls()
         _fill_component_children(instance, *children)
         return instance
+
+    def __str__(cls) -> str:
+        return cls.__name__
 
 
 class AbstractComponentBaseMeta(ABCMeta, ComponentBaseMeta):
@@ -89,6 +92,11 @@ class ComponentBase(metaclass=AbstractComponentBaseMeta):
     @property
     def children(self) -> list["ComponentBase"]:
         return self._children
+
+    def __str__(self) -> str:
+        if not self._children:
+            return self.__class__.__name__
+        return f"{self.__class__.__name__}({", ".join(map(str, self._children))})"
 
 
 class Component(ComponentBase, metaclass=AbstractComponentMeta):
@@ -146,6 +154,9 @@ class Text(LeafComponent):
         return self
 
     def render(self, context: Context) -> htpy.Node:
+        return self.text
+
+    def __str__(self) -> str:
         return self.text
 
 
