@@ -71,27 +71,44 @@ class ComponentBase(metaclass=AbstractComponentBaseMeta):
             else:
                 self._modifiers.append(modifier)
         self._children: tuple["ComponentBase", ...] = _fill_component_children(children)
-        self._htpy_kwargs = htpy_kwargs
+        self._htpy_kwargs: dict[str, str] = htpy_kwargs
+        self._context: Context | None = None
 
     def __getitem__(self, *children: ComponentOrComponentsBase) -> Self:
-        _fill_component_children(self, *children)
+        self._children = _fill_component_children(*children)
         return self
+
+    def copy_with_children(self, children: Iterable["ComponentBase"]) -> Self:
+        return self.__class__(
+            *self._modifiers,
+            children=children,
+            **self._htpy_kwargs,
+        )
+
+    def full_build(self, context: Context) -> "ComponentBase":
+        self._context = context
+        built_self = self.build(context)
+        self._context = None
+        return built_self
 
     @abstractmethod
     def build(self, context: Context) -> "ComponentBase":
         raise NotImplementedError()
 
     def render(self, context: Context) -> htpy.Node:
-        return self.build(context).render(context)
+        root = self.full_build(context)
+        return root.render(context)
 
     @property
     def children(self) -> tuple["ComponentBase", ...]:
-        return self._children
+        if not self._context:
+            return self._children
+        return tuple(child.full_build(self._context) for child in self._children)
 
     def __str__(self) -> str:
         if not self._children:
             return self.__class__.__name__
-        return f"{self.__class__.__name__}({", ".join(map(str, self._children))})"
+        return f"{self.__class__.__name__}({", ".join(str(child) for child in self._children)})"
 
 
 class Component(ComponentBase, metaclass=AbstractComponentMeta):
@@ -103,12 +120,11 @@ class Component(ComponentBase, metaclass=AbstractComponentMeta):
 
 class AbstractLeafComponentMeta(AbstractComponentMeta):
     def __getitem__(cls, *children: ComponentOrComponentsBase) -> "LeafComponent":
-        instance = cls()
         if children:
             raise ValueError(
                 f"{cls.__name__} does not accept any children, got {len(children)}"
             )
-        return instance
+        return cls()
 
 
 class LeafComponent(Component, metaclass=AbstractLeafComponentMeta):
@@ -120,6 +136,10 @@ class LeafComponent(Component, metaclass=AbstractLeafComponentMeta):
                 f"{self.__class__.__name__} does not accept any children, got {len(children)}"
             )
         return self
+
+    @abstractmethod
+    def render(self, context: Context) -> htpy.Node:
+        raise NotImplementedError()
 
 
 class AbstractSingleChildComponentMeta(AbstractComponentMeta):
@@ -136,7 +156,7 @@ class AbstractSingleChildComponentMeta(AbstractComponentMeta):
 class SingleChildComponent(Component, metaclass=AbstractSingleChildComponentMeta):
     @property
     def child(self) -> ComponentBase:
-        return self._children[0]
+        return self.children[0]
 
     def __getitem__(
         self, *children: ComponentBaseLike | Iterable["ComponentBaseLike"] | None

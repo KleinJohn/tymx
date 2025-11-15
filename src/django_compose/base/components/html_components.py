@@ -1,21 +1,16 @@
 from .base_components import *
-from .base_components import _fill_component_children  # type: ignore
 
 
 class AbstractHtmlComponentMeta(AbstractComponentMeta):
     def __getitem__(cls, *children: ComponentOrComponentsBase) -> "HtmlComponent":
-        instance = cls()
-        _fill_component_children(instance, *children)
-        return instance
+        return cls(children=children)
 
 
 class AbstractDocumentComponentMeta(AbstractComponentBaseMeta):
     def __getitem__(
         cls, *children: ComponentOrComponentsBase
     ) -> "DocumentLevelComponent":
-        instance = cls()
-        _fill_component_children(instance, *children)
-        return instance
+        return cls(children=children)
 
 
 # Reserved for document-level components like Html, Head, Body, etc.
@@ -23,32 +18,35 @@ class DocumentLevelComponent(ComponentBase, metaclass=AbstractDocumentComponentM
     element: htpy.Element
 
     def build(self, context: Context) -> Self:
-        return self
+        return self.copy_with_children(self.children)
 
     def render(self, context: Context) -> htpy.Renderable:
-        return self.element[
-            (child.build(context).render(context) for child in self.children)
-        ]
+        return self.element[(child.render(context) for child in self.children)]
 
 
 class HtmlBaseComponent(Component, metaclass=AbstractHtmlComponentMeta):
-    is_html_element = True
     element: htpy.BaseElement
 
     def build(self, context: Context) -> "ComponentBase":
-        return self
+        return self.copy_with_children(self.children)
 
 
 class HtmlComponent(HtmlBaseComponent):
     element: htpy.Element  # type: ignore
 
-    def render(self, context: Context) -> htpy.Node:
-        return self.element[
-            (child.build(context).render(context) for child in self.children)
-        ]
+    def render(self, context: Context) -> htpy.Renderable:
+        return self.element[(child.render(context) for child in self.children)]
 
 
-class HtmlLeafComponent(HtmlBaseComponent):
+class AbstractHtmlLeafComponentMeta(
+    AbstractHtmlComponentMeta, AbstractLeafComponentMeta
+):
+    pass
+
+
+class HtmlLeafComponent(
+    LeafComponent, HtmlBaseComponent, metaclass=AbstractHtmlLeafComponentMeta
+):
     element: htpy.VoidElement  # type: ignore
 
     def render(self, context: Context) -> htpy.Node:
