@@ -1,6 +1,8 @@
-from typing import Iterable, Self, TypeAlias, Union
+from typing import Iterable, Self, TypeAlias, Union, final
 from abc import ABCMeta, abstractmethod
 import htpy
+
+from django_compose.base.modifiers import Modifier
 
 
 ComponentBaseLike: TypeAlias = Union["ComponentBase", type["ComponentBase"], str]
@@ -24,25 +26,20 @@ def _component_validate_child(child: ComponentBaseLike) -> "ComponentBase":
 
 
 def _fill_component_children(
-    component: "ComponentBase",
     children: ComponentOrComponentsBase,
-) -> None:
+) -> tuple["ComponentBase", ...]:
     if not children:
-        return
+        return tuple()
     if isinstance(children, Iterable):
-        component._children.extend(  # type: ignore
-            map(_component_validate_child, children)
-        )
+        return tuple(map(_component_validate_child, children))
     else:
-        component._children.append(_component_validate_child(children))  # type: ignore
+        return (_component_validate_child(children),)  # type: ignore
 
 
 class ComponentBaseMeta(type):
 
     def __getitem__(cls, *children: ComponentOrComponentsBase) -> "ComponentBase":
-        instance = cls()
-        _fill_component_children(instance, *children)
-        return instance
+        return cls(children=children)
 
     def __str__(cls) -> str:
         return cls.__name__
@@ -54,19 +51,27 @@ class AbstractComponentBaseMeta(ABCMeta, ComponentBaseMeta):
 
 class AbstractComponentMeta(AbstractComponentBaseMeta):
     def __getitem__(cls, *children: ComponentOrComponentsBase) -> "Component":
-        instance = cls()
-        _fill_component_children(instance, *children)
-        return instance
+        return cls(children=children)
 
 
 class ComponentBase(metaclass=AbstractComponentBaseMeta):
     is_html_element = False
 
     # All Components that allow zero children have to provide an empty constructor.
-    def __init__(self, *, child: ComponentOrComponentsBase = None):
-        super().__init__()
-        self._children: list["ComponentBase"] = []
-        _fill_component_children(self, child)
+    def __init__(
+        self,
+        *modifiers: Modifier | Iterable[Modifier],
+        children: ComponentOrComponentsBase = None,
+        **htpy_kwargs: str,
+    ) -> None:
+        self._modifiers: list[Modifier] = []
+        for modifier in modifiers:
+            if isinstance(modifier, Iterable):
+                self._modifiers.extend(modifier)
+            else:
+                self._modifiers.append(modifier)
+        self._children: tuple["ComponentBase", ...] = _fill_component_children(children)
+        self._htpy_kwargs = htpy_kwargs
 
     def __getitem__(self, *children: ComponentOrComponentsBase) -> Self:
         _fill_component_children(self, *children)
@@ -80,7 +85,7 @@ class ComponentBase(metaclass=AbstractComponentBaseMeta):
         return self.build(context).render(context)
 
     @property
-    def children(self) -> list["ComponentBase"]:
+    def children(self) -> tuple["ComponentBase", ...]:
         return self._children
 
     def __str__(self) -> str:
@@ -121,13 +126,11 @@ class AbstractSingleChildComponentMeta(AbstractComponentMeta):
     def __getitem__(
         cls, *children: ComponentOrComponentsBase
     ) -> "SingleChildComponent":
-        instance = cls()
         if len(children) != 1:
             raise ValueError(
                 f"{cls.__name__} only accepts a single child, got {len(children)}"
             )
-        _fill_component_children(instance, *children)
-        return instance
+        return cls(children=children)
 
 
 class SingleChildComponent(Component, metaclass=AbstractSingleChildComponentMeta):
@@ -156,6 +159,7 @@ class AbstractTextComponentMeta(AbstractLeafComponentMeta):
         return Text(children[0])
 
 
+@final
 class Text(LeafComponent, metaclass=AbstractTextComponentMeta):
     def __init__(self, text: str):
         super().__init__()
