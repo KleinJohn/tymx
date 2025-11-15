@@ -7,10 +7,10 @@ from django_compose.base.modifiers import Modifier
 
 ComponentBaseLike: TypeAlias = Union["ComponentBase", type["ComponentBase"], str]
 ComponentOrComponentsBase: TypeAlias = Union[
-    None, ComponentBaseLike, Iterable[ComponentBaseLike]
+    None, ComponentBaseLike, tuple[ComponentBaseLike, ...]
 ]
 ComponentLike: TypeAlias = Union["Component", type["Component"], str]
-ComponentOrComponents: TypeAlias = Union[None, ComponentLike, Iterable[ComponentLike]]
+ComponentOrComponents: TypeAlias = Union[None, ComponentLike, tuple[ComponentLike, ...]]
 
 
 class Context:
@@ -30,7 +30,7 @@ def _fill_component_children(
 ) -> tuple["ComponentBase", ...]:
     if not children:
         return tuple()
-    if isinstance(children, Iterable):
+    if isinstance(children, tuple) and not isinstance(children, str):
         return tuple(map(_component_validate_child, children))
     else:
         return (_component_validate_child(children),)  # type: ignore
@@ -38,7 +38,7 @@ def _fill_component_children(
 
 class ComponentBaseMeta(type):
 
-    def __getitem__(cls, *children: ComponentOrComponentsBase) -> "ComponentBase":
+    def __getitem__(cls, children: ComponentOrComponentsBase) -> "ComponentBase":
         return cls(children=children)
 
     def __str__(cls) -> str:
@@ -50,7 +50,7 @@ class AbstractComponentBaseMeta(ABCMeta, ComponentBaseMeta):
 
 
 class AbstractComponentMeta(AbstractComponentBaseMeta):
-    def __getitem__(cls, *children: ComponentOrComponentsBase) -> "Component":
+    def __getitem__(cls, children: ComponentOrComponentsBase) -> "Component":
         return cls(children=children)
 
 
@@ -74,11 +74,11 @@ class ComponentBase(metaclass=AbstractComponentBaseMeta):
         self._htpy_kwargs: dict[str, str] = htpy_kwargs
         self._context: Context | None = None
 
-    def __getitem__(self, *children: ComponentOrComponentsBase) -> Self:
-        self._children = _fill_component_children(*children)
+    def __getitem__(self, children: ComponentOrComponentsBase) -> Self:
+        self._children = _fill_component_children(children)
         return self
 
-    def copy_with_children(self, children: Iterable["ComponentBase"]) -> Self:
+    def copy_with_children(self, children: tuple["ComponentBase", ...]) -> Self:
         return self.__class__(
             *self._modifiers,
             children=children,
@@ -119,21 +119,19 @@ class Component(ComponentBase, metaclass=AbstractComponentMeta):
 
 
 class AbstractLeafComponentMeta(AbstractComponentMeta):
-    def __getitem__(cls, *children: ComponentOrComponentsBase) -> "LeafComponent":
+    def __getitem__(cls, children: ComponentOrComponentsBase) -> "LeafComponent":
         if children:
             raise ValueError(
-                f"{cls.__name__} does not accept any children, got {len(children)}"
+                f"{cls.__name__} does not accept any children, got {children}"
             )
         return cls()
 
 
 class LeafComponent(Component, metaclass=AbstractLeafComponentMeta):
-    def __getitem__(
-        self, *children: ComponentBaseLike | Iterable["ComponentBaseLike"] | None
-    ) -> ComponentBase:
+    def __getitem__(self, children: ComponentOrComponentsBase) -> ComponentBase:
         if children:
             raise ValueError(
-                f"{self.__class__.__name__} does not accept any children, got {len(children)}"
+                f"{self.__class__.__name__} does not accept any children, got {children}"
             )
         return self
 
@@ -143,10 +141,12 @@ class LeafComponent(Component, metaclass=AbstractLeafComponentMeta):
 
 
 class AbstractSingleChildComponentMeta(AbstractComponentMeta):
-    def __getitem__(
-        cls, *children: ComponentOrComponentsBase
-    ) -> "SingleChildComponent":
-        if len(children) != 1:
+    def __getitem__(cls, children: ComponentOrComponentsBase) -> "SingleChildComponent":
+        if (
+            isinstance(children, tuple)
+            and not isinstance(children, str)
+            and len(children) != 1
+        ):
             raise ValueError(
                 f"{cls.__name__} only accepts a single child, got {len(children)}"
             )
@@ -158,25 +158,25 @@ class SingleChildComponent(Component, metaclass=AbstractSingleChildComponentMeta
     def child(self) -> ComponentBase:
         return self.children[0]
 
-    def __getitem__(
-        self, *children: ComponentBaseLike | Iterable["ComponentBaseLike"] | None
-    ) -> ComponentBase:
-        if len(children) != 1:
+    def __getitem__(self, children: ComponentOrComponentsBase) -> ComponentBase:
+        if (
+            isinstance(children, tuple)
+            and not isinstance(children, str)
+            and len(children) != 1
+        ):
             raise ValueError(
                 f"{self.__class__.__name__} only accepts a single child, got {len(children)}"
             )
-        return super().__getitem__(*children)
+        return super().__getitem__(children)
 
 
 class AbstractTextComponentMeta(AbstractLeafComponentMeta):
-    def __getitem__(cls, *children: ComponentOrComponentsBase) -> "Text":
+    def __getitem__(cls, children: ComponentOrComponentsBase) -> "Text":
         if isinstance(children, str):
             return Text(children)
-        if len(children) != 1 or not isinstance(children[0], str):
-            raise ValueError(
-                f"{cls.__name__} only accepts a single string child, got {children}"
-            )
-        return Text(children[0])
+        raise ValueError(
+            f"{cls.__name__} only accepts a single string child, got {children}"
+        )
 
 
 @final
@@ -186,10 +186,10 @@ class Text(LeafComponent, metaclass=AbstractTextComponentMeta):
         self.text = text
 
     def build(self, context: Context) -> "ComponentBase":
-        return self
+        return Text(self.text)
 
     def render(self, context: Context) -> htpy.Node:
         return self.text
 
     def __str__(self) -> str:
-        return self.text
+        return f'"{self.text}"'

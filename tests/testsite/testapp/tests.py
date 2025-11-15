@@ -3,6 +3,6 @@ from django_compose.base.components import Context
 
 
 if __name__ == "__main__":
-    elem = Div[Span[Div["Hallo"]], H1["Super Titel"]]
+    elem = Div["Test1", Span[Div["Super"]], H1["Header"]]
     context = Context()
-    print(elem.full_build(context))
+    print(elem.render(context))

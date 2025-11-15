@@ -2,13 +2,13 @@ from .base_components import *
 
 
 class AbstractHtmlComponentMeta(AbstractComponentMeta):
-    def __getitem__(cls, *children: ComponentOrComponentsBase) -> "HtmlComponent":
+    def __getitem__(cls, children: ComponentOrComponentsBase) -> "HtmlComponent":
         return cls(children=children)
 
 
 class AbstractDocumentComponentMeta(AbstractComponentBaseMeta):
     def __getitem__(
-        cls, *children: ComponentOrComponentsBase
+        cls, children: ComponentOrComponentsBase
     ) -> "DocumentLevelComponent":
         return cls(children=children)
 
