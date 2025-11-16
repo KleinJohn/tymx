@@ -1,2 +1,2 @@
 from .base_modifiers import *
-from .modifiers import *
+from .html_modifiers import *

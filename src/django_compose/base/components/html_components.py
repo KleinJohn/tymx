@@ -24,7 +24,7 @@ class DocumentLevelComponent(ComponentBase, metaclass=AbstractDocumentComponentM
 class HtmlBaseComponent(Component):
     element: htpy.BaseElement
 
-    def build(self, context: Context) -> "ComponentBase":
+    def build(self, context: Context) -> "Component":
         return self.copy_with_children(self.children)
 
 
@@ -46,7 +46,11 @@ class AbstractHtmlLeafComponentMeta(
     AbstractHtmlComponentMeta, AbstractLeafComponentMeta
 ):
     def __getitem__(cls, children: ComponentOrComponentsBase) -> "HtmlLeafComponent":
-        return cls(children=children)
+        if children:
+            raise ValueError(
+                f"{cls.__name__} does not accept any children, got {children}"
+            )
+        return cls()
 
 
 class HtmlLeafComponent(

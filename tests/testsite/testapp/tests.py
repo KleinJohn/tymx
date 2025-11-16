@@ -1,4 +1,4 @@
-from django_compose.base.components.html_components import H1, Div, Span
+from django_compose.base.components.html_components import H1, Div, Span, Input
 from django_compose.base.components import Context
 from django_compose.base.modifiers import styles, id
 
