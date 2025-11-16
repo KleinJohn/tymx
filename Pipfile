@@ -7,8 +7,8 @@ name = "pypi"
 htpy = "*"
 setuptools = "*"
 build = "*"
-django-compose = {file = "src", editable = true}
 django = "*"
+django-compose = {file = "src", editable = true}
 
 [dev-packages]
 

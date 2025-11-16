@@ -1,19 +1,6 @@
-from typing import Iterable
+class SideModifier(StyleTag, ClassTag):
 
-
-class Modifier:
-    @property
-    def css(self) -> str | None:
-        return None
-
-    @property
-    def classes(self) -> Iterable[str] | None:
-        return None
-
-
-class SideModifier(Modifier):
-
-    def __init__(
+    def __call__(
         self,
         p: int | None = None,
         x: int | None = None,
@@ -23,6 +10,9 @@ class SideModifier(Modifier):
         l: int | None = None,
         r: int | None = None,
     ):
+        self.p = p
+        self.x = x
+        self.y = y
         self.t = p
         self.b = p
         self.l = p

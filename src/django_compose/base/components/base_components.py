@@ -1,16 +1,17 @@
+from functools import reduce
 from typing import Iterable, Self, TypeAlias, Union, final
 from abc import ABCMeta, abstractmethod
 import htpy
 
-from django_compose.base.modifiers import Modifier
+from django_compose.base.modifiers import Tag
 
 
 ComponentBaseLike: TypeAlias = Union["ComponentBase", type["ComponentBase"], str]
 ComponentOrComponentsBase: TypeAlias = Union[
-    None, ComponentBaseLike, tuple[ComponentBaseLike, ...]
+    None, ComponentBaseLike, Iterable[ComponentBaseLike]
 ]
 ComponentLike: TypeAlias = Union["Component", type["Component"], str]
-ComponentOrComponents: TypeAlias = Union[None, ComponentLike, tuple[ComponentLike, ...]]
+ComponentOrComponents: TypeAlias = Union[None, ComponentLike, Iterable[ComponentLike]]
 
 
 class Context:
@@ -30,10 +31,10 @@ def _fill_component_children(
 ) -> tuple["ComponentBase", ...]:
     if not children:
         return tuple()
-    if isinstance(children, tuple) and not isinstance(children, str):
+    if isinstance(children, Iterable) and not isinstance(children, str):
         return tuple(map(_component_validate_child, children))
     else:
-        return (_component_validate_child(children),)  # type: ignore
+        return (_component_validate_child(children),)
 
 
 class ComponentBaseMeta(type):
@@ -55,21 +56,20 @@ class AbstractComponentMeta(AbstractComponentBaseMeta):
 
 
 class ComponentBase(metaclass=AbstractComponentBaseMeta):
-    is_html_element = False
 
     # All Components that allow zero children have to provide an empty constructor.
     def __init__(
         self,
-        *modifiers: Modifier | Iterable[Modifier],
+        *tags: Tag | Iterable[Tag],
         children: ComponentOrComponentsBase = None,
         **htpy_kwargs: str,
     ) -> None:
-        self._modifiers: list[Modifier] = []
-        for modifier in modifiers:
-            if isinstance(modifier, Iterable):
-                self._modifiers.extend(modifier)
+        self._tags: list[Tag] = []
+        for tag in tags:
+            if isinstance(tag, Iterable):
+                self._tags.extend(tag)
             else:
-                self._modifiers.append(modifier)
+                self._tags.append(tag)
         self._children: tuple["ComponentBase", ...] = _fill_component_children(children)
         self._htpy_kwargs: dict[str, str] = htpy_kwargs
         self._context: Context | None = None
@@ -78,9 +78,14 @@ class ComponentBase(metaclass=AbstractComponentBaseMeta):
         self._children = _fill_component_children(children)
         return self
 
-    def copy_with_children(self, children: tuple["ComponentBase", ...]) -> Self:
+    def __str__(self) -> str:
+        if not self._children:
+            return self.__class__.__name__
+        return f"{self.__class__.__name__}({", ".join(str(child) for child in self._children)})"
+
+    def copy_with_children(self, children: Iterable["ComponentBase"]) -> Self:
         return self.__class__(
-            *self._modifiers,
+            *self._tags,
             children=children,
             **self._htpy_kwargs,
         )
@@ -99,16 +104,18 @@ class ComponentBase(metaclass=AbstractComponentBaseMeta):
         root = self.full_build(context)
         return root.render(context)
 
+    def compile_tags(self) -> Tag:
+        return reduce(lambda a, b: a | b, self._tags, Tag())
+
     @property
-    def children(self) -> tuple["ComponentBase", ...]:
+    def children(self) -> Iterable["ComponentBase"]:
         if not self._context:
             return self._children
-        return tuple(child.full_build(self._context) for child in self._children)
+        return (child.full_build(self._context) for child in self._children)
 
-    def __str__(self) -> str:
-        if not self._children:
-            return self.__class__.__name__
-        return f"{self.__class__.__name__}({", ".join(str(child) for child in self._children)})"
+    @property
+    def tags(self) -> Iterable[Tag]:
+        return self._tags
 
 
 class Component(ComponentBase, metaclass=AbstractComponentMeta):
@@ -128,7 +135,7 @@ class AbstractLeafComponentMeta(AbstractComponentMeta):
 
 
 class LeafComponent(Component, metaclass=AbstractLeafComponentMeta):
-    def __getitem__(self, children: ComponentOrComponentsBase) -> ComponentBase:
+    def __getitem__(self, children: ComponentOrComponentsBase) -> "LeafComponent":
         if children:
             raise ValueError(
                 f"{self.__class__.__name__} does not accept any children, got {children}"
@@ -156,9 +163,11 @@ class AbstractSingleChildComponentMeta(AbstractComponentMeta):
 class SingleChildComponent(Component, metaclass=AbstractSingleChildComponentMeta):
     @property
     def child(self) -> ComponentBase:
-        return self.children[0]
+        return self._children[0]
 
-    def __getitem__(self, children: ComponentOrComponentsBase) -> ComponentBase:
+    def __getitem__(
+        self, children: ComponentOrComponentsBase
+    ) -> "SingleChildComponent":
         if (
             isinstance(children, tuple)
             and not isinstance(children, str)

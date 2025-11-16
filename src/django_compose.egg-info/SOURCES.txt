@@ -6,7 +6,13 @@ django_compose.egg-info/SOURCES.txt
 django_compose.egg-info/dependency_links.txt
 django_compose.egg-info/top_level.txt
 django_compose/base/__init__.py
-django_compose/base/components.py
-django_compose/base/modifiers.py
 django_compose/base/page.py
+django_compose/base/components/__init__.py
+django_compose/base/components/base_components.py
+django_compose/base/components/compose_components.py
+django_compose/base/components/html_components.py
+django_compose/base/modifiers/__init__.py
+django_compose/base/modifiers/base_modifiers.py
+django_compose/base/modifiers/extended_modifiers.py
+django_compose/base/modifiers/modifiers.py
 django_compose/bulma/__init__.py
