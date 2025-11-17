@@ -1,8 +1,8 @@
-from .components import Context, Component, Tag
+from .components import Context, Component, Attributes
 
 
 class ComponentTheme:
-    """Apply styling in the form of adding tags or modifying the build method of components.
+    """Apply styling in the form of adding attributes or modifying the build method of components.
 
     Themes are distributed inside the context of the build process.
     """
@@ -19,16 +19,16 @@ class ComponentTheme:
         """
         return component
 
-    def modify_tags(self, tags: list[Tag]) -> list[Tag]:
-        """Modify the tags of a component.
+    def modify_attributes(self, attributes: list[Attributes]) -> list[Attributes]:
+        """Modify the attributes of a component.
 
         Args:
-            tags (dict[str, str]): The original tags.
+            attributes (dict[str, str]): The original attributes.
 
         Returns:
-            dict[str, str]: The modified tags.
+            dict[str, str]: The modified attributes.
         """
-        return tags
+        return attributes
 
 
 class Theme:

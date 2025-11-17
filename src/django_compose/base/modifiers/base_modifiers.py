@@ -11,8 +11,8 @@ def _add_init_kwargs(init_kwargs: dict[str, Any] | None, **kwargs) -> dict[str, 
 
 
 def _clean_kwargs(
-    kwarg_dict: dict[str, str], underscores_to_hyphens: bool = True
-) -> OrderedDict[str, str]:
+    kwarg_dict: dict[str, Any], underscores_to_hyphens: bool = True
+) -> OrderedDict[str, Any]:
     cleaned_kwargs = OrderedDict()
     for key, value in kwarg_dict.items():
         clean_key = key
@@ -30,41 +30,43 @@ class Modifier(ABC):
         pass
 
 
-class Tag(Modifier):
-    """A modifier which adds tags to a Component.
+class Attributes(Modifier):
+    """A modifier which adds attributes to a Component.
 
-    A Tag can hold multiple tag values, which can be set when the Tag is called.
-    The default value for each tag is an empty string.
+    A Attribute can hold multiple attribute values, which can be set when the Attribute is called.
+    The default value for each attribute is an empty string.
     """
 
-    def __init__(self, *tags: str, values: Iterable[str] | None = None) -> None:
+    def __init__(self, *attributes: str, values: Iterable[Any] | None = None) -> None:
         super().__init__()
         if not values:
-            self._values = OrderedDict((tag, "") for tag in tags)
+            self._values = OrderedDict((attribute, "") for attribute in attributes)
         else:
-            self._values = OrderedDict((tag, value) for tag, value in zip(tags, values))
+            self._values = OrderedDict(
+                (attribute, value) for attribute, value in zip(attributes, values)
+            )
 
     def __call__(
         self,
-        *values: str | None,
+        *values: Any | None,
         init_kwargs: dict[str, Any] | None = None,
     ) -> Self:
-        """Assigns values to the tags.
+        """Assigns values to the attributes.
 
-        The values are assigned to the tags in the order they were defined.
-        Leave a value as None to keep the current value for that tag.
-        If fewer values are provided than tags, the remaining tags keep their current values.
+        The values are assigned to the attributes in the order they were defined.
+        Leave a value as None to keep the current value for that attribute.
+        If fewer values are provided than attributes, the remaining attributes keep their current values.
         """
         len_difference = len(self._values) - len(values)
         if len_difference < 0:
-            raise ValueError("Too many values provided for tags.")
+            raise ValueError("Too many values provided for attributes.")
         rest = tuple(self._values.values())[-len_difference:]
         try:
             return self.__class__(
-                *self.tags,
+                *self.attributes,
                 values=tuple(
-                    value if value is not None else self._values[tag]
-                    for tag, value in zip(self.tags, values)
+                    value if value is not None else self._values[attribute]
+                    for attribute, value in zip(self.attributes, values)
                 )
                 + rest,
                 **(init_kwargs if init_kwargs else dict()),
@@ -76,41 +78,43 @@ class Tag(Modifier):
             )
 
     def __str__(self) -> str:
-        return ", ".join(f'{tag}="{value}"' for tag, value in self._values.items())
+        return ", ".join(
+            f'{attribute}="{value}"' for attribute, value in self._values.items()
+        )
 
-    def __or__(self, other: "Tag") -> "Tag":
+    def __or__(self, other: "Attributes") -> "Attributes":
         dict_union = self.values | other.values
-        return Tag(*dict_union.keys(), values=dict_union.values())
+        return Attributes(*dict_union.keys(), values=dict_union.values())
 
-    def __ror__(self, other: "Tag") -> "Tag":
+    def __ror__(self, other: "Attributes") -> "Attributes":
         return self.__or__(other)
 
     @property
-    def tags(self) -> Iterable[str]:
+    def attributes(self) -> Iterable[str]:
         return self._values.keys()
 
     @property
-    def values(self) -> OrderedDict[str, str]:
+    def values(self) -> OrderedDict[str, Any]:
         return self._values
 
 
-class SingleTag(Tag):
-    """Adds a single tag to a Component."""
+class SingleAttribute(Attributes):
+    """Adds a single attribute to a Component."""
 
-    def __init__(self, tag: str, *, values: Iterable[str] | None = None) -> None:
-        super().__init__(tag, values=values)
+    def __init__(self, attribute: str, *, values: Iterable[Any] | None = None) -> None:
+        super().__init__(attribute, values=values)
 
     def __call__(
         self,
-        *values: str | None,
+        *values: Any | None,
         init_kwargs: dict[str, Any] | None = None,
     ) -> Self:
         if len(values) > 1:
-            raise ValueError(f"{self.tag} only accepts a single value.")
+            raise ValueError(f"{self.attribute} only accepts a single value.")
         return super().__call__(*values, init_kwargs=init_kwargs)
 
     @property
-    def tag(self) -> str:
+    def attribute(self) -> str:
         return next(iter(self._values.keys()))
 
     @property
@@ -118,12 +122,12 @@ class SingleTag(Tag):
         return next(iter(self._values.values()))
 
 
-class ComposedTag(SingleTag):
-    """A modifier which adds a single tag to a Component, allowing multiple values to be composed together."""
+class ComposedAttribute(SingleAttribute):
+    """A modifier which adds a single attribute to a Component, allowing multiple values to be composed together."""
 
     def __init__(
         self,
-        tag: str,
+        attribute: str,
         /,
         # do not forget to register these kwargs in __call__ under _add_init_kwargs
         composer: Callable[[Iterable[str]], str],
@@ -133,11 +137,11 @@ class ComposedTag(SingleTag):
     ) -> None:
         self.composer = composer
         self.kwarg_composer = kwarg_composer
-        super().__init__(tag, values=values)
+        super().__init__(attribute, values=values)
 
     def __call__(
         self,
-        value: str | dict[str, str] | None = None,
+        value: str | dict[str, Any] | None = None,
         *values: str | None,
         init_kwargs: dict[str, Any] | None = None,
         add_after=True,
@@ -171,3 +175,29 @@ class ComposedTag(SingleTag):
                 kwarg_composer=self.kwarg_composer,
             ),
         )
+
+
+class BooleanAttribute(SingleAttribute):
+    """A modifier which adds a boolean attribute to a Component.
+
+    The attribute is included when the value is True, and omitted when the value is False.
+    """
+
+    def __init__(self, attribute: str, values: Iterable[Any] | None = None) -> None:
+        if not values:
+            values = (True,)
+        super().__init__(attribute, values=values)
+
+    def __call__(
+        self,
+        value: str | bool | None = None,
+        *values: Any | None,
+        init_kwargs: dict[str, Any] | None = None,
+    ) -> Self:
+        if isinstance(value, bool):
+            return super().__call__(value, *values, init_kwargs=init_kwargs)
+        if isinstance(value, str):
+            return super().__call__(
+                value.lower() != "false", *values, init_kwargs=init_kwargs
+            )
+        return super().__call__(True, *values, init_kwargs=init_kwargs)

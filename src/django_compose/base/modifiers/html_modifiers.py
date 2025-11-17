@@ -1,10 +1,15 @@
-from django_compose.base.modifiers import SingleTag, ComposedTag
+from django_compose.base.modifiers import (
+    SingleAttribute,
+    ComposedAttribute,
+    BooleanAttribute,
+)
 
 
-id = SingleTag("id")
-classes = ComposedTag("class", lambda values: " ".join(values))
-styles = ComposedTag(
+id = SingleAttribute("id")
+classes = ComposedAttribute("class", lambda values: " ".join(values))
+styles = ComposedAttribute(
     "style",
     lambda values: ";".join(values) + (";" if values else ""),
     lambda k, v: f"{k}:{v}",
 )
+disabled = BooleanAttribute("disabled")

@@ -1,4 +1,4 @@
-class SideModifier(StyleTag, ClassTag):
+class SideModifier:
 
     def __call__(
         self,

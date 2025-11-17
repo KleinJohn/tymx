@@ -4,7 +4,7 @@ from typing import Iterable, Self, TypeAlias, Union, final, TYPE_CHECKING
 from abc import ABCMeta, abstractmethod
 import htpy
 
-from django_compose.base.modifiers import Tag
+from django_compose.base.modifiers import Attributes
 
 if TYPE_CHECKING:
     from django_compose.base.theme import Theme, ComponentTheme
@@ -66,27 +66,27 @@ class AbstractComponentMeta(AbstractComponentBaseMeta):
 
 
 class ComponentBase(metaclass=AbstractComponentBaseMeta):
-    inherit_tags = True
+    inherit_attributes = True
 
     # All Components that allow zero children have to provide an empty constructor.
     def __init__(
         self,
-        *tags: Tag | Iterable[Tag],
+        *attributes: Attributes | Iterable[Attributes],
         children: ComponentOrComponentsBase = None,
         **htpy_kwargs: str,
     ) -> None:
-        self._tags: list[Tag] = []
-        for tag in tags:
-            if isinstance(tag, Iterable):
-                self._tags.extend(tag)
+        self._attributes: list[Attributes] = []
+        for attribute in attributes:
+            if isinstance(attribute, Iterable):
+                self._attributes.extend(attribute)
             else:
-                self._tags.append(tag)
+                self._attributes.append(attribute)
         self._children: tuple["ComponentBase", ...] = _fill_component_children(children)
         self._htpy_kwargs: dict[str, str] = htpy_kwargs
 
     def __getitem__(self, children: ComponentOrComponentsBase) -> Self:
         return self.__class__(
-            *self._tags,
+            *self._attributes,
             children=_fill_component_children(children),
             **self._htpy_kwargs,
         )
@@ -104,36 +104,36 @@ class ComponentBase(metaclass=AbstractComponentBaseMeta):
 
     def full_build(self, context: Context) -> "ComponentBase":
         self_built = self.build(context, self._children)
-        if self.__class__.inherit_tags:
-            self_built.add_tags(self.tags)
+        if self.__class__.inherit_attributes:
+            self_built.add_attributes(self.attributes)
         return self_built
 
     def render(self, context: Context) -> htpy.Node:
         root = self.full_build(context)
         return root.render(context)
 
-    def compile_tags(self) -> Tag:
-        return reduce(lambda a, b: a | b, self._tags, Tag())
+    def compile_attributes(self) -> Attributes:
+        return reduce(lambda a, b: a | b, self._attributes, Attributes())
 
-    def add_tags(self, tags: Iterable[Tag]) -> None:
-        # TODO: Merge tags into existing tags
-        self._tags.extend(tags)
+    def add_attributes(self, attributes: Iterable[Attributes]) -> None:
+        # TODO: Merge attributes into existing attributes
+        self._attributes.extend(attributes)
 
     @property
-    def tags(self) -> Iterable[Tag]:
-        return self._tags
+    def attributes(self) -> Iterable[Attributes]:
+        return self._attributes
 
 
 class Component(ComponentBase, metaclass=AbstractComponentMeta):
 
     def __init__(
         self,
-        *tags: Tag | Iterable[Tag],
+        *attributes: Attributes | Iterable[Attributes],
         theme: ComponentTheme | None = None,
         children: ComponentOrComponentsBase = None,
         **htpy_kwargs: str,
     ) -> None:
-        super().__init__(*tags, children=children, **htpy_kwargs)
+        super().__init__(*attributes, children=children, **htpy_kwargs)
         self.theme = theme
 
     @abstractmethod
@@ -151,14 +151,14 @@ class Component(ComponentBase, metaclass=AbstractComponentMeta):
     def apply_theme(self, context: Context, component: "Component") -> "Component":
         if self.theme:
             component = self.theme.modify_build(context, component)
-            if self.__class__.inherit_tags:
-                component.add_tags(self.tags)
-            component._tags = self.theme.modify_tags(component._tags)
+            if self.__class__.inherit_attributes:
+                component.add_attributes(self.attributes)
+            component._attributes = self.theme.modify_attributes(component._attributes)
         return component
 
     def __getitem__(self, children: ComponentOrComponentsBase) -> Self:
         return self.__class__(
-            *self._tags,
+            *self._attributes,
             children=_fill_component_children(children),
             theme=self.theme,
             **self._htpy_kwargs,
@@ -262,8 +262,10 @@ class ThemedComponent(Component):
         context_theme = self.get_theme(context.theme)
         if self.theme:
             component = self.theme.modify_build(context, component)
-            component._tags = self.theme.modify_tags(component._tags)
+            component._attributes = self.theme.modify_attributes(component._attributes)
         elif context_theme:
             component = context_theme.modify_build(context, component)
-            component._tags = context_theme.modify_tags(component._tags)
+            component._attributes = context_theme.modify_attributes(
+                component._attributes
+            )
         return component
