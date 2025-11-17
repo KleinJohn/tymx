@@ -1,11 +1,17 @@
+from typing import Iterable, override
+from django_compose.base.components.base_components import (
+    ComponentBaseChildren,
+)
+from django_compose.base.theme import Theme
 from .components import Context
 from .components.html_components import (
     Body,
     DocumentLevelComponent,
     Head,
     Html,
-    ComponentOrComponents,
+    ComponentChildren,
 )
+from django_compose.base.modifiers.attributes import Attribute
 import htpy
 
 
@@ -17,27 +23,56 @@ class Router:
 class Page(DocumentLevelComponent):
     def __init__(
         self,
-        *,
         name: str,
-        head: ComponentOrComponents = None,
-        body: ComponentOrComponents = None,
+        *attributes: Attribute | Iterable[Attribute],
+        children: ComponentBaseChildren = None,
+        theme: Theme | None = None,
+        head: ComponentChildren = None,
+        body: ComponentChildren = None,
+        **htpy_kwargs: str,
     ):
+        super().__init__(
+            *attributes,
+            children=children,
+            **htpy_kwargs,
+        )
         self.name = name
         self.head = head
         self.body = body
+        self.theme = theme
 
-    def build(self, context: Context) -> DocumentLevelComponent:
+    @override
+    def build(
+        self, context: Context, children: ComponentBaseChildren
+    ) -> DocumentLevelComponent:
         return Html[Head[self.head], Body[self.body]]
 
-    def render(self, context: Context) -> htpy.Renderable:
-        return self.build(context).render(context)
+    @override
+    def full_build(self, context: Context) -> DocumentLevelComponent:
+        self_built = self.build(context, self.children)
+        if self.__class__.inherit_attributes:
+            self_built.attributes.add_all(self.attributes)
+        return self_built
+
+    @override
+    def render(self) -> htpy.Renderable:
+        theme = self.theme or Theme()
+        context = Context(theme)
+        root = self.full_build(context)
+        return root.render()
 
 
 class DjangoApp:
-    def __init__(self, *, style: str | None = None, starts_on: Page):
+    def __init__(
+        self,
+        *,
+        style: str | None = None,
+        starts_on: str = "index",
+        pages: Iterable[Page],
+    ):
         self.style = style
         self.starts_on = starts_on
+        self.pages = {page.name: page for page in pages}
 
     def render(self) -> htpy.Renderable:
-        context = Context()
-        return self.starts_on.render(context)
+        return self.pages[self.starts_on].render()

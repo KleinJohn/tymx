@@ -1,58 +1,64 @@
+from typing import override
 from .base_components import *
 
 
 class AbstractDocumentComponentMeta(AbstractComponentBaseMeta):
-    def __getitem__(
-        cls, children: ComponentOrComponentsBase
-    ) -> "DocumentLevelComponent":
+    @override
+    def __getitem__(cls, children: ComponentBaseChildren) -> "DocumentLevelComponent":
         return cls(children=children)
 
 
-# Reserved for document-level components like Html, Head, Body
 class DocumentLevelComponent(ComponentBase, metaclass=AbstractDocumentComponentMeta):
+    """Reserved for document-level components like Html, Head, Body. Themes not applicable."""
+
     element: htpy.Element
 
-    def build(self, context: Context, children: ComponentOrComponentsBase) -> Self:
+    @override
+    def build(self, context: Context, children: ComponentBaseChildren) -> ComponentBase:
         return self[children]
 
-    def render(self, context: Context) -> htpy.Renderable:
-        return self.element(self.join_attributes().values)[
-            (child.render(context) for child in self._children)
+    @override
+    def render(self) -> htpy.Renderable:
+        return self.element(**self.attributes.values(), **self._htpy_kwargs)[
+            (child.render() for child in self.children)
         ]
 
 
 class AbstractHtmlBaseComponentMeta(AbstractComponentMeta):
-    def __getitem__(cls, children: ComponentOrComponentsBase) -> "HtmlBaseComponent":
+    @override
+    def __getitem__(cls, children: ComponentBaseChildren) -> "HtmlBaseComponent":
         return cls(children=children)
 
 
 class HtmlBaseComponent(Component, metaclass=AbstractHtmlBaseComponentMeta):
     element: htpy.BaseElement
 
-    def build(
-        self, context: Context, children: ComponentOrComponentsBase
-    ) -> "Component":
+    @override
+    def build(self, context: Context, children: ComponentBaseChildren) -> "Component":
         return self[children]
 
 
 class AbstractHtmlComponentMeta(AbstractHtmlBaseComponentMeta):
-    def __getitem__(cls, children: ComponentOrComponentsBase) -> "HtmlComponent":
+    @override
+    def __getitem__(cls, children: ComponentBaseChildren) -> "HtmlComponent":
         return cls(children=children)
 
 
 class HtmlComponent(HtmlBaseComponent, metaclass=AbstractHtmlComponentMeta):
-    element: htpy.Element
+    element: htpy.Element  # type: ignore
 
-    def render(self, context: Context) -> htpy.Node:
-        return self.element(self.join_attributes().values)[
-            (child.render(context) for child in self._children)
+    @override
+    def render(self) -> htpy.Node:
+        return self.element(**self.attributes.values(), **self._htpy_kwargs)[
+            (child.render() for child in self.children)
         ]
 
 
 class AbstractHtmlLeafComponentMeta(
     AbstractHtmlBaseComponentMeta, AbstractLeafComponentMeta
 ):
-    def __getitem__(cls, children: ComponentOrComponentsBase) -> "HtmlLeafComponent":
+    @override
+    def __getitem__(cls, children: ComponentBaseChildren) -> "HtmlLeafComponent":
         if children:
             raise ValueError(
                 f"{cls.__name__} does not accept any children, got {children}"
@@ -63,10 +69,11 @@ class AbstractHtmlLeafComponentMeta(
 class HtmlLeafComponent(
     HtmlBaseComponent, LeafComponent, metaclass=AbstractHtmlLeafComponentMeta
 ):
-    element: htpy.VoidElement
+    element: htpy.VoidElement  # type: ignore
 
-    def render(self, context: Context) -> htpy.Node:
-        return self.element(self.join_attributes().values)
+    @override
+    def render(self) -> htpy.Node:
+        return self.element(**self.attributes.values(), **self._htpy_kwargs)
 
 
 @final

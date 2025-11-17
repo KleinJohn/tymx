@@ -1,20 +1,23 @@
 from django.http import HttpRequest, HttpResponse
-from django_compose.base.components.html_components import H1, Div
+from django_compose.base.components.html_components import H1, Button, Div, Span
 from django_compose.base.page import DjangoApp, Page
-from django_compose.base.modifiers import styles, id
+from django_compose.base.modifiers import styles, id, disabled
 
-
-home_page = Page(
-    name="Home Page",
-    body=Div[
-        H1(
-            id("main-header"),
-            styles(color="blue"),
-        )["Welcome to the Home Page!"]
+index_page = Page(
+    name="index",
+    body=[
+        H1((id("header1"), styles(color="blue", font_size="30px")))[
+            "Meine Überschrift",
+        ],
+        Div[
+            "Test1",
+            Span[Div["Super"]],
+            Button(disabled)["Can't click me!"],
+        ],
     ],
 )
 
-app = DjangoApp(starts_on=home_page)
+app = DjangoApp(pages=[index_page])
 
 
 # Create your views here.

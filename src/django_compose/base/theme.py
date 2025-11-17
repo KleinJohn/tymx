@@ -1,4 +1,5 @@
-from .components import Context, Component, Attributes
+from .components import Context, Component
+from .modifiers import Attributes
 
 
 class ComponentTheme:
@@ -19,7 +20,7 @@ class ComponentTheme:
         """
         return component
 
-    def modify_attributes(self, attributes: list[Attributes]) -> list[Attributes]:
+    def modify_attributes(self, attributes: Attributes) -> Attributes:
         """Modify the attributes of a component.
 
         Args:

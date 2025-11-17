@@ -1,38 +1,59 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from abc import ABC, abstractmethod
-from typing import Self
+from collections import OrderedDict
+from typing import Any, Iterator, Self, override
+
+from django_compose.base.modifiers.attributes import Attribute
+
+if TYPE_CHECKING:
+    from django_compose.base.components.base_components import Component, Context
 
 
 class Modifier(ABC):
 
     @abstractmethod
-    def __call__(self) -> Self:
-        pass
+    def apply(self, context: Context, component: Component) -> Component:
+        """Injects behavior into the given component after the build process.
+
+        It is safe to modify the component in place and return the same instance.
+        It is also possible to return a new instance of the component if needed.
+        """
+        raise NotImplementedError()
 
 
 class Attributes(Modifier):
-
-    def __call__(self) -> Self:
-        pass
-
-    def __str__(self) -> str:
-        return ", ".join(
-            f'{attribute}="{value}"' for attribute, value in self._values.items()
+    def __init__(self, *attributes: Attribute) -> None:
+        self.data: OrderedDict[str, Attribute] = OrderedDict(
+            (attr.name, attr) for attr in attributes
         )
 
-    def __or__(self, other: "Attributes") -> "Attributes":
-        dict_union = self.values | other.values
-        return Attribute(*dict_union.keys(), values=dict_union.values())
+    def __call__(self) -> Self:
+        return self
 
-    def __ror__(self, other: "Attributes") -> "Attributes":
-        return self.__or__(other)
+    def __iter__(self) -> Iterator[Attribute]:
+        return iter(self.data.values())
 
-    def __ior__(self, other: "Attributes") -> None:
-        self._values.update(other.values)
+    def __contains__(self, item: str | Attribute) -> bool:
+        if isinstance(item, str):
+            return item in self.data
+        return item.name in self.data
 
-    @property
-    def attributes(self) -> Iterable[str]:
-        return self._values.keys()
+    def __str__(self) -> str:
+        return " ".join(str(attr) for attr in self.data.values())
 
-    @property
-    def values(self) -> OrderedDict[str, Any]:
-        return self._values
+    def values(self) -> dict[str, Any]:
+        return {attr.name: attr.value for attr in self.data.values()}
+
+    def add(self, attribute: Attribute) -> None:
+        # TODO: Handle conflicts (e.g., same attribute name)
+        self.data[attribute.name] = attribute
+
+    def add_all(self, attributes: "Attributes") -> None:
+        for attr in attributes:
+            self.add(attr)
+
+    @override
+    def apply(self, context: Context, component: Component) -> Component:
+        component.attributes.add_all(self)
+        return component

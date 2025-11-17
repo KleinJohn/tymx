@@ -1,22 +1,21 @@
 from __future__ import annotations
-from functools import reduce
-from operator import ior, or_
 from typing import Iterable, Self, TypeAlias, Union, final, TYPE_CHECKING
 from abc import ABCMeta, abstractmethod
 import htpy
 
-from django_compose.base.modifiers import Attributes
+from django_compose.base.modifiers import Attributes, Attribute
+from django_compose.base.modifiers.base_modifiers import Modifier
 
 if TYPE_CHECKING:
     from django_compose.base.theme import Theme, ComponentTheme
 
 
 ComponentBaseLike: TypeAlias = Union["ComponentBase", type["ComponentBase"], str]
-ComponentOrComponentsBase: TypeAlias = Union[
+ComponentBaseChildren: TypeAlias = Union[
     None, ComponentBaseLike, Iterable[ComponentBaseLike]
 ]
 ComponentLike: TypeAlias = Union["Component", type["Component"], str]
-ComponentOrComponents: TypeAlias = Union[None, ComponentLike, Iterable[ComponentLike]]
+ComponentChildren: TypeAlias = Union[None, ComponentLike, Iterable[ComponentLike]]
 
 
 class Context:
@@ -38,7 +37,7 @@ def _component_validate_child(child: ComponentBaseLike) -> "ComponentBase":
 
 
 def _fill_component_children(
-    children: ComponentOrComponentsBase,
+    children: ComponentBaseChildren,
 ) -> tuple["ComponentBase", ...]:
     if not children:
         return tuple()
@@ -50,7 +49,7 @@ def _fill_component_children(
 
 class ComponentBaseMeta(type):
 
-    def __getitem__(cls, children: ComponentOrComponentsBase) -> "ComponentBase":
+    def __getitem__(cls, children: ComponentBaseChildren) -> "ComponentBase":
         return cls(children=children)
 
     def __str__(cls) -> str:
@@ -62,7 +61,7 @@ class AbstractComponentBaseMeta(ABCMeta, ComponentBaseMeta):
 
 
 class AbstractComponentMeta(AbstractComponentBaseMeta):
-    def __getitem__(cls, children: ComponentOrComponentsBase) -> "Component":
+    def __getitem__(cls, children: ComponentBaseChildren) -> "Component":
         return cls(children=children)
 
 
@@ -72,103 +71,98 @@ class ComponentBase(metaclass=AbstractComponentBaseMeta):
     # All Components that allow zero children have to provide an empty constructor.
     def __init__(
         self,
-        *attributes: Attributes | Iterable[Attributes],
-        children: ComponentOrComponentsBase = None,
+        *attributes: Attribute | Iterable[Attribute],
+        children: ComponentBaseChildren = None,
         **htpy_kwargs: str,
     ) -> None:
-        self._attributes: list[Attributes] = []
+        attr_list: list[Attribute] = []
         for attribute in attributes:
             if isinstance(attribute, Iterable):
-                self._attributes.extend(attribute)
+                attr_list.extend(attribute)
             else:
-                self._attributes.append(attribute)
-        self._children: tuple["ComponentBase", ...] = _fill_component_children(children)
+                attr_list.append(attribute)
+        self.attributes = Attributes(*attr_list)
+        self.children: tuple["ComponentBase", ...] = _fill_component_children(children)
         self._htpy_kwargs: dict[str, str] = htpy_kwargs
 
-    def __getitem__(self, children: ComponentOrComponentsBase) -> Self:
+    def __getitem__(self, children: ComponentBaseChildren) -> Self:
         return self.__class__(
-            *self._attributes,
+            *self.attributes,
             children=_fill_component_children(children),
             **self._htpy_kwargs,
         )
 
     def __str__(self) -> str:
-        if not self._children:
+        if not self.children:
             return self.__class__.__name__
-        return f"{self.__class__.__name__}({", ".join(str(child) for child in self._children)})"
+        return f"{self.__class__.__name__}({", ".join(str(child) for child in self.children)})"
 
     @abstractmethod
     def build(
-        self, context: Context, children: ComponentOrComponentsBase
+        self, context: Context, children: ComponentBaseChildren
     ) -> "ComponentBase":
         raise NotImplementedError()
 
+    @abstractmethod
+    def render(self) -> htpy.Node:
+        raise NotImplementedError()
+
     def full_build(self, context: Context) -> "ComponentBase":
-        self_built = self.build(context, self._children)
+        self_built = self.build(context, self.children)
         if self.__class__.inherit_attributes:
-            self_built.add_attributes(self.attributes)
+            self_built.attributes.add_all(self.attributes)
         return self_built
-
-    def render(self, context: Context) -> htpy.Node:
-        root = self.full_build(context)
-        return root.render(context)
-
-    def join_attributes(self) -> Attributes | None:
-        match (len(self._attributes)):
-            case 0:
-                return None
-            case 1:
-                return self._attributes[0]
-            case _:
-                attribute_union = or_(*self._attributes[:2])
-                return reduce(
-                    lambda a, b: ior(a, b), self._attributes[2:], attribute_union
-                )
-
-    def add_attributes(self, attributes: Iterable[Attributes]) -> None:
-        # TODO: Merge attributes into existing attributes
-        self._attributes.extend(attributes)
-
-    @property
-    def attributes(self) -> Iterable[Attributes]:
-        return self._attributes
 
 
 class Component(ComponentBase, metaclass=AbstractComponentMeta):
 
     def __init__(
         self,
-        *attributes: Attributes | Iterable[Attributes],
+        *attributes: Attribute | Iterable[Attribute],
+        modifiers: Iterable[Modifier] | None = None,
         theme: ComponentTheme | None = None,
-        children: ComponentOrComponentsBase = None,
+        children: ComponentBaseChildren = None,
         **htpy_kwargs: str,
     ) -> None:
         super().__init__(*attributes, children=children, **htpy_kwargs)
         self.theme = theme
+        self.modifiers: list[Modifier] = list(modifiers or [])
 
     @abstractmethod
-    def build(
-        self, context: Context, children: ComponentOrComponentsBase
-    ) -> "Component":
+    def build(self, context: Context, children: ComponentBaseChildren) -> "Component":
         raise NotImplementedError()
 
+    def render(self) -> htpy.Node:
+        raise NotImplementedError(
+            "Render method not implemented. "
+            "- Most likely called render on an unbuilt component. "
+            "Make sure your component builds down to html components."
+        )
+
     def full_build(self, context: Context) -> "Component":
-        children = (child.full_build(context) for child in self._children)
+        children = (child.full_build(context) for child in self.children)
         built_self = self.build(context, children)
         built_self = self.apply_theme(context, built_self)
+        built_self = self.apply_modifiers(context, built_self)
         return built_self
 
     def apply_theme(self, context: Context, component: "Component") -> "Component":
         if self.theme:
             component = self.theme.modify_build(context, component)
             if self.__class__.inherit_attributes:
-                component.add_attributes(self.attributes)
-            component._attributes = self.theme.modify_attributes(component._attributes)
+                component.attributes.add_all(self.attributes)
+            component.attributes = self.theme.modify_attributes(component.attributes)
         return component
 
-    def __getitem__(self, children: ComponentOrComponentsBase) -> Self:
+    def apply_modifiers(self, context: Context, component: "Component") -> "Component":
+        for modifier in self.modifiers:
+            component = modifier.apply(context, component)
+        return component
+
+    def __getitem__(self, children: ComponentBaseChildren) -> Self:
         return self.__class__(
-            *self._attributes,
+            *self.attributes,
+            modifiers=self.modifiers,
             children=_fill_component_children(children),
             theme=self.theme,
             **self._htpy_kwargs,
@@ -176,7 +170,7 @@ class Component(ComponentBase, metaclass=AbstractComponentMeta):
 
 
 class AbstractLeafComponentMeta(AbstractComponentMeta):
-    def __getitem__(cls, children: ComponentOrComponentsBase) -> "LeafComponent":
+    def __getitem__(cls, children: ComponentBaseChildren) -> "LeafComponent":
         if children:
             raise ValueError(
                 f"{cls.__name__} does not accept any children, got {children}"
@@ -185,7 +179,7 @@ class AbstractLeafComponentMeta(AbstractComponentMeta):
 
 
 class LeafComponent(Component, metaclass=AbstractLeafComponentMeta):
-    def __getitem__(self, children: ComponentOrComponentsBase) -> "LeafComponent":
+    def __getitem__(self, children: ComponentBaseChildren) -> "LeafComponent":
         if children:
             raise ValueError(
                 f"{self.__class__.__name__} does not accept any children, got {children}"
@@ -193,16 +187,12 @@ class LeafComponent(Component, metaclass=AbstractLeafComponentMeta):
         return super().__getitem__(children)
 
     @abstractmethod
-    def build(self, context: Context, _: ComponentOrComponentsBase) -> "Component":
-        raise NotImplementedError()
-
-    @abstractmethod
-    def render(self, context: Context) -> htpy.Node:
+    def build(self, context: Context, children: ComponentBaseChildren) -> "Component":
         raise NotImplementedError()
 
 
 class AbstractSingleChildComponentMeta(AbstractComponentMeta):
-    def __getitem__(cls, children: ComponentOrComponentsBase) -> "SingleChildComponent":
+    def __getitem__(cls, children: ComponentBaseChildren) -> "SingleChildComponent":
         if (
             isinstance(children, tuple)
             and not isinstance(children, str)
@@ -217,11 +207,9 @@ class AbstractSingleChildComponentMeta(AbstractComponentMeta):
 class SingleChildComponent(Component, metaclass=AbstractSingleChildComponentMeta):
     @property
     def child(self) -> ComponentBase:
-        return self._children[0]
+        return self.children[0]
 
-    def __getitem__(
-        self, children: ComponentOrComponentsBase
-    ) -> "SingleChildComponent":
+    def __getitem__(self, children: ComponentBaseChildren) -> "SingleChildComponent":
         if (
             isinstance(children, tuple)
             and not isinstance(children, str)
@@ -233,12 +221,12 @@ class SingleChildComponent(Component, metaclass=AbstractSingleChildComponentMeta
         return super().__getitem__(children)
 
     @abstractmethod
-    def build(self, context: Context, child: ComponentOrComponentsBase) -> "Component":
+    def build(self, context: Context, children: ComponentBaseChildren) -> "Component":
         raise NotImplementedError()
 
 
 class AbstractTextComponentMeta(AbstractLeafComponentMeta):
-    def __getitem__(cls, children: ComponentOrComponentsBase) -> "Text":
+    def __getitem__(cls, children: ComponentBaseChildren) -> "Text":
         if isinstance(children, str):
             return Text(children)
         raise ValueError(
@@ -252,10 +240,10 @@ class Text(LeafComponent, metaclass=AbstractTextComponentMeta):
         super().__init__()
         self.text = text
 
-    def build(self, context: Context, _: ComponentOrComponentsBase) -> "Component":
+    def build(self, context: Context, children: ComponentBaseChildren) -> "Component":
         return Text(self.text)
 
-    def render(self, context: Context) -> htpy.Node:
+    def render(self) -> htpy.Node:
         return self.text
 
     def __str__(self) -> str:
@@ -272,10 +260,8 @@ class ThemedComponent(Component):
         context_theme = self.get_theme(context.theme)
         if self.theme:
             component = self.theme.modify_build(context, component)
-            component._attributes = self.theme.modify_attributes(component._attributes)
+            component.attributes = self.theme.modify_attributes(component.attributes)
         elif context_theme:
             component = context_theme.modify_build(context, component)
-            component._attributes = context_theme.modify_attributes(
-                component._attributes
-            )
+            component.attributes = context_theme.modify_attributes(component.attributes)
         return component

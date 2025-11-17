@@ -3,7 +3,9 @@ from collections import OrderedDict
 from typing import Any, Callable, Iterable, Self
 
 
-def _add_init_kwargs(init_kwargs: dict[str, Any] | None, **kwargs) -> dict[str, Any]:
+def _add_init_kwargs(
+    init_kwargs: dict[str, Any] | None, **kwargs: Any
+) -> dict[str, Any]:
     if init_kwargs is None:
         init_kwargs = dict()
     init_kwargs.update(kwargs)
@@ -13,7 +15,7 @@ def _add_init_kwargs(init_kwargs: dict[str, Any] | None, **kwargs) -> dict[str, 
 def _clean_kwargs(
     kwarg_dict: dict[str, Any], underscores_to_hyphens: bool = True
 ) -> OrderedDict[str, Any]:
-    cleaned_kwargs = OrderedDict()
+    cleaned_kwargs: OrderedDict[str, str] = OrderedDict()
     for key, value in kwarg_dict.items():
         clean_key = key
         clean_value = value
@@ -47,7 +49,7 @@ class Attribute(ABC):
         try:
             return self.__class__(
                 self.name,
-                value=self.value,
+                value=value,
                 **(init_kwargs if init_kwargs else dict()),
             )
         except TypeError as e:
@@ -55,6 +57,10 @@ class Attribute(ABC):
                 str(e)
                 + "\n- likely due to subclass not passing all required arguments for __init__ in its __call__ method."
             )
+
+    @abstractmethod
+    def __str__(self) -> str:
+        raise NotImplementedError()
 
 
 class SimpleAttribute(Attribute):
@@ -65,9 +71,15 @@ class SimpleAttribute(Attribute):
     def __call__(
         self,
         value: str | None = None,
+        *,
         init_kwargs: dict[str, Any] | None = None,
     ) -> Self:
         return super().__call__(value, init_kwargs=init_kwargs)
+
+    def __str__(self) -> str:
+        if self.value is None:
+            return ""
+        return f'{self.name}="{self.value}"'
 
 
 class BooleanAttribute(Attribute):
@@ -83,17 +95,16 @@ class BooleanAttribute(Attribute):
 
     def __call__(
         self,
-        value: str | bool | None = None,
-        *values: Any | None,
+        value: bool | None = None,
+        *,
         init_kwargs: dict[str, Any] | None = None,
     ) -> Self:
-        if isinstance(value, bool):
-            return super().__call__(value, *values, init_kwargs=init_kwargs)
-        if isinstance(value, str):
-            return super().__call__(
-                value.lower() != "false", *values, init_kwargs=init_kwargs
-            )
-        return super().__call__(True, *values, init_kwargs=init_kwargs)
+        return super().__call__(value, init_kwargs=init_kwargs)
+
+    def __str__(self) -> str:
+        if self.value:
+            return self.name
+        return ""
 
 
 class ComposedAttribute(SimpleAttribute):
@@ -101,25 +112,25 @@ class ComposedAttribute(SimpleAttribute):
 
     def __init__(
         self,
-        attribute: str,
+        name: str,
         /,
         # do not forget to register these kwargs in __call__ under _add_init_kwargs
         composer: Callable[[Iterable[str]], str],
         kwarg_composer: Callable[[str, str], str] | None = None,
         *,
-        values: Iterable[str] | None = None,
+        value: str | None = None,
     ) -> None:
+        super().__init__(name, value=value)
         self.composer = composer
         self.kwarg_composer = kwarg_composer
-        super().__init__(attribute, values=values)
 
     def __call__(
         self,
         value: str | dict[str, Any] | None = None,
         *values: str | None,
         init_kwargs: dict[str, Any] | None = None,
-        add_after=True,
-        clean_underscores=True,
+        add_after: bool = True,
+        clean_underscores: bool = True,
         **kwargs: str,
     ) -> Self:
         """The flag add_after determines whether to include kwargs before or after values."""
