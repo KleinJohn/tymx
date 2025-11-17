@@ -104,7 +104,8 @@ class ComponentBase(metaclass=AbstractComponentBaseMeta):
 
     def full_build(self, context: Context) -> "ComponentBase":
         self_built = self.build(context, self._children)
-        self_built.add_tags(self.tags)
+        if self.__class__.inherit_tags:
+            self_built.add_tags(self.tags)
         return self_built
 
     def render(self, context: Context) -> htpy.Node:
@@ -145,12 +146,14 @@ class Component(ComponentBase, metaclass=AbstractComponentMeta):
         children = (child.full_build(context) for child in self._children)
         built_self = self.build(context, children)
         built_self = self.apply_theme(context, built_self)
-        built_self.add_tags(self.tags)
         return built_self
 
     def apply_theme(self, context: Context, component: "Component") -> "Component":
         if self.theme:
             component = self.theme.modify_build(context, component)
+            if self.__class__.inherit_tags:
+                component.add_tags(self.tags)
+            component._tags = self.theme.modify_tags(component._tags)
         return component
 
     def __getitem__(self, children: ComponentOrComponentsBase) -> Self:
