@@ -1,8 +1,8 @@
-from django_compose.base.components import Component, Context
-from django_compose.base.components.html_components import Button as HtmlButton
+from django_compose.base.components import ThemedComponent, Component, Context
+import django_compose.base.components.html_components as html
 
 
-class Button(Component):
+class Button(ThemedComponent):
 
     def build(self, context: Context) -> Component:
-        return HtmlButton()
+        return html.Button()

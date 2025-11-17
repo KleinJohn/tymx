@@ -1,6 +1,6 @@
-from django_compose.base.components.html_components import H1, Div, Span, Input
-from django_compose.base.components import Context
+from django_compose.base.components.html_components import H1, Div, Span, Input, Context
 from django_compose.base.modifiers import styles, id
+from django_compose.base.theme import Theme
 
 
 if __name__ == "__main__":
@@ -9,7 +9,8 @@ if __name__ == "__main__":
         id("header1"),
         styles(color="blue", font_size="12px"),
     )[
-        "Test1",
+        Div["Test1", Span[Div["Super"]]],
     ]
-    context = Context()
+    theme_data = Theme()
+    context = Context(theme_data)
     print(elem.render(context))

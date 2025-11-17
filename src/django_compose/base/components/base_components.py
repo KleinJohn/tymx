@@ -1,10 +1,13 @@
+from __future__ import annotations
 from functools import reduce
-from typing import Iterable, Self, TypeAlias, Union, final
+from typing import Iterable, Self, TypeAlias, Union, final, TYPE_CHECKING
 from abc import ABCMeta, abstractmethod
 import htpy
 
 from django_compose.base.modifiers import Tag
-import django_compose.base.theme as theme
+
+if TYPE_CHECKING:
+    from django_compose.base.theme import Theme, ComponentTheme
 
 
 ComponentBaseLike: TypeAlias = Union["ComponentBase", type["ComponentBase"], str]
@@ -21,7 +24,7 @@ class Context:
     The context can hold information that is relevant during the build and render process.
     """
 
-    def __init__(self, theme: theme.Theme) -> None:
+    def __init__(self, theme: Theme) -> None:
         self.theme = theme
 
 
@@ -63,6 +66,7 @@ class AbstractComponentMeta(AbstractComponentBaseMeta):
 
 
 class ComponentBase(metaclass=AbstractComponentBaseMeta):
+    inherit_tags = True
 
     # All Components that allow zero children have to provide an empty constructor.
     def __init__(
@@ -79,33 +83,29 @@ class ComponentBase(metaclass=AbstractComponentBaseMeta):
                 self._tags.append(tag)
         self._children: tuple["ComponentBase", ...] = _fill_component_children(children)
         self._htpy_kwargs: dict[str, str] = htpy_kwargs
-        self._context: Context | None = None
 
     def __getitem__(self, children: ComponentOrComponentsBase) -> Self:
-        self._children = _fill_component_children(children)
-        return self
+        return self.__class__(
+            *self._tags,
+            children=_fill_component_children(children),
+            **self._htpy_kwargs,
+        )
 
     def __str__(self) -> str:
         if not self._children:
             return self.__class__.__name__
         return f"{self.__class__.__name__}({", ".join(str(child) for child in self._children)})"
 
-    def copy_with_children(self, children: Iterable["ComponentBase"]) -> Self:
-        return self.__class__(
-            *self._tags,
-            children=children,
-            **self._htpy_kwargs,
-        )
-
     @abstractmethod
-    def build(self, context: Context) -> "ComponentBase":
+    def build(
+        self, context: Context, children: ComponentOrComponentsBase
+    ) -> "ComponentBase":
         raise NotImplementedError()
 
     def full_build(self, context: Context) -> "ComponentBase":
-        self._context = context
-        built_self = self.build(context)
-        self._context = None
-        return built_self
+        self_built = self.build(context, self._children)
+        self_built.add_tags(self.tags)
+        return self_built
 
     def render(self, context: Context) -> htpy.Node:
         root = self.full_build(context)
@@ -114,9 +114,9 @@ class ComponentBase(metaclass=AbstractComponentBaseMeta):
     def compile_tags(self) -> Tag:
         return reduce(lambda a, b: a | b, self._tags, Tag())
 
-    @property
-    def children(self) -> Iterable["ComponentBase"]:
-        return self._children
+    def add_tags(self, tags: Iterable[Tag]) -> None:
+        # TODO: Merge tags into existing tags
+        self._tags.extend(tags)
 
     @property
     def tags(self) -> Iterable[Tag]:
@@ -128,7 +128,7 @@ class Component(ComponentBase, metaclass=AbstractComponentMeta):
     def __init__(
         self,
         *tags: Tag | Iterable[Tag],
-        theme: theme.ComponentTheme | None = None,
+        theme: ComponentTheme | None = None,
         children: ComponentOrComponentsBase = None,
         **htpy_kwargs: str,
     ) -> None:
@@ -136,30 +136,30 @@ class Component(ComponentBase, metaclass=AbstractComponentMeta):
         self.theme = theme
 
     @abstractmethod
-    def build(self, context: Context) -> "Component":
+    def build(
+        self, context: Context, children: ComponentOrComponentsBase
+    ) -> "Component":
         raise NotImplementedError()
 
     def full_build(self, context: Context) -> "Component":
-        self._context = context
-        built_self = self.build(context)
-        if self.theme:
-            built_self = self.theme.modify_build(context, built_self)
-        self._context = None
+        children = (child.full_build(context) for child in self._children)
+        built_self = self.build(context, children)
+        built_self = self.apply_theme(context, built_self)
+        built_self.add_tags(self.tags)
         return built_self
 
-    def copy_with_children(self, children: Iterable["ComponentBase"]) -> Self:
+    def apply_theme(self, context: Context, component: "Component") -> "Component":
+        if self.theme:
+            component = self.theme.modify_build(context, component)
+        return component
+
+    def __getitem__(self, children: ComponentOrComponentsBase) -> Self:
         return self.__class__(
             *self._tags,
-            children=children,
+            children=_fill_component_children(children),
             theme=self.theme,
             **self._htpy_kwargs,
         )
-
-    @property
-    def children(self) -> Iterable["ComponentBase"]:
-        if not self._context:
-            return self._children
-        return (child.full_build(self._context) for child in self._children)
 
 
 class AbstractLeafComponentMeta(AbstractComponentMeta):
@@ -177,7 +177,11 @@ class LeafComponent(Component, metaclass=AbstractLeafComponentMeta):
             raise ValueError(
                 f"{self.__class__.__name__} does not accept any children, got {children}"
             )
-        return self
+        return super().__getitem__(children)
+
+    @abstractmethod
+    def build(self, context: Context, _: ComponentOrComponentsBase) -> "Component":
+        raise NotImplementedError()
 
     @abstractmethod
     def render(self, context: Context) -> htpy.Node:
@@ -215,6 +219,10 @@ class SingleChildComponent(Component, metaclass=AbstractSingleChildComponentMeta
             )
         return super().__getitem__(children)
 
+    @abstractmethod
+    def build(self, context: Context, child: ComponentOrComponentsBase) -> "Component":
+        raise NotImplementedError()
+
 
 class AbstractTextComponentMeta(AbstractLeafComponentMeta):
     def __getitem__(cls, children: ComponentOrComponentsBase) -> "Text":
@@ -231,7 +239,7 @@ class Text(LeafComponent, metaclass=AbstractTextComponentMeta):
         super().__init__()
         self.text = text
 
-    def build(self, context: Context) -> "Component":
+    def build(self, context: Context, _: ComponentOrComponentsBase) -> "Component":
         return Text(self.text)
 
     def render(self, context: Context) -> htpy.Node:
@@ -239,3 +247,20 @@ class Text(LeafComponent, metaclass=AbstractTextComponentMeta):
 
     def __str__(self) -> str:
         return f'"{self.text}"'
+
+
+class ThemedComponent(Component):
+
+    @abstractmethod
+    def get_theme(self, theme: Theme) -> ComponentTheme | None:
+        raise NotImplementedError()
+
+    def apply_theme(self, context: Context, component: "Component") -> "Component":
+        context_theme = self.get_theme(context.theme)
+        if self.theme:
+            component = self.theme.modify_build(context, component)
+            component._tags = self.theme.modify_tags(component._tags)
+        elif context_theme:
+            component = context_theme.modify_build(context, component)
+            component._tags = context_theme.modify_tags(component._tags)
+        return component

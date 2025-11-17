@@ -1,4 +1,4 @@
-from django_compose.base.components import Context, Component, Tag
+from .components import Context, Component, Tag
 
 
 class ComponentTheme:
