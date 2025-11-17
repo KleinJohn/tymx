@@ -16,7 +16,7 @@ class DocumentLevelComponent(ComponentBase, metaclass=AbstractDocumentComponentM
         return self[children]
 
     def render(self, context: Context) -> htpy.Renderable:
-        return self.element(self.compile_attributes().values)[
+        return self.element(self.join_attributes().values)[
             (child.render(context) for child in self._children)
         ]
 
@@ -44,7 +44,7 @@ class HtmlComponent(HtmlBaseComponent, metaclass=AbstractHtmlComponentMeta):
     element: htpy.Element
 
     def render(self, context: Context) -> htpy.Node:
-        return self.element(self.compile_attributes().values)[
+        return self.element(self.join_attributes().values)[
             (child.render(context) for child in self._children)
         ]
 
@@ -66,7 +66,7 @@ class HtmlLeafComponent(
     element: htpy.VoidElement
 
     def render(self, context: Context) -> htpy.Node:
-        return self.element(self.compile_attributes().values)
+        return self.element(self.join_attributes().values)
 
 
 @final

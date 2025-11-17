@@ -8,7 +8,7 @@ if __name__ == "__main__":
     elem = H1(
         id("header1"),
         styles(color="blue", font_size="12px"),
-        disabled(""),
+        disabled,
     )[
         Div[
             "Test1",

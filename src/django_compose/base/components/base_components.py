@@ -1,5 +1,6 @@
 from __future__ import annotations
 from functools import reduce
+from operator import ior, or_
 from typing import Iterable, Self, TypeAlias, Union, final, TYPE_CHECKING
 from abc import ABCMeta, abstractmethod
 import htpy
@@ -112,8 +113,17 @@ class ComponentBase(metaclass=AbstractComponentBaseMeta):
         root = self.full_build(context)
         return root.render(context)
 
-    def compile_attributes(self) -> Attributes:
-        return reduce(lambda a, b: a | b, self._attributes, Attributes())
+    def join_attributes(self) -> Attributes | None:
+        match (len(self._attributes)):
+            case 0:
+                return None
+            case 1:
+                return self._attributes[0]
+            case _:
+                attribute_union = or_(*self._attributes[:2])
+                return reduce(
+                    lambda a, b: ior(a, b), self._attributes[2:], attribute_union
+                )
 
     def add_attributes(self, attributes: Iterable[Attributes]) -> None:
         # TODO: Merge attributes into existing attributes
