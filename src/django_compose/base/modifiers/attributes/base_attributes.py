@@ -58,9 +58,16 @@ class Attribute(ABC):
                 + "\n- likely due to subclass not passing all required arguments for __init__ in its __call__ method."
             )
 
+    def __ior__(self, other: Self) -> None:
+        return self.merge(other)
+
     @abstractmethod
     def __str__(self) -> str:
         raise NotImplementedError()
+
+    def merge(self, other: "Attribute") -> None:
+        """Default behavior is to override own value with the other attribute's value."""
+        self.value = other.value
 
 
 class SimpleAttribute(Attribute):
@@ -117,12 +124,20 @@ class ComposedAttribute(SimpleAttribute):
         # do not forget to register these kwargs in __call__ under _add_init_kwargs
         composer: Callable[[Iterable[str]], str],
         kwarg_composer: Callable[[str, str], str] | None = None,
+        composed_values: tuple[str, ...] | None = None,
+        remove_duplicates: bool | None = None,
         *,
         value: str | None = None,
     ) -> None:
+        """If remove_duplicates is None, it defaults to False if kwarg_composer is provided."""
         super().__init__(name, value=value)
+        if remove_duplicates is None:
+            remove_duplicates = kwarg_composer is None
+
         self.composer = composer
         self.kwarg_composer = kwarg_composer
+        self.composed_values = composed_values
+        self.remove_duplicates = remove_duplicates
 
     def __call__(
         self,
@@ -152,11 +167,29 @@ class ComposedAttribute(SimpleAttribute):
             else tuple()
         )
         joined_values = values + kwarg_values if add_after else kwarg_values + values
+        composed_values = tuple(value for value in joined_values if value is not None)
         return super().__call__(
-            self.composer(value for value in joined_values if value is not None),
+            self.composer(composed_values),
             init_kwargs=_add_init_kwargs(
                 init_kwargs,
                 composer=self.composer,
                 kwarg_composer=self.kwarg_composer,
+                composed_values=composed_values,
+                remove_duplicates=self.remove_duplicates,
             ),
         )
+
+    def merge(self, other: Attribute) -> None:
+        if not isinstance(other, ComposedAttribute):
+            super().merge(other)
+            return
+        self_values: tuple[str, ...] = (
+            self.composed_values if self.composed_values else tuple()
+        )
+        other_values: tuple[str, ...] = (
+            other.composed_values if other.composed_values else tuple()
+        )
+        total_values = self_values + other_values
+        if self.remove_duplicates:
+            total_values = tuple(OrderedDict.fromkeys(total_values).keys())
+        self.value = self.composer(total_values)

@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 ComponentBaseLike: TypeAlias = Union["ComponentBase", type["ComponentBase"], str]
 ComponentBaseChildren: TypeAlias = Union[
-    None, ComponentBaseLike, Iterable[ComponentBaseLike]
+    None, ComponentBaseLike, Iterable["ComponentBaseChildren"]
 ]
 ComponentLike: TypeAlias = Union["Component", type["Component"], str]
 ComponentChildren: TypeAlias = Union[None, ComponentLike, Iterable[ComponentLike]]
@@ -28,23 +28,23 @@ class Context:
         self.theme = theme
 
 
-def _component_validate_child(child: ComponentBaseLike) -> "ComponentBase":
-    if isinstance(child, type):
-        return child()
-    elif isinstance(child, str):
-        return Text(child)
-    return child
-
-
 def _fill_component_children(
     children: ComponentBaseChildren,
 ) -> tuple["ComponentBase", ...]:
     if not children:
         return tuple()
-    if isinstance(children, Iterable) and not isinstance(children, str):
-        return tuple(map(_component_validate_child, children))
-    else:
-        return (_component_validate_child(children),)
+    match children:
+        case type():
+            return (children(),)
+        case str():
+            return (Text(children),)
+        case ComponentBase():
+            return (children,)
+        case _:
+            lst: list["ComponentBase"] = []
+            for child in children:
+                lst.extend(_fill_component_children(child))
+            return tuple(lst)
 
 
 class ComponentBaseMeta(type):

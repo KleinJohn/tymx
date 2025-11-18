@@ -24,9 +24,9 @@ class Modifier(ABC):
 
 class Attributes(Modifier):
     def __init__(self, *attributes: Attribute) -> None:
-        self.data: OrderedDict[str, Attribute] = OrderedDict(
-            (attr.name, attr) for attr in attributes
-        )
+        self.data: OrderedDict[str, Attribute] = OrderedDict()
+        for attr in attributes:
+            self.add(attr)
 
     def __call__(self) -> Self:
         return self
@@ -46,8 +46,10 @@ class Attributes(Modifier):
         return {attr.name: attr.value for attr in self.data.values()}
 
     def add(self, attribute: Attribute) -> None:
-        # TODO: Handle conflicts (e.g., same attribute name)
-        self.data[attribute.name] = attribute
+        if attribute.name not in self.data:
+            self.data[attribute.name] = attribute
+        else:
+            self.data[attribute.name].merge(attribute)
 
     def add_all(self, attributes: "Attributes") -> None:
         for attr in attributes:
