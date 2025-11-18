@@ -1,19 +1,22 @@
 from django_compose.base.components import Component
 from django_compose.base.components.base_components import (
     ComponentBaseChildren,
+    ComponentChildren,
     Context,
 )
 from django_compose.base.components.html_components import H1, Button, Div, Span
 from django_compose.base.modifiers import styles, id, disabled, classes, Attributes
 from django_compose.base.page import Page
-from django_compose.base.theme import Theme
 
 
 class CustomButton(Component):
 
-    def build(self, context: Context, children: ComponentBaseChildren) -> Component:
+    def build(
+        self, context: Context, children: ComponentBaseChildren
+    ) -> ComponentChildren:
+        print("CustomButton build called with children:", children)
         return Div[
-            "Custom Button",
+            ["Custom Button"],
             Button(disabled),
             "End of Custom Button",
             children,
@@ -26,7 +29,7 @@ def page_tests():
         body=[
             H1((id("header1"), styles(color="blue", font_size="12px"), disabled))[
                 Div[
-                    "Test1",
+                    ["Test1", Div["Test2"], "Test3"],
                     Span[Div["Super"]],
                     CustomButton["Click Me"],
                 ],
@@ -34,7 +37,7 @@ def page_tests():
         ],
     )
     # TODO: find error, CustomButton's children are missing
-    node = page.build(Context(theme=Theme()), children=Div)
+    node = page.render()
     print(node)
 
 

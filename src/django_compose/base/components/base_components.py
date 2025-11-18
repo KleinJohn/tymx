@@ -1,6 +1,6 @@
 from __future__ import annotations
-from typing import Iterable, Self, TypeAlias, Union, final, TYPE_CHECKING
-from abc import ABCMeta, abstractmethod
+from typing import Iterable, Self, TypeAlias, TypeVar, Union, final, TYPE_CHECKING
+from abc import abstractmethod
 import htpy
 
 from django_compose.base.modifiers import Attributes, Attribute
@@ -9,13 +9,16 @@ from django_compose.base.modifiers.base_modifiers import Modifier
 if TYPE_CHECKING:
     from django_compose.base.theme import Theme, ComponentTheme
 
-
-ComponentBaseLike: TypeAlias = Union["ComponentBase", type["ComponentBase"], str]
-ComponentBaseChildren: TypeAlias = Union[
-    None, ComponentBaseLike, Iterable["ComponentBaseChildren"]
+T = TypeVar("T", bound="ComponentBase")
+GenericComponentLike: TypeAlias = Union[T, type[T], str]
+GenericComponentChildren: TypeAlias = Union[
+    None, GenericComponentLike[T], Iterable["GenericComponentChildren[T]"]
 ]
-ComponentLike: TypeAlias = Union["Component", type["Component"], str]
-ComponentChildren: TypeAlias = Union[None, ComponentLike, Iterable[ComponentLike]]
+
+ComponentBaseLike: TypeAlias = GenericComponentLike["ComponentBase"]
+ComponentBaseChildren: TypeAlias = GenericComponentChildren["ComponentBase"]
+ComponentLike: TypeAlias = GenericComponentLike["Component"]
+ComponentChildren: TypeAlias = GenericComponentChildren["Component"]
 
 
 class Context:
@@ -28,44 +31,7 @@ class Context:
         self.theme = theme
 
 
-def _fill_component_children(
-    children: ComponentBaseChildren,
-) -> tuple["ComponentBase", ...]:
-    if not children:
-        return tuple()
-    match children:
-        case type():
-            return (children(),)
-        case str():
-            return (Text(children),)
-        case ComponentBase():
-            return (children,)
-        case _:
-            lst: list["ComponentBase"] = []
-            for child in children:
-                lst.extend(_fill_component_children(child))
-            return tuple(lst)
-
-
-class ComponentBaseMeta(type):
-
-    def __getitem__(cls, children: ComponentBaseChildren) -> "ComponentBase":
-        return cls(children=children)
-
-    def __str__(cls) -> str:
-        return cls.__name__
-
-
-class AbstractComponentBaseMeta(ABCMeta, ComponentBaseMeta):
-    pass
-
-
-class AbstractComponentMeta(AbstractComponentBaseMeta):
-    def __getitem__(cls, children: ComponentBaseChildren) -> "Component":
-        return cls(children=children)
-
-
-class ComponentBase(metaclass=AbstractComponentBaseMeta):
+class ComponentBase:
     inherit_attributes = True
 
     # All Components that allow zero children have to provide an empty constructor.
@@ -82,14 +48,21 @@ class ComponentBase(metaclass=AbstractComponentBaseMeta):
             else:
                 attr_list.append(attribute)
         self.attributes = Attributes(*attr_list)
-        self.children: tuple["ComponentBase", ...] = _fill_component_children(children)
+        self.children: tuple["ComponentBase", ...] = (
+            ComponentBase._fill_component_base_children(children)
+        )
         self._htpy_kwargs: dict[str, str] = htpy_kwargs
 
-    def __getitem__(self, children: ComponentBaseChildren) -> Self:
+    def __getitem__(self, children: ComponentBaseChildren) -> ComponentBase:
         return self.__class__(
             *self.attributes,
-            children=_fill_component_children(children),
+            children=ComponentBase._fill_component_base_children(children),
             **self._htpy_kwargs,
+        )
+
+    def __class_getitem__(cls, children: ComponentBaseChildren) -> Self:
+        return cls(
+            children=cls._fill_component_base_children(children),
         )
 
     def __str__(self) -> str:
@@ -100,21 +73,44 @@ class ComponentBase(metaclass=AbstractComponentBaseMeta):
     @abstractmethod
     def build(
         self, context: Context, children: ComponentBaseChildren
-    ) -> "ComponentBase":
+    ) -> ComponentBaseChildren:
         raise NotImplementedError()
 
     @abstractmethod
     def render(self) -> htpy.Node:
         raise NotImplementedError()
 
-    def full_build(self, context: Context) -> "ComponentBase":
-        self_built = self.build(context, self.children)
+    def full_build(self, context: Context) -> tuple["ComponentBase", ...]:
+        children = (child.full_build(context) for child in self.children)
+        self_built = self.build(context, children)
+        components = ComponentBase._fill_component_base_children(self_built)
         if self.__class__.inherit_attributes:
-            self_built.attributes.add_all(self.attributes)
-        return self_built
+            for component in components:
+                component.attributes.add_all(self.attributes)
+        return components
+
+    @classmethod
+    def _fill_component_base_children(
+        cls,
+        children: ComponentBaseChildren,
+    ) -> tuple["ComponentBase", ...]:
+        if not children:
+            return tuple()
+        match children:
+            case type():
+                return (children(),)
+            case str():
+                return (Text(children),)
+            case ComponentBase():
+                return (children,)
+            case _:
+                lst: list["ComponentBase"] = []
+                for child in children:
+                    lst.extend(cls._fill_component_base_children(child))
+                return tuple(lst)
 
 
-class Component(ComponentBase, metaclass=AbstractComponentMeta):
+class Component(ComponentBase):
 
     def __init__(
         self,
@@ -129,7 +125,9 @@ class Component(ComponentBase, metaclass=AbstractComponentMeta):
         self.modifiers: list[Modifier] = list(modifiers or [])
 
     @abstractmethod
-    def build(self, context: Context, children: ComponentBaseChildren) -> "Component":
+    def build(
+        self, context: Context, children: ComponentBaseChildren
+    ) -> ComponentChildren:
         raise NotImplementedError()
 
     def render(self) -> htpy.Node:
@@ -139,12 +137,16 @@ class Component(ComponentBase, metaclass=AbstractComponentMeta):
             "Make sure your component builds down to html components."
         )
 
-    def full_build(self, context: Context) -> "Component":
+    def full_build(self, context: Context) -> tuple["Component", ...]:
         children = (child.full_build(context) for child in self.children)
         built_self = self.build(context, children)
-        built_self = self.apply_theme(context, built_self)
-        built_self = self.apply_modifiers(context, built_self)
-        return built_self
+        components = Component._fill_component_children(built_self)
+        comp_list: list[Component] = []
+        for component in components:
+            c = self.apply_theme(context, component)
+            c = self.apply_modifiers(context, c)
+            comp_list.append(c)
+        return tuple(comp_list)
 
     def apply_theme(self, context: Context, component: "Component") -> "Component":
         if self.theme:
@@ -163,79 +165,42 @@ class Component(ComponentBase, metaclass=AbstractComponentMeta):
         return self.__class__(
             *self.attributes,
             modifiers=self.modifiers,
-            children=_fill_component_children(children),
+            children=self.__class__._fill_component_base_children(children),
             theme=self.theme,
             **self._htpy_kwargs,
         )
 
-
-class AbstractLeafComponentMeta(AbstractComponentMeta):
-    def __getitem__(cls, children: ComponentBaseChildren) -> "LeafComponent":
-        if children:
-            raise ValueError(
-                f"{cls.__name__} does not accept any children, got {children}"
-            )
-        return cls()
-
-
-class LeafComponent(Component, metaclass=AbstractLeafComponentMeta):
-    def __getitem__(self, children: ComponentBaseChildren) -> "LeafComponent":
-        if children:
-            raise ValueError(
-                f"{self.__class__.__name__} does not accept any children, got {children}"
-            )
-        return super().__getitem__(children)
-
-    @abstractmethod
-    def build(self, context: Context, children: ComponentBaseChildren) -> "Component":
-        raise NotImplementedError()
+    @classmethod
+    def _fill_component_children(
+        cls,
+        children: ComponentChildren,
+    ) -> tuple["Component", ...]:
+        if not children:
+            return tuple()
+        match children:
+            case type():
+                return (children(),)
+            case str():
+                return (Text(children),)
+            case ComponentBase():
+                return (children,)
+            case _:
+                lst: list["Component"] = []
+                for child in children:
+                    lst.extend(cls._fill_component_children(child))
+                return tuple(lst)
 
 
-class AbstractSingleChildComponentMeta(AbstractComponentMeta):
-    def __getitem__(cls, children: ComponentBaseChildren) -> "SingleChildComponent":
-        if (
-            isinstance(children, tuple)
-            and not isinstance(children, str)
-            and len(children) != 1
-        ):
-            raise ValueError(
-                f"{cls.__name__} only accepts a single child, got {len(children)}"
-            )
-        return cls(children=children)
+class VoidComponentMixin:
+    pass
 
 
-class SingleChildComponent(Component, metaclass=AbstractSingleChildComponentMeta):
-    @property
-    def child(self) -> ComponentBase:
-        return self.children[0]
-
-    def __getitem__(self, children: ComponentBaseChildren) -> "SingleChildComponent":
-        if (
-            isinstance(children, tuple)
-            and not isinstance(children, str)
-            and len(children) != 1
-        ):
-            raise ValueError(
-                f"{self.__class__.__name__} only accepts a single child, got {len(children)}"
-            )
-        return super().__getitem__(children)
-
-    @abstractmethod
-    def build(self, context: Context, children: ComponentBaseChildren) -> "Component":
-        raise NotImplementedError()
-
-
-class AbstractTextComponentMeta(AbstractLeafComponentMeta):
-    def __getitem__(cls, children: ComponentBaseChildren) -> "Text":
-        if isinstance(children, str):
-            return Text(children)
-        raise ValueError(
-            f"{cls.__name__} only accepts a single string child, got {children}"
-        )
+class SingleChildComponentMixin:
+    pass
 
 
 @final
-class Text(LeafComponent, metaclass=AbstractTextComponentMeta):
+class Text(VoidComponentMixin, Component):
     def __init__(self, text: str):
         super().__init__()
         self.text = text

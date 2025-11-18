@@ -23,4 +23,4 @@ Homepage = "https://github.com/KleinJohn/django-compose"
 Issues = "https://github.com/KleinJohn/django-compose/issues"
 
 [tool.mypy]
-disable_error_code = ["type-arg", "name-defined"]
+disable_error_code = ["type-arg", "name-defined", "misc", "valid-type"]

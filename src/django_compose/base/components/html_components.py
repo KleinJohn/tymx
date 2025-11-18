@@ -2,19 +2,15 @@ from typing import override
 from .base_components import *
 
 
-class AbstractDocumentComponentMeta(AbstractComponentBaseMeta):
-    @override
-    def __getitem__(cls, children: ComponentBaseChildren) -> "DocumentLevelComponent":
-        return cls(children=children)
-
-
-class DocumentLevelComponent(ComponentBase, metaclass=AbstractDocumentComponentMeta):
+class DocumentLevelComponent(ComponentBase):
     """Reserved for document-level components like Html, Head, Body. Themes not applicable."""
 
     element: htpy.Element
 
     @override
-    def build(self, context: Context, children: ComponentBaseChildren) -> ComponentBase:
+    def build(
+        self, context: Context, children: ComponentBaseChildren
+    ) -> ComponentBaseChildren:
         return self[children]
 
     @override
@@ -24,28 +20,14 @@ class DocumentLevelComponent(ComponentBase, metaclass=AbstractDocumentComponentM
         ]
 
 
-class AbstractHtmlBaseComponentMeta(AbstractComponentMeta):
-    @override
-    def __getitem__(cls, children: ComponentBaseChildren) -> "HtmlBaseComponent":
-        return cls(children=children)
-
-
-class HtmlBaseComponent(Component, metaclass=AbstractHtmlBaseComponentMeta):
-    element: htpy.BaseElement
-
-    @override
-    def build(self, context: Context, children: ComponentBaseChildren) -> "Component":
-        return self[children]
-
-
-class AbstractHtmlComponentMeta(AbstractHtmlBaseComponentMeta):
-    @override
-    def __getitem__(cls, children: ComponentBaseChildren) -> "HtmlComponent":
-        return cls(children=children)
-
-
-class HtmlComponent(HtmlBaseComponent, metaclass=AbstractHtmlComponentMeta):
+class HtmlComponent(Component):
     element: htpy.Element  # type: ignore
+
+    @override
+    def build(
+        self, context: Context, children: ComponentBaseChildren
+    ) -> "HtmlComponent":
+        return self[children]
 
     @override
     def render(self) -> htpy.Node:
@@ -54,21 +36,7 @@ class HtmlComponent(HtmlBaseComponent, metaclass=AbstractHtmlComponentMeta):
         ]
 
 
-class AbstractHtmlLeafComponentMeta(
-    AbstractHtmlBaseComponentMeta, AbstractLeafComponentMeta
-):
-    @override
-    def __getitem__(cls, children: ComponentBaseChildren) -> "HtmlLeafComponent":
-        if children:
-            raise ValueError(
-                f"{cls.__name__} does not accept any children, got {children}"
-            )
-        return cls()
-
-
-class HtmlLeafComponent(
-    HtmlBaseComponent, LeafComponent, metaclass=AbstractHtmlLeafComponentMeta
-):
+class HtmlVoidComponent(VoidComponentMixin, HtmlComponent):
     element: htpy.VoidElement  # type: ignore
 
     @override
@@ -102,12 +70,12 @@ class Span(HtmlComponent):
 
 
 @final
-class Area(HtmlLeafComponent):
+class Area(HtmlVoidComponent):
     element = htpy.area
 
 
 @final
-class Br(HtmlLeafComponent):
+class Br(HtmlVoidComponent):
     element = htpy.br
 
 
@@ -187,7 +155,7 @@ class Code(HtmlComponent):
 
 
 @final
-class Col(HtmlLeafComponent):
+class Col(HtmlVoidComponent):
     element = htpy.col
 
 
@@ -247,7 +215,7 @@ class Em(HtmlComponent):
 
 
 @final
-class Embed(HtmlLeafComponent):
+class Embed(HtmlVoidComponent):
     element = htpy.embed
 
 
@@ -317,7 +285,7 @@ class Hgroup(HtmlComponent):
 
 
 @final
-class Hr(HtmlLeafComponent):
+class Hr(HtmlVoidComponent):
     element = htpy.hr
 
 
@@ -332,12 +300,12 @@ class Iframe(HtmlComponent):
 
 
 @final
-class Img(HtmlLeafComponent):
+class Img(HtmlVoidComponent):
     element = htpy.img
 
 
 @final
-class Input(HtmlLeafComponent):
+class Input(HtmlVoidComponent):
     element = htpy.input
 
 
@@ -367,7 +335,7 @@ class Li(HtmlComponent):
 
 
 @final
-class Link(HtmlLeafComponent):
+class Link(HtmlVoidComponent):
     element = htpy.link
 
 
@@ -397,7 +365,7 @@ class Menu(HtmlComponent):
 
 
 @final
-class Meta(HtmlLeafComponent):
+class Meta(HtmlVoidComponent):
     element = htpy.meta
 
 
@@ -512,7 +480,7 @@ class Small(HtmlComponent):
 
 
 @final
-class Source(HtmlLeafComponent):
+class Source(HtmlVoidComponent):
     element = htpy.source
 
 
@@ -602,7 +570,7 @@ class Tr(HtmlComponent):
 
 
 @final
-class Track(HtmlLeafComponent):
+class Track(HtmlVoidComponent):
     element = htpy.track
 
 
@@ -627,10 +595,10 @@ class Video(HtmlComponent):
 
 
 @final
-class Wbr(HtmlLeafComponent):
+class Wbr(HtmlVoidComponent):
     element = htpy.wbr
 
 
 @final
-class Base(HtmlLeafComponent):
+class Base(HtmlVoidComponent):
     element = htpy.base

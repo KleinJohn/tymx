@@ -1,6 +1,10 @@
 from typing import Iterable, override
 from django_compose.base.components.base_components import (
+    ComponentBase,
     ComponentBaseChildren,
+    ComponentChildren,
+    GenericComponentLike,
+    VoidComponentMixin,
 )
 from django_compose.base.theme import Theme
 from .components import Context
@@ -20,12 +24,12 @@ class Router:
         self.pages = pages
 
 
-class Page(DocumentLevelComponent):
+class Page(VoidComponentMixin, DocumentLevelComponent):
     def __init__(
         self,
         name: str,
         *attributes: Attribute | Iterable[Attribute],
-        children: ComponentBaseChildren = None,
+        children: ComponentChildren = None,
         theme: Theme | None = None,
         head: ComponentChildren = None,
         body: ComponentChildren = None,
@@ -33,7 +37,7 @@ class Page(DocumentLevelComponent):
     ):
         super().__init__(
             *attributes,
-            children=children,
+            children=(Head[head], Body[body]),
             **htpy_kwargs,
         )
         self.name = name
@@ -44,22 +48,27 @@ class Page(DocumentLevelComponent):
     @override
     def build(
         self, context: Context, children: ComponentBaseChildren
-    ) -> DocumentLevelComponent:
-        return Html[Head[self.head], Body[self.body]]
+    ) -> GenericComponentLike["DocumentLevelComponent"]:
+        return Html[children]
 
     @override
-    def full_build(self, context: Context) -> DocumentLevelComponent:
-        self_built = self.build(context, self.children)
+    def full_build(self, context: Context) -> tuple[ComponentBase, ...]:
+        children = (child.full_build(context) for child in self.children)
+        built_self = self.build(context, children)
+        components = Page._fill_component_base_children(built_self)
         if self.__class__.inherit_attributes:
-            self_built.attributes.add_all(self.attributes)
-        return self_built
+            for component in components:
+                component.attributes.add_all(self.attributes)
+        return tuple(components)
 
     @override
     def render(self) -> htpy.Renderable:
         theme = self.theme or Theme()
         context = Context(theme)
         root = self.full_build(context)
-        return root.render()
+        if not len(root) == 1 or not isinstance(root[0], Html):
+            raise ValueError("Page must build to a single Html component.")
+        return root[0].render()
 
 
 class DjangoApp:
