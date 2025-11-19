@@ -3,7 +3,7 @@ from django_compose.base.components.base_components import (
     Children,
     Context,
 )
-from django_compose.base.components.html_components import H1, Button, Div
+from django_compose.base.components.html_components import H1, Button, Div, Input
 from django_compose.base.modifiers import styles, id, disabled, classes, Attributes
 from django_compose.base.modifiers.base_modifiers import DebugModifier
 from django_compose.base.page import Page
@@ -35,7 +35,8 @@ def page_tests():
         body=[
             H1((id("header1"), styles(color="blue", font_size="12px"), disabled))[
                 CustomDiv(classes("button is-active"), modifiers=[DebugModifier()])[
-                    "Click Me"
+                    "Click Me",
+                    Input(classes("input-field"), styles(margin="5px")),
                 ],
             ],
         ],

@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import (
     Iterable,
     Self,
+    Sequence,
     TypeAlias,
     TypeVar,
     Union,
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
 T = TypeVar("T", bound="ComponentBase")
 GenericComponentLike: TypeAlias = Union[T, type[T], str]
 GenericComponentChildren: TypeAlias = Union[
-    None, GenericComponentLike[T], Iterable["GenericComponentChildren[T]"]
+    None, GenericComponentLike[T], Sequence["GenericComponentChildren[T]"]
 ]
 
 ComponentLike: TypeAlias = GenericComponentLike["ComponentBase"]
@@ -235,11 +236,37 @@ class ComponentBuilder(Component):
 
 
 class VoidComponentMixin:
-    pass
+    def __getitem__(self, children: Children) -> ComponentBase:
+        if children:
+            raise ValueError(f"{self.__class__.__name__} does not accept any children.")
+        return super().__getitem__(children)  # type: ignore
+
+    def __class_getitem__(cls, children: Children) -> Self:
+        if children:
+            raise ValueError(f"{cls.__name__} does not accept any children.")
+        return super().__getitem__(children)  # type: ignore
 
 
 class SingleChildComponentMixin:
-    pass
+    def __getitem__(self, children: Children) -> ComponentBase:
+        if (
+            isinstance(children, Sequence)
+            and not isinstance(children, str)
+            and len(children) != 1
+        ):
+            raise ValueError(
+                f"{self.__class__.__name__} only accepts exactly one child."
+            )
+        return super().__getitem__(children)  # type: ignore
+
+    def __class_getitem__(cls, children: Children) -> Self:
+        if (
+            isinstance(children, Sequence)
+            and not isinstance(children, str)
+            and len(children) != 1
+        ):
+            raise ValueError(f"{cls.__name__} only accepts exactly one child.")
+        return super().__getitem__(children)  # type: ignore
 
 
 @final
