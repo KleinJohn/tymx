@@ -1,4 +1,4 @@
-from .components import Context, Component
+from .components import Context, ComponentBase
 from .modifiers import Attributes
 
 
@@ -8,7 +8,7 @@ class ComponentTheme:
     Themes are distributed inside the context of the build process.
     """
 
-    def modify_build(self, context: Context, component: Component) -> Component:
+    def modify_build(self, context: Context, component: ComponentBase) -> ComponentBase:
         """Modify the build process of a component.
 
         Args:

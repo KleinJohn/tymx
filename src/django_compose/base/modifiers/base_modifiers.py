@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from abc import ABC, abstractmethod
+from abc import ABC
 from collections import OrderedDict
 from typing import Any, Iterator, Self, override
 
@@ -12,14 +12,21 @@ if TYPE_CHECKING:
 
 class Modifier(ABC):
 
-    @abstractmethod
-    def apply(self, context: Context, component: Component) -> Component:
+    def apply_before_build(self, context: Context, component: Component) -> Component:
+        """Injects behavior into the given component before the build process.
+
+        It is safe to modify the component in place and return the same instance.
+        It is also possible to return a new instance of the component if needed.
+        """
+        return component
+
+    def apply_after_build(self, context: Context, component: Component) -> Component:
         """Injects behavior into the given component after the build process.
 
         It is safe to modify the component in place and return the same instance.
         It is also possible to return a new instance of the component if needed.
         """
-        raise NotImplementedError()
+        return component
 
 
 class Attributes(Modifier):
@@ -56,6 +63,6 @@ class Attributes(Modifier):
             self.add(attr)
 
     @override
-    def apply(self, context: Context, component: Component) -> Component:
+    def apply_after_build(self, context: Context, component: Component) -> Component:
         component.attributes.add_all(self)
         return component

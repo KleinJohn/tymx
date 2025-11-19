@@ -1,9 +1,7 @@
 from typing import Iterable, override
 from django_compose.base.components.base_components import (
-    ComponentBase,
     ComponentBaseChildren,
     ComponentChildren,
-    GenericComponentLike,
     VoidComponentMixin,
 )
 from django_compose.base.theme import Theme
@@ -48,27 +46,15 @@ class Page(VoidComponentMixin, DocumentLevelComponent):
     @override
     def build(
         self, context: Context, children: ComponentBaseChildren
-    ) -> GenericComponentLike["DocumentLevelComponent"]:
-        return Html[children]
-
-    @override
-    def full_build(self, context: Context) -> tuple[ComponentBase, ...]:
-        children = (child.full_build(context) for child in self.children)
-        built_self = self.build(context, children)
-        components = Page._fill_component_base_children(built_self)
-        if self.__class__.inherit_attributes:
-            for component in components:
-                component.attributes.add_all(self.attributes)
-        return tuple(components)
+    ) -> "DocumentLevelComponent":
+        return Html()[children]
 
     @override
     def render(self) -> htpy.Renderable:
         theme = self.theme or Theme()
         context = Context(theme)
         root = self.full_build(context)
-        if not len(root) == 1 or not isinstance(root[0], Html):
-            raise ValueError("Page must build to a single Html component.")
-        return root[0].render()
+        return root.render()
 
 
 class DjangoApp:

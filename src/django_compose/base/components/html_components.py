@@ -6,12 +6,18 @@ class DocumentLevelComponent(ComponentBase):
     """Reserved for document-level components like Html, Head, Body. Themes not applicable."""
 
     element: htpy.Element
+    inherit_attributes = False
 
     @override
     def build(
         self, context: Context, children: ComponentBaseChildren
-    ) -> ComponentBaseChildren:
+    ) -> "DocumentLevelComponent":
         return self[children]
+
+    def full_build(self, context: Context) -> "DocumentLevelComponent":
+        component = self.build(context, self.children)
+        component.build_children(context)
+        return component
 
     @override
     def render(self) -> htpy.Renderable:
@@ -19,9 +25,27 @@ class DocumentLevelComponent(ComponentBase):
             (child.render() for child in self.children)
         ]
 
+    def __getitem__(self, children: ComponentBaseChildren) -> "DocumentLevelComponent":
+        return self.__class__(
+            *self.attributes,
+            children=ComponentBase._children_base_to_list(children),
+            **self._htpy_kwargs,
+        )
+
+    def __class_getitem__(cls, children: ComponentBaseChildren) -> Self:
+        return cls(
+            children=cls._children_base_to_list(children),
+        )
+
 
 class HtmlComponent(Component):
     element: htpy.Element  # type: ignore
+    inherit_attributes = False
+
+    def full_build(self, context: Context) -> "HtmlComponent":
+        component = self.build(context, self.children)
+        component.build_children(context)
+        return component
 
     @override
     def build(
