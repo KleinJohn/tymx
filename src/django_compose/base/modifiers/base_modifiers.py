@@ -69,3 +69,13 @@ class Attributes(Modifier):
     def apply_after_build(self, context: Context, component: T) -> T:
         component.attributes.add_all(self)
         return component
+
+
+class DebugModifier(Modifier):
+    def apply_before_build(self, context: Context, component: T) -> T:
+        print(f"Before building {component.__class__.__name__}: {component}")
+        return component
+
+    def apply_after_build(self, context: Context, component: T) -> T:
+        print(f"After building {component.__class__.__name__}: {component}")
+        return component

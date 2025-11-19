@@ -24,7 +24,7 @@ GenericComponentChildren: TypeAlias = Union[
 ]
 
 ComponentLike: TypeAlias = GenericComponentLike["ComponentBase"]
-ComponentChildren: TypeAlias = GenericComponentChildren["ComponentBase"]
+Children: TypeAlias = GenericComponentChildren["ComponentBase"]
 
 
 class Context:
@@ -44,7 +44,7 @@ class ComponentBase(ABC):
     def __init__(
         self,
         *attributes: Attribute | Iterable[Attribute],
-        children: ComponentChildren = None,
+        children: Children = None,
         **htpy_kwargs: str,
     ) -> None:
         attr_list: list[Attribute] = []
@@ -59,14 +59,14 @@ class ComponentBase(ABC):
         )
         self._htpy_kwargs = htpy_kwargs
 
-    def __getitem__(self, children: ComponentChildren) -> ComponentBase:
+    def __getitem__(self, children: Children) -> ComponentBase:
         return self.__class__(
             *self.attributes,
             children=ComponentBase._children_base_to_list(children),
             **self._htpy_kwargs,
         )
 
-    def __class_getitem__(cls, children: ComponentChildren) -> Self:
+    def __class_getitem__(cls, children: Children) -> Self:
         return cls(children=cls._children_base_to_list(children))
 
     def __str__(self) -> str:
@@ -75,7 +75,7 @@ class ComponentBase(ABC):
         return f"{self.__class__.__name__}({", ".join(str(child) for child in self.children)})"
 
     @abstractmethod
-    def build(self, context: Context, children: ComponentChildren) -> ComponentChildren:
+    def build(self, context: Context, children: Children) -> Children:
         raise NotImplementedError()
 
     @abstractmethod
@@ -102,7 +102,7 @@ class ComponentBase(ABC):
     @classmethod
     def _children_base_to_list(
         cls,
-        children: ComponentChildren,
+        children: Children,
     ) -> list[ComponentBase]:
         if not children:
             return []
@@ -130,7 +130,7 @@ class Component(ComponentBase):
         *attributes: Attribute | Iterable[Attribute],
         modifiers: Iterable[Modifier] | None = None,
         theme: ComponentTheme | None = None,
-        children: ComponentChildren = None,
+        children: Children = None,
         **htpy_kwargs: str,
     ) -> None:
         super().__init__(*attributes, children=children, **htpy_kwargs)
@@ -138,7 +138,7 @@ class Component(ComponentBase):
         self.modifiers: list[Modifier] = list(modifiers or [])
 
     @abstractmethod
-    def build(self, context: Context, children: ComponentChildren) -> ComponentChildren:
+    def build(self, context: Context, children: Children) -> Children:
         raise NotImplementedError()
 
     def render(self) -> htpy.Node:
@@ -167,7 +167,7 @@ class Component(ComponentBase):
                     self.children[i].attributes
                 )
 
-    def __getitem__(self, children: ComponentChildren) -> Self:
+    def __getitem__(self, children: Children) -> Self:
         return self.__class__(
             *self.attributes,
             modifiers=self.modifiers,
@@ -176,9 +176,7 @@ class Component(ComponentBase):
             **self._htpy_kwargs,
         )
 
-    def _create_component_builder(
-        self, children: ComponentChildren
-    ) -> ComponentBuilder:
+    def _create_component_builder(self, children: Children) -> ComponentBuilder:
         attributes = self.attributes if self.__class__.inherit_attributes else ()
         modifiers = self.modifiers if self.__class__.inherit_modifiers else ()
         theme = self.theme if self.__class__.inherit_theme else None
@@ -214,6 +212,9 @@ class Component(ComponentBase):
 class ComponentBuilder(Component):
     # Don't need to set inherit variables, since ComponentBuilder always inherits everything.
 
+    def __str__(self) -> str:
+        return ", ".join(str(child) for child in self.children)
+
     def full_build(self, context: Context) -> Component:
         builder: Component = self
         for modifier in self.modifiers:
@@ -226,7 +227,7 @@ class ComponentBuilder(Component):
             builder = modifier.apply_after_build(context, builder)
         return builder
 
-    def build(self, context: Context, children: ComponentChildren) -> ComponentChildren:
+    def build(self, context: Context, children: Children) -> Children:
         return children
 
     def render(self) -> htpy.Node:
@@ -252,7 +253,7 @@ class Text(VoidComponentMixin, Component):
     def full_build(self, context: Context) -> "Text":
         return Text(self.text)
 
-    def build(self, context: Context, children: ComponentChildren) -> "Component":
+    def build(self, context: Context, children: Children) -> "Component":
         return Text(self.text)
 
     def render(self) -> htpy.Node:

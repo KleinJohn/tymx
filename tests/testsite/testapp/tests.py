@@ -1,17 +1,18 @@
 from django_compose.base.components import Component
 from django_compose.base.components.base_components import (
-    ComponentChildren,
+    Children,
     Context,
 )
 from django_compose.base.components.html_components import H1, Button, Div
 from django_compose.base.modifiers import styles, id, disabled, classes, Attributes
+from django_compose.base.modifiers.base_modifiers import DebugModifier
 from django_compose.base.page import Page
 from django_compose.base.theme import Theme
 
 
 class CustomButton(Component):
 
-    def build(self, context: Context, children: ComponentChildren) -> ComponentChildren:
+    def build(self, context: Context, children: Children) -> Children:
         return Div[
             "Custom Button Start",
             Button[children],
@@ -20,7 +21,7 @@ class CustomButton(Component):
 
 
 class CustomDiv(Component):
-    def build(self, context: Context, children: ComponentChildren) -> ComponentChildren:
+    def build(self, context: Context, children: Children) -> Children:
         return Div[
             ["Custom Div Start"],
             CustomButton(disabled)[children],
@@ -33,7 +34,9 @@ def page_tests():
         name="index",
         body=[
             H1((id("header1"), styles(color="blue", font_size="12px"), disabled))[
-                CustomDiv(classes="button is-active")["Click Me"],
+                CustomDiv(classes("button is-active"), modifiers=[DebugModifier()])[
+                    "Click Me"
+                ],
             ],
         ],
     )

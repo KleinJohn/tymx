@@ -1,6 +1,6 @@
 from typing import Iterable, override
 from django_compose.base.components.base_components import (
-    ComponentChildren,
+    Children,
     VoidComponentMixin,
 )
 from django_compose.base.theme import Theme
@@ -25,10 +25,10 @@ class Page(VoidComponentMixin, DocumentLevelComponent):
         self,
         name: str,
         *attributes: Attribute | Iterable[Attribute],
-        children: ComponentChildren = None,
+        children: Children = None,
         theme: Theme | None = None,
-        head: ComponentChildren = None,
-        body: ComponentChildren = None,
+        head: Children = None,
+        body: Children = None,
         **htpy_kwargs: str,
     ):
         super().__init__(
@@ -42,9 +42,7 @@ class Page(VoidComponentMixin, DocumentLevelComponent):
         self.theme = theme
 
     @override
-    def build(
-        self, context: Context, children: ComponentChildren
-    ) -> "DocumentLevelComponent":
+    def build(self, context: Context, children: Children) -> "DocumentLevelComponent":
         return Html()[children]
 
     @override

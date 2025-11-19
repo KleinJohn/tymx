@@ -9,9 +9,7 @@ class DocumentLevelComponent(ComponentBase):
     inherit_attributes = False
 
     @override
-    def build(
-        self, context: Context, children: ComponentChildren
-    ) -> "DocumentLevelComponent":
+    def build(self, context: Context, children: Children) -> "DocumentLevelComponent":
         return self[children]
 
     def full_build(self, context: Context) -> "DocumentLevelComponent":
@@ -25,14 +23,14 @@ class DocumentLevelComponent(ComponentBase):
             (child.render() for child in self.children)
         ]
 
-    def __getitem__(self, children: ComponentChildren) -> "DocumentLevelComponent":
+    def __getitem__(self, children: Children) -> "DocumentLevelComponent":
         return self.__class__(
             *self.attributes,
             children=ComponentBase._children_base_to_list(children),
             **self._htpy_kwargs,
         )
 
-    def __class_getitem__(cls, children: ComponentChildren) -> Self:
+    def __class_getitem__(cls, children: Children) -> Self:
         return cls(
             children=cls._children_base_to_list(children),
         )
@@ -53,7 +51,7 @@ class HtmlComponent(Component):
         return component
 
     @override
-    def build(self, context: Context, children: ComponentChildren) -> "HtmlComponent":
+    def build(self, context: Context, children: Children) -> "HtmlComponent":
         return self[children]
 
     @override
