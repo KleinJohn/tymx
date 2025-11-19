@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 from abc import ABC
 from collections import OrderedDict
 from typing import Any, Iterator, Self, override
@@ -10,9 +10,12 @@ if TYPE_CHECKING:
     from django_compose.base.components.base_components import Component, Context
 
 
+T = TypeVar("T", bound="Component", covariant=True)
+
+
 class Modifier(ABC):
 
-    def apply_before_build(self, context: Context, component: Component) -> Component:
+    def apply_before_build(self, context: Context, component: T) -> T:
         """Injects behavior into the given component before the build process.
 
         It is safe to modify the component in place and return the same instance.
@@ -20,7 +23,7 @@ class Modifier(ABC):
         """
         return component
 
-    def apply_after_build(self, context: Context, component: Component) -> Component:
+    def apply_after_build(self, context: Context, component: T) -> T:
         """Injects behavior into the given component after the build process.
 
         It is safe to modify the component in place and return the same instance.
@@ -63,6 +66,6 @@ class Attributes(Modifier):
             self.add(attr)
 
     @override
-    def apply_after_build(self, context: Context, component: Component) -> Component:
+    def apply_after_build(self, context: Context, component: T) -> T:
         component.attributes.add_all(self)
         return component

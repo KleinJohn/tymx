@@ -1,6 +1,5 @@
 from typing import Iterable, override
 from django_compose.base.components.base_components import (
-    ComponentBaseChildren,
     ComponentChildren,
     VoidComponentMixin,
 )
@@ -11,7 +10,6 @@ from .components.html_components import (
     DocumentLevelComponent,
     Head,
     Html,
-    ComponentChildren,
 )
 from django_compose.base.modifiers.attributes import Attribute
 import htpy
@@ -45,7 +43,7 @@ class Page(VoidComponentMixin, DocumentLevelComponent):
 
     @override
     def build(
-        self, context: Context, children: ComponentBaseChildren
+        self, context: Context, children: ComponentChildren
     ) -> "DocumentLevelComponent":
         return Html()[children]
 

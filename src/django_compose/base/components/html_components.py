@@ -10,13 +10,13 @@ class DocumentLevelComponent(ComponentBase):
 
     @override
     def build(
-        self, context: Context, children: ComponentBaseChildren
+        self, context: Context, children: ComponentChildren
     ) -> "DocumentLevelComponent":
         return self[children]
 
     def full_build(self, context: Context) -> "DocumentLevelComponent":
         component = self.build(context, self.children)
-        component.build_children(context)
+        component._build_children(context)
         return component
 
     @override
@@ -25,14 +25,14 @@ class DocumentLevelComponent(ComponentBase):
             (child.render() for child in self.children)
         ]
 
-    def __getitem__(self, children: ComponentBaseChildren) -> "DocumentLevelComponent":
+    def __getitem__(self, children: ComponentChildren) -> "DocumentLevelComponent":
         return self.__class__(
             *self.attributes,
             children=ComponentBase._children_base_to_list(children),
             **self._htpy_kwargs,
         )
 
-    def __class_getitem__(cls, children: ComponentBaseChildren) -> Self:
+    def __class_getitem__(cls, children: ComponentChildren) -> Self:
         return cls(
             children=cls._children_base_to_list(children),
         )
@@ -44,13 +44,16 @@ class HtmlComponent(Component):
 
     def full_build(self, context: Context) -> "HtmlComponent":
         component = self.build(context, self.children)
-        component.build_children(context)
+        for modifier in self.modifiers:
+            component = modifier.apply_before_build(context, component)
+        component._build_children(context)
+        component.apply_theme_to_children(context, self.theme)
+        for modifier in self.modifiers:
+            component = modifier.apply_after_build(context, component)
         return component
 
     @override
-    def build(
-        self, context: Context, children: ComponentBaseChildren
-    ) -> "HtmlComponent":
+    def build(self, context: Context, children: ComponentChildren) -> "HtmlComponent":
         return self[children]
 
     @override

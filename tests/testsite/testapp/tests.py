@@ -1,6 +1,5 @@
 from django_compose.base.components import Component
 from django_compose.base.components.base_components import (
-    ComponentBaseChildren,
     ComponentChildren,
     Context,
 )
@@ -12,9 +11,7 @@ from django_compose.base.theme import Theme
 
 class CustomButton(Component):
 
-    def build(
-        self, context: Context, children: ComponentBaseChildren
-    ) -> ComponentChildren:
+    def build(self, context: Context, children: ComponentChildren) -> ComponentChildren:
         return Div[
             "Custom Button Start",
             Button[children],
@@ -23,9 +20,7 @@ class CustomButton(Component):
 
 
 class CustomDiv(Component):
-    def build(
-        self, context: Context, children: ComponentBaseChildren
-    ) -> ComponentChildren:
+    def build(self, context: Context, children: ComponentChildren) -> ComponentChildren:
         return Div[
             ["Custom Div Start"],
             CustomButton(disabled)[children],
@@ -42,7 +37,6 @@ def page_tests():
             ],
         ],
     )
-    # TODO: find error, CustomButton's children are missing
     context = Context(Theme())
     print(page.build(context, page.children))
     print(page.render())
