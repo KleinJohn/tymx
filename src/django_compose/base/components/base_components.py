@@ -27,6 +27,8 @@ GenericComponentChildren: TypeAlias = Union[
 ComponentLike: TypeAlias = GenericComponentLike["ComponentBase"]
 Children: TypeAlias = GenericComponentChildren["ComponentBase"]
 
+ModifierLike: TypeAlias = Modifier | Attribute | Iterable["ModifierLike"]
+
 
 class Context:
     """Context for building and rendering components.
@@ -90,7 +92,6 @@ class ComponentBase(ABC):
             *attributes,
             children=self_built,
             theme=None,
-            modifiers=None,
             **self._htpy_kwargs,
         )
         return builder.full_build(context)
@@ -128,15 +129,25 @@ class Component(ComponentBase):
 
     def __init__(
         self,
-        *attributes: Attribute | Iterable[Attribute],
-        modifiers: Iterable[Modifier] | None = None,
+        *modifiers: ModifierLike,
         theme: ComponentTheme | None = None,
         children: Children = None,
         **htpy_kwargs: str,
     ) -> None:
-        super().__init__(*attributes, children=children, **htpy_kwargs)
+        super().__init__(children=children, **htpy_kwargs)
         self.theme = theme
-        self.modifiers: list[Modifier] = list(modifiers or [])
+        self.modifiers: list[Modifier] = []
+        self._init_modifiers(modifiers)
+
+    def _init_modifiers(self, modifiers: Iterable[ModifierLike]) -> None:
+        for modifier in modifiers:
+            match modifier:
+                case Attribute():
+                    self.attributes.add(modifier)
+                case Modifier():
+                    self.modifiers.append(modifier)
+                case _:
+                    self._init_modifiers(modifier)
 
     @abstractmethod
     def build(self, context: Context, children: Children) -> Children:
@@ -171,7 +182,7 @@ class Component(ComponentBase):
     def __getitem__(self, children: Children) -> Self:
         return self.__class__(
             *self.attributes,
-            modifiers=self.modifiers,
+            *self.modifiers,
             children=self.__class__._children_base_to_list(children),
             theme=self.theme,
             **self._htpy_kwargs,
@@ -183,8 +194,8 @@ class Component(ComponentBase):
         theme = self.theme if self.__class__.inherit_theme else None
         return ComponentBuilder(
             *attributes,
+            *modifiers,
             children=children,
-            modifiers=modifiers,
             theme=theme,
         )
 

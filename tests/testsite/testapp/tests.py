@@ -34,7 +34,7 @@ def page_tests():
         name="index",
         body=[
             H1((id("header1"), styles(color="blue", font_size="12px"), disabled))[
-                CustomDiv(classes("button is-active"), modifiers=[DebugModifier()])[
+                CustomDiv(classes("button is-active"), DebugModifier())[
                     "Click Me",
                     Input(classes("input-field"), styles(margin="5px")),
                 ],
