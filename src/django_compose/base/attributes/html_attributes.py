@@ -1,17 +1,17 @@
-from django_compose.base.modifiers.attributes import (
-    SimpleAttribute,
-    ComposedAttribute,
-    BooleanAttribute,
-)
+from .base_attributes import *
 
 
-id = SimpleAttribute("id")
-classes = ComposedAttribute("class", lambda values: " ".join(values))
-styles = ComposedAttribute(
-    "style",
+styleComposer = ComposePolicy(
     lambda values: ";".join(values) + (";" if values else ""),
     lambda k, v: f"{k}:{v}",
 )
+
+whitespaceComposer = ComposePolicy(lambda values: " ".join(values))
+
+
+id = SimpleAttribute("id")
+classes = ComposedAttribute("class", compose_policy=whitespaceComposer)
+styles = ComposedAttribute("style", compose_policy=styleComposer)
 
 accept = SimpleAttribute("accept")
 accept_charset = SimpleAttribute("accept-charset")
@@ -90,20 +90,20 @@ novalidate = BooleanAttribute("novalidate")
 open = BooleanAttribute("open")
 optimum = SimpleAttribute("optimum")
 pattern = SimpleAttribute("pattern")
-ping = ComposedAttribute("ping", lambda values: " ".join(values))
+ping = ComposedAttribute("ping", compose_policy=whitespaceComposer)
 placeholder = SimpleAttribute("placeholder")
 playsinline = BooleanAttribute("playsinline")
 poster = SimpleAttribute("poster")
 preload = SimpleAttribute("preload")
 readonly = BooleanAttribute("readonly")
 referrerpolicy = SimpleAttribute("referrerpolicy")
-rel = ComposedAttribute("rel", lambda values: " ".join(values))
+rel = ComposedAttribute("rel", compose_policy=whitespaceComposer)
 required = BooleanAttribute("required")
 reversed = BooleanAttribute("reversed")
 role = SimpleAttribute("role")
 rows = SimpleAttribute("rows")
 rowspan = SimpleAttribute("rowspan")
-sandbox = ComposedAttribute("sandbox", lambda values: " ".join(values))
+sandbox = ComposedAttribute("sandbox", compose_policy=whitespaceComposer)
 scope = SimpleAttribute("scope")
 selected = BooleanAttribute("selected")
 shape = SimpleAttribute("shape")
