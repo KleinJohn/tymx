@@ -11,7 +11,7 @@ from .components.html_components import (
     Head,
     Html,
 )
-from django_compose.base.modifiers.attributes import Attribute
+from django_compose.base.attributes import Attribute
 import htpy
 
 

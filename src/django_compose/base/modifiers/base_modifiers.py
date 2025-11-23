@@ -4,7 +4,7 @@ from abc import ABC
 from collections import OrderedDict
 from typing import Any, Iterator, Self, override
 
-from django_compose.base.modifiers.attributes import Attribute
+from django_compose.base.attributes import Attribute
 
 if TYPE_CHECKING:
     from django_compose.base.components.base_components import Component, Context

@@ -12,8 +12,8 @@ from typing import (
 from abc import ABC, abstractmethod
 import htpy
 
-from django_compose.base.modifiers import Attributes, Attribute
-from django_compose.base.modifiers.base_modifiers import Modifier
+from django_compose.base.attributes import Attribute, classes
+from django_compose.base.modifiers.base_modifiers import Modifier, Attributes
 
 if TYPE_CHECKING:
     from django_compose.base.theme import Theme, ComponentTheme
@@ -27,7 +27,7 @@ GenericComponentChildren: TypeAlias = Union[
 ComponentLike: TypeAlias = GenericComponentLike["ComponentBase"]
 Children: TypeAlias = GenericComponentChildren["ComponentBase"]
 
-ModifierLike: TypeAlias = Modifier | Attribute | Iterable["ModifierLike"]
+ModifierLike: TypeAlias = str | Modifier | Attribute | Iterable["ModifierLike"]
 
 
 class Context:
@@ -142,6 +142,8 @@ class Component(ComponentBase):
     def _init_modifiers(self, modifiers: Iterable[ModifierLike]) -> None:
         for modifier in modifiers:
             match modifier:
+                case str():
+                    self.attributes.add(classes(modifier))
                 case Attribute():
                     self.attributes.add(modifier)
                 case Modifier():
