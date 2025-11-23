@@ -24,10 +24,11 @@ class JsonAttribute(SimpleAttribute):
         return super().__call__(value, init_kwargs=init_kwargs)
 
 
-# looks like this: js/javascript/"":{"key": "value", key2: value2}
+# looks like this: js/"":{"key": "value", key2: value2}
 
 
 commaComposer = ComposePolicy(lambda values: ",".join(values))
+whitespaceComposer = ComposePolicy(lambda values: " ".join(values))
 
 # see: https://htmx.org/reference/#attributes
 hx_get = SimpleAttribute("hx-get")
@@ -45,3 +46,23 @@ hx_vals = JsonAttribute("hx-vals")
 hx_boost = BooleanAttribute("hx-boost", use_true_false=("true", "false"))
 hx_confirm = SimpleAttribute("hx-confirm")
 hx_delete = SimpleAttribute("hx-delete")
+hx_disable = BooleanAttribute("hx-disable")
+hx_disabled_elt = SimpleAttribute("hx-disabled-elt")
+hx_disinherit = ComposedAttribute("hx-disinherit", compose_policy=whitespaceComposer)
+hx_encoding = SimpleAttribute("hx-encoding")
+hx_ext = ComposedAttribute("hx-ext", compose_policy=commaComposer)
+hx_headers = JsonAttribute("hx-headers")
+hx_history = BooleanAttribute("hx-history", use_true_false=("true", "false"))
+hx_history_elt = BooleanAttribute("hx-history-elt")
+hx_include = ComposedAttribute("hx-include", compose_policy=commaComposer)
+hx_indicator = SimpleAttribute("hx-indicator")
+hx_inherit = ComposedAttribute("hx-inherit", compose_policy=whitespaceComposer)
+hx_params = ComposedAttribute("hx-params", compose_policy=commaComposer)
+hx_patch = SimpleAttribute("hx-patch")
+hx_preserve = BooleanAttribute("hx-preserve")
+hx_prompt = SimpleAttribute("hx-prompt")
+hx_put = SimpleAttribute("hx-put")
+hx_replace_url = SimpleAttribute("hx-replace-url")
+hx_request = JsonAttribute("hx-request")
+hx_sync = SimpleAttribute("hx-sync")
+hx_validate = BooleanAttribute("hx-validate", use_true_false=("true", "false"))
