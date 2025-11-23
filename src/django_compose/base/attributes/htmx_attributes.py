@@ -27,8 +27,14 @@ class JsonAttribute(SimpleAttribute):
 # looks like this: js/"":{"key": "value", key2: value2}
 
 
-commaComposer = ComposePolicy(lambda values: ",".join(values))
-whitespaceComposer = ComposePolicy(lambda values: " ".join(values))
+commaComposer = ComposePolicy(
+    lambda values: ",".join(values),
+    lambda values: values.split(","),
+)
+whitespaceComposer = ComposePolicy(
+    lambda values: " ".join(values),
+    lambda values: values.split(" "),
+)
 
 # see: https://htmx.org/reference/#attributes
 hx_get = SimpleAttribute("hx-get")

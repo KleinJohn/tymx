@@ -136,6 +136,7 @@ class ComposePolicy:
     def __init__(
         self,
         composer: Callable[[Iterable[str]], str],
+        decomposer: Callable[[str], Iterable[str]] | None = None,
         kwarg_composer: Callable[[str, str], str] | None = None,
         remove_duplicates: bool | None = None,
     ) -> None:
@@ -143,6 +144,7 @@ class ComposePolicy:
         if remove_duplicates is None:
             remove_duplicates = kwarg_composer is None
         self.composer = composer
+        self.decomposer = decomposer
         self.kwarg_composer = kwarg_composer
         self.remove_duplicates = remove_duplicates
 
@@ -192,6 +194,14 @@ class ComposedAttribute(SimpleAttribute):
             if self.policy.kwarg_composer
             else tuple()
         )
+        if self.policy.decomposer:
+            decomposed_values: list[str | None] = []
+            for val in values:
+                if val is not None:
+                    decomposed_values.extend(self.policy.decomposer(val))
+                else:
+                    decomposed_values.append(val)
+            values = tuple(decomposed_values)
         joined_values = values + kwarg_values if add_after else kwarg_values + values
         composed_values = tuple(value for value in joined_values if value is not None)
         return super().__call__(

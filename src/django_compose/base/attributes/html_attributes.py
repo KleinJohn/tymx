@@ -3,10 +3,14 @@ from .base_attributes import *
 
 styleComposer = ComposePolicy(
     lambda values: ";".join(values) + (";" if values else ""),
+    lambda values: filter(lambda v: not v, values.split(";")),
     lambda k, v: f"{k}:{v}",
 )
 
-whitespaceComposer = ComposePolicy(lambda values: " ".join(values))
+whitespaceComposer = ComposePolicy(
+    lambda values: " ".join(values),
+    lambda values: values.split(" "),
+)
 
 
 id = SimpleAttribute("id")

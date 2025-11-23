@@ -48,7 +48,7 @@ def page_tests():
 
 
 def attribute_tests():
-    attr1 = classes("btn", "btn-primary", "btn")
+    attr1 = classes("btn btn-primary btn")
     attr2 = id("submit-button")
     attr3 = classes("btn-primary")
     attr4 = classes("active", "btn-primary")
@@ -67,4 +67,4 @@ def attribute_tests():
 
 
 if __name__ == "__main__":
-    page_tests()
+    attribute_tests()
