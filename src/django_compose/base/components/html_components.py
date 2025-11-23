@@ -55,7 +55,7 @@ class HtmlComponent(Component):
         return self[children]
 
     @override
-    def render(self) -> htpy.Node:
+    def render(self) -> htpy.Renderable:
         return self.element(**self.attributes.values(), **self._htpy_kwargs)[
             (child.render() for child in self.children)
         ]
@@ -65,7 +65,7 @@ class HtmlVoidComponent(VoidComponentMixin, HtmlComponent):
     element: htpy.VoidElement  # type: ignore
 
     @override
-    def render(self) -> htpy.Node:
+    def render(self) -> htpy.Renderable:
         return self.element(**self.attributes.values(), **self._htpy_kwargs)
 
 

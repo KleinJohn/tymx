@@ -17,6 +17,7 @@ from django_compose.base.modifiers.base_modifiers import Modifier, Attributes
 
 if TYPE_CHECKING:
     from django_compose.base.theme import Theme, ComponentTheme
+    from django_compose.base.page import Context
 
 T = TypeVar("T", bound="ComponentBase")
 GenericComponentLike: TypeAlias = Union[T, type[T], str]
@@ -30,14 +31,7 @@ Children: TypeAlias = GenericComponentChildren["ComponentBase"]
 ModifierLike: TypeAlias = str | Modifier | Attribute | Iterable["ModifierLike"]
 
 
-class Context:
-    """Context for building and rendering components.
-
-    The context can hold information that is relevant during the build and render process.
-    """
-
-    def __init__(self, theme: Theme) -> None:
-        self.theme = theme
+default_attribute: Attribute = classes
 
 
 class ComponentBase(ABC):
@@ -46,14 +40,16 @@ class ComponentBase(ABC):
     # All Components that allow zero children have to provide an empty constructor.
     def __init__(
         self,
-        *attributes: Attribute | Iterable[Attribute],
+        *attributes: str | Attribute | Iterable[Attribute],
         children: Children = None,
         **htpy_kwargs: str,
     ) -> None:
         attr_list: list[Attribute] = []
         for attribute in attributes:
-            if isinstance(attribute, Iterable):
-                attr_list.extend(attribute)
+            if isinstance(attribute, str):
+                attr_list.append(default_attribute(attribute))
+            elif isinstance(attribute, Iterable):
+                attr_list.extend(attribute)  # type: ignore
             else:
                 attr_list.append(attribute)
         self.attributes = Attributes(*attr_list)
@@ -143,7 +139,7 @@ class Component(ComponentBase):
         for modifier in modifiers:
             match modifier:
                 case str():
-                    self.attributes.add(classes(modifier))
+                    self.attributes.add(default_attribute(modifier))
                 case Attribute():
                     self.attributes.add(modifier)
                 case Modifier():
