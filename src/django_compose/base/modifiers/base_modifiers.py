@@ -10,12 +10,9 @@ if TYPE_CHECKING:
     from django_compose.base.components.base_components import Component, Context
 
 
-T = TypeVar("T", bound="Component", covariant=True)
-
-
 class Modifier(ABC):
 
-    def apply_before_build(self, context: Context, component: T) -> T:
+    def apply_before_build(self, context: Context, component: Component) -> Component:
         """Injects behavior into the given component before the build process.
 
         It is safe to modify the component in place and return the same instance.
@@ -23,7 +20,7 @@ class Modifier(ABC):
         """
         return component
 
-    def apply_after_build(self, context: Context, component: T) -> T:
+    def apply_after_build(self, context: Context, component: Component) -> Component:
         """Injects behavior into the given component after the build process.
 
         It is safe to modify the component in place and return the same instance.
@@ -66,16 +63,16 @@ class Attributes(Modifier):
             self.add(attr)
 
     @override
-    def apply_after_build(self, context: Context, component: T) -> T:
+    def apply_after_build(self, context: Context, component: Component) -> Component:
         component.attributes.add_all(self)
         return component
 
 
 class DebugModifier(Modifier):
-    def apply_before_build(self, context: Context, component: T) -> T:
+    def apply_before_build(self, context: Context, component: Component) -> Component:
         print(f"Before building {component.__class__.__name__}: {component}")
         return component
 
-    def apply_after_build(self, context: Context, component: T) -> T:
+    def apply_after_build(self, context: Context, component: Component) -> Component:
         print(f"After building {component.__class__.__name__}: {component}")
         return component

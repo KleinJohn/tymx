@@ -14,10 +14,10 @@ import htpy
 
 from django_compose.base.attributes import Attribute, classes
 from django_compose.base.modifiers.base_modifiers import Modifier, Attributes
+from django_compose.base.context import Context
 
 if TYPE_CHECKING:
     from django_compose.base.theme import Theme, ComponentTheme
-    from django_compose.base.page import Context
 
 T = TypeVar("T", bound="ComponentBase")
 GenericComponentLike: TypeAlias = Union[T, type[T], str]

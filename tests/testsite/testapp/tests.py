@@ -7,7 +7,7 @@ from django_compose.base.components.html_components import H1, Button, Div, Inpu
 from django_compose.base.attributes import classes, disabled, id, styles
 from django_compose.base.modifiers import Attributes
 from django_compose.base.modifiers.base_modifiers import DebugModifier
-from django_compose.base.page import Page
+from django_compose.base.app import Page
 from django_compose.base.theme import Theme
 
 

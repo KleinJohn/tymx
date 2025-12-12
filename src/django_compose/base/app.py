@@ -1,9 +1,15 @@
-from typing import Callable, Iterable, TypeAlias, override
+from typing import Any, Callable, Iterable, TypeAlias, override
+
+from django.urls import reverse, path
+from django.urls.resolvers import URLPattern
 from django_compose.base.components.base_components import (
     Children,
     VoidComponentMixin,
 )
+from django_compose.base.modifiers.base_modifiers import Modifier
+from django_compose.base.modifiers.compose_modifiers import NavigationModifier
 from django_compose.base.theme import Theme
+from django_compose.base.context import Context
 from .components.html_components import (
     Body,
     DocumentLevelComponent,
@@ -12,22 +18,6 @@ from .components.html_components import (
 )
 from django_compose.base.attributes import Attribute
 import htpy
-
-
-class Context:
-    """Context for building and rendering components.
-
-    The context can hold information that is relevant during the build and render process.
-    """
-
-    def __init__(self, theme: Theme, router: "Router") -> None:
-        self.theme = theme
-        self.router = router
-
-    def copy_with(self, **kwargs) -> "Context":
-        theme = kwargs.get("theme", self.theme)
-        router = kwargs.get("router", self.router)
-        return Context(theme=theme, router=router)
 
 
 ViewType: TypeAlias = Callable[..., Response]
@@ -39,6 +29,10 @@ class Route:
         self.view = view
         self.built_page: htpy.Renderable | None = None
 
+    @property
+    def url(self) -> str:
+        return reverse(self.name)
+
 
 class Router:
     def __init__(self, *, pages: Iterable["Page"]):
@@ -49,6 +43,18 @@ class Router:
         for name, page in self._pages.items():
             self.routes[name].built_page = page.full_build(context).render()
         # TODO: ensure dynamically added routes are built
+
+    def navigate(self, page_name: str) -> NavigationModifier:
+        route = self.routes.get(page_name)
+        if route is None:
+            raise ValueError(f"Route '{page_name}' not found in router.")
+        return NavigationModifier(self.routes[page_name])
+
+    def get_urlpatterns(self) -> list[URLPattern]:
+        urlpatterns: list[URLPattern] = []
+        for route in self.routes.values():
+            urlpatterns.append(path(route.name + "/", route.view, name=route.name))
+        return urlpatterns
 
 
 class Page(VoidComponentMixin, DocumentLevelComponent):

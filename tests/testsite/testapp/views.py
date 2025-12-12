@@ -1,6 +1,6 @@
 from django.http import HttpRequest, HttpResponse
 from django_compose.base.components.html_components import H1, Button, Div, Span
-from django_compose.base.page import ComposeApp, Page
+from django_compose.base.app import ComposeApp, Page
 from django_compose.base.modifiers import styles, id, disabled
 
 index_page = Page(

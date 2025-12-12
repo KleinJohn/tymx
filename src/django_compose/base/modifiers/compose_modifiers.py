@@ -1,3 +1,10 @@
+from django_compose.base.app import Route
+from django_compose.base.components.base_components import Component
+from django_compose.base.context import Context
+from django_compose.base.modifiers.base_modifiers import Modifier
+from django_compose.base.attributes import href
+
+
 class SideModifier:
 
     def __call__(
@@ -39,3 +46,12 @@ class M(SideModifier):
     @property
     def css(self) -> str | None:
         return f"margin: {self.t}px {self.r}px {self.b}px {self.l}px;"
+
+
+class NavigationModifier(Modifier):
+    def __init__(self, route: Route) -> None:
+        self._route = route
+
+    def apply_before_build(self, context: Context, component: Component) -> Component:
+        component.attributes.add(href(self._route.url))
+        return super().apply_before_build(context, component)

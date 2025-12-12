@@ -1,8 +1,8 @@
 from django_compose.base.components import Component, Children
-from django_compose.base.components.html_components import H1, Button, Div, Input
+from django_compose.base.components.html_components import A, H1, Button, Div, Input
 from django_compose.base.attributes import disabled, id, styles, classes
 from django_compose.base.modifiers.base_modifiers import DebugModifier
-from django_compose.base.page import Context, Page
+from django_compose.base.app import Context, Page
 
 
 class CustomButton(Component):
@@ -24,6 +24,11 @@ class CustomDiv(Component):
         ]
 
 
+class IndexLink(Component):
+    def build(self, context: Context, children: Children) -> Children:
+        return A(context.router.navigate("index"))[children]
+
+
 index_page = Page(
     name="index",
     body=[
@@ -31,6 +36,7 @@ index_page = Page(
             CustomDiv("button", "is-active", DebugModifier())[
                 "Click Me",
                 Input(classes("input-field"), styles(margin="5px")),
+                IndexLink["Go to Index"],
             ],
         ],
     ],
