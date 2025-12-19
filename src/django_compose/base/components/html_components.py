@@ -41,13 +41,13 @@ class HtmlComponent(Component):
     inherit_attributes = False
 
     def full_build(self, context: Context) -> "HtmlComponent":
-        component = self.build(context, self.children)
         for modifier in self.modifiers:
-            component = modifier.apply_before_build(context, component)
+            modifier.apply(context, self)
+        component = self.build(context, self.children)
         component._build_children(context)
         component.apply_theme_to_children(context, self.theme)
         for modifier in self.modifiers:
-            component = modifier.apply_after_build(context, component)
+            modifier.apply_after_build(context, self)
         return component
 
     @override

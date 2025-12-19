@@ -7,10 +7,7 @@ if TYPE_CHECKING:
 
 
 class Context:
-    """Context for building and rendering components.
-
-    The context can hold information that is relevant during the build and render process.
-    """
+    """Context for building and rendering components."""
 
     def __init__(self, theme: Theme, router: Router) -> None:
         self.theme = theme

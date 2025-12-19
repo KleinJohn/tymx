@@ -9,6 +9,7 @@ from typing import (
     final,
     TYPE_CHECKING,
 )
+from collections.abc import Callable, Sequence
 from abc import ABC, abstractmethod
 import htpy
 
@@ -20,9 +21,17 @@ if TYPE_CHECKING:
     from django_compose.base.theme import Theme, ComponentTheme
 
 T = TypeVar("T", bound="ComponentBase")
+_buildFunctionType = Callable[[Context], "GenericComponentChildrenNoLambda[T]"]
 GenericComponentLike: TypeAlias = Union[T, type[T], str]
+# prevent nesting of build functions:
+GenericComponentChildrenNoLambda: TypeAlias = Union[
+    None,
+    GenericComponentLike[T],
+    Sequence["GenericComponentChildrenNoLambda[T]"],
+]
 GenericComponentChildren: TypeAlias = Union[
-    None, GenericComponentLike[T], Sequence["GenericComponentChildren[T]"]
+    GenericComponentChildrenNoLambda[T],
+    _buildFunctionType,
 ]
 
 ComponentLike: TypeAlias = GenericComponentLike["ComponentBase"]
@@ -53,7 +62,7 @@ class ComponentBase(ABC):
             else:
                 attr_list.append(attribute)
         self.attributes = Attributes(*attr_list)
-        self.children: list[ComponentBase] = ComponentBase._children_base_to_list(
+        self.children: list[ComponentBase] = self.__class__._children_base_to_list(
             children
         )
         self._htpy_kwargs = htpy_kwargs
@@ -61,12 +70,12 @@ class ComponentBase(ABC):
     def __getitem__(self, children: Children) -> ComponentBase:
         return self.__class__(
             *self.attributes,
-            children=ComponentBase._children_base_to_list(children),
+            children=children,
             **self._htpy_kwargs,
         )
 
     def __class_getitem__(cls, children: Children) -> Self:
-        return cls(children=cls._children_base_to_list(children))
+        return cls(children=children)
 
     def __str__(self) -> str:
         if not self.children:
@@ -92,10 +101,12 @@ class ComponentBase(ABC):
         )
         return builder.full_build(context)
 
-    def _build_children(self, context: Context) -> None:
-        """Only call this on already built components, since it modifies self.children in place."""
-        for i in range(len(self.children)):
-            self.children[i] = self.children[i].full_build(context)
+    def _build_children(self, context: Context) -> list[ComponentBase]:
+        """Only call this function on already built components."""
+        self.children = list(
+            map(lambda child: child.full_build(context), self.children)
+        )
+        return self.children
 
     @classmethod
     def _children_base_to_list(
@@ -111,11 +122,15 @@ class ComponentBase(ABC):
                 return [Text(children)]
             case ComponentBase():
                 return [children]
-            case _:
+            case Sequence():
                 lst: list["ComponentBase"] = []
                 for child in children:
                     lst.extend(cls._children_base_to_list(child))
                 return lst
+            case Callable():
+                return [ComponentFunctionBuilder(build_function=children)]
+            case _:
+                raise ValueError("Invalid child type.")
 
 
 class Component(ComponentBase):
@@ -159,8 +174,8 @@ class Component(ComponentBase):
         )
 
     def full_build(self, context: Context) -> Component:
-        built_self = self.build(context, self.children)
-        builder: Component = self._create_component_builder(built_self)
+        children = self.build(context, self.children)
+        builder: Component = self._create_component_builder(children)
         builder.full_build(context)
         return builder
 
@@ -181,7 +196,7 @@ class Component(ComponentBase):
         return self.__class__(
             *self.attributes,
             *self.modifiers,
-            children=self.__class__._children_base_to_list(children),
+            children=children,
             theme=self.theme,
             **self._htpy_kwargs,
         )
@@ -211,37 +226,61 @@ class Component(ComponentBase):
                 return [Text(children)]
             case ComponentBase():
                 return [children]
-            case _:
+            case Sequence():
                 lst: list["Component"] = []
                 for child in children:
                     lst.extend(cls._children_to_list(child))
                 return lst
+            case Callable():
+                return [ComponentFunctionBuilder(build_function=children)]
+            case _:
+                raise ValueError("Invalid child type.")
 
 
-@final
 class ComponentBuilder(Component):
+    """ComponentBuilders are components which are not supposed to add any elements to
+    the dom, but are rather used to modify the build process."""
+
     # Don't need to set inherit variables, since ComponentBuilder always inherits everything.
 
     def __str__(self) -> str:
         return ", ".join(str(child) for child in self.children)
 
     def full_build(self, context: Context) -> Component:
-        builder: Component = self
         for modifier in self.modifiers:
-            builder = modifier.apply_before_build(context, builder)
+            modifier.apply(context, self)
 
-        builder._build_children(context)
-        builder.apply_theme_to_children(context, self.theme)
+        self.children = self.build(context, self.children)
+        self.apply_theme_to_children(context, self.theme)
 
         for modifier in self.modifiers:
-            builder = modifier.apply_after_build(context, builder)
-        return builder
+            modifier.apply_after_build(context, self)
+        return self
 
-    def build(self, context: Context, children: Children) -> Children:
-        return children
+    def build(self, context: Context, children: Children) -> list[ComponentBase]:
+        return self._build_children(context)
 
     def render(self) -> htpy.Node:
         return (child.render() for child in self.children)
+
+
+class ComponentFunctionBuilder(ComponentBuilder):
+    def __init__(
+        self,
+        *modifiers: ModifierLike,
+        build_function: _buildFunctionType["ComponentBase"],
+        theme: ComponentTheme | None = None,
+        children: Children = None,
+        **htpy_kwargs: str,
+    ) -> None:
+        super().__init__(*modifiers, theme=theme, children=children, **htpy_kwargs)
+        self.build_function = build_function
+
+    def full_build(self, context: Context) -> Component:
+        self.children = self.__class__._children_base_to_list(
+            self.build_function(context)
+        )
+        return super().full_build(context)
 
 
 class VoidComponentMixin:

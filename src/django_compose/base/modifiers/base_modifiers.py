@@ -7,26 +7,29 @@ from typing import Any, Iterator, Self, override
 from django_compose.base.attributes import Attribute
 
 if TYPE_CHECKING:
-    from django_compose.base.components.base_components import Component, Context
+    from django_compose.base.components.base_components import (
+        Component,
+        Context,
+    )
 
 
 class Modifier(ABC):
 
-    def apply_before_build(self, context: Context, component: Component) -> Component:
+    def apply(self, context: Context, component: Component) -> None:
         """Injects behavior into the given component before the build process.
 
         It is safe to modify the component in place and return the same instance.
         It is also possible to return a new instance of the component if needed.
         """
-        return component
+        pass
 
-    def apply_after_build(self, context: Context, component: Component) -> Component:
+    def apply_after_build(self, context: Context, component: Component) -> None:
         """Injects behavior into the given component after the build process.
 
         It is safe to modify the component in place and return the same instance.
         It is also possible to return a new instance of the component if needed.
         """
-        return component
+        pass
 
 
 class Attributes(Modifier):
@@ -63,16 +66,13 @@ class Attributes(Modifier):
             self.add(attr)
 
     @override
-    def apply_after_build(self, context: Context, component: Component) -> Component:
+    def apply(self, context: Context, component: Component) -> None:
         component.attributes.add_all(self)
-        return component
 
 
 class DebugModifier(Modifier):
-    def apply_before_build(self, context: Context, component: Component) -> Component:
+    def apply(self, context: Context, component: Component) -> None:
         print(f"Before building {component.__class__.__name__}: {component}")
-        return component
 
-    def apply_after_build(self, context: Context, component: Component) -> Component:
+    def apply_after_build(self, context: Context, component: Component) -> None:
         print(f"After building {component.__class__.__name__}: {component}")
-        return component

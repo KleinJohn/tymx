@@ -36,8 +36,16 @@ index_page = Page(
             CustomDiv("button", "is-active", DebugModifier())[
                 "Click Me",
                 Input(classes("input-field"), styles(margin="5px")),
-                IndexLink["Go to Index"],
+                # A(context.router.navigate("index")),
             ],
         ],
+    ],
+)
+
+service_page = Page(
+    name="service",
+    body=[
+        H1["Service Page"],
+        # A(Page.context.router.navigate("index"))["Back to Index"],
     ],
 )

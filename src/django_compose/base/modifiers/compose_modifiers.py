@@ -1,8 +1,12 @@
-from django_compose.base.app import Route
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from django_compose.base.components.base_components import Component
 from django_compose.base.context import Context
 from django_compose.base.modifiers.base_modifiers import Modifier
 from django_compose.base.attributes import href
+
+if TYPE_CHECKING:
+    from django_compose.base.router import Route
 
 
 class SideModifier:
@@ -52,6 +56,5 @@ class NavigationModifier(Modifier):
     def __init__(self, route: Route) -> None:
         self._route = route
 
-    def apply_before_build(self, context: Context, component: Component) -> Component:
+    def apply(self, context: Context, component: Component) -> None:
         component.attributes.add(href(self._route.url))
-        return super().apply_before_build(context, component)

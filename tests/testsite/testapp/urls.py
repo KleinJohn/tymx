@@ -3,6 +3,7 @@ from testapp.pages.test_page import index_page
 
 
 app = ComposeApp(
+    name="testapp",
     starts_on="index",
     pages=[
         index_page,
@@ -11,5 +12,5 @@ app = ComposeApp(
 
 app.build()
 
-app_name = "testapp"
+app_name = app.name
 urlpatterns = app.router.get_urlpatterns()

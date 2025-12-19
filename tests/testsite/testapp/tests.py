@@ -3,11 +3,12 @@ from django_compose.base.components.base_components import (
     Children,
     Context,
 )
-from django_compose.base.components.html_components import H1, Button, Div, Input
+from django_compose.base.components.html_components import A, H1, Button, Div, Input
 from django_compose.base.attributes import classes, disabled, id, styles
 from django_compose.base.modifiers import Attributes
 from django_compose.base.modifiers.base_modifiers import DebugModifier
 from django_compose.base.app import Page
+from django_compose.base.router import Router
 from django_compose.base.theme import Theme
 
 
@@ -31,7 +32,7 @@ class CustomDiv(Component):
 
 
 def page_tests():
-    page = Page(
+    index_page = Page(
         name="index",
         body=[
             H1((id("header1"), styles(color="blue", font_size="12px"), disabled))[
@@ -42,9 +43,20 @@ def page_tests():
             ],
         ],
     )
-    context = Context(Theme())
-    print(page.build(context, page.children))
-    print(page.render())
+    home_page = Page(
+        name="home",
+        body=lambda context: [
+            H1((id("header1"), styles(color="blue", font_size="12px"), disabled))[
+                CustomDiv("button", "is-active", DebugModifier())[
+                    "Click Me",
+                    Input(classes("input-field"), styles(margin="5px")),
+                    # A(context.router.navigate("index"))["Back to Index"],
+                ],
+            ],
+        ],
+    )
+    context = Context(theme=Theme(), router=Router(pages=[home_page, index_page]))
+    print(home_page.render(context))
 
 
 def attribute_tests():
@@ -67,4 +79,4 @@ def attribute_tests():
 
 
 if __name__ == "__main__":
-    attribute_tests()
+    page_tests()
