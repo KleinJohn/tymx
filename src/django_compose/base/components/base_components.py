@@ -265,6 +265,8 @@ class ComponentBuilder(Component):
 
 
 class ComponentFunctionBuilder(ComponentBuilder):
+    """Calls the given build_function during the build process to generate children."""
+
     def __init__(
         self,
         *modifiers: ModifierLike,

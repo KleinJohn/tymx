@@ -1,7 +1,7 @@
 from django_compose.base.components import Component, Children
 from django_compose.base.components.html_components import A, H1, Button, Div, Input
 from django_compose.base.attributes import disabled, id, styles, classes
-from django_compose.base.modifiers.base_modifiers import DebugModifier
+from django_compose.base.modifiers.compose_modifiers import DebugModifier
 from django_compose.base.app import Context, Page
 
 
@@ -26,19 +26,17 @@ class CustomDiv(Component):
 
 class IndexLink(Component):
     def build(self, context: Context, children: Children) -> Children:
-        return A(context.router.navigate("index"))[children]
+        return A(context.router.navigate("index"), DebugModifier())[children]
 
 
 index_page = Page(
     name="index",
     body=[
         H1((id("header1"), styles(color="blue", font_size="12px"), disabled))[
-            CustomDiv("button", "is-active", DebugModifier())[
-                "Click Me",
-                Input(classes("input-field"), styles(margin="5px")),
-                # A(context.router.navigate("index")),
-            ],
+            CustomDiv("button", "is-active")["press"],
         ],
+        "Click Me",
+        Input(classes("input-field"), styles(margin="5px")),
     ],
 )
 
@@ -46,6 +44,6 @@ service_page = Page(
     name="service",
     body=[
         H1["Service Page"],
-        # A(Page.context.router.navigate("index"))["Back to Index"],
+        IndexLink["Go to Index Page"],
     ],
 )

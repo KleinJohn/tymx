@@ -65,6 +65,7 @@ TEMPLATES = [
             ],
         },
     },
+    {"BACKEND": "htpy.django.HtpyTemplateBackend", "NAME": "htpy"},
 ]
 
 WSGI_APPLICATION = "testsite.wsgi.application"

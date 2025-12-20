@@ -32,6 +32,30 @@ class Modifier(ABC):
         pass
 
 
+class DeferredModifier(Modifier):
+    def __init__(self) -> None:
+        self._deferred_context: Context | None = None
+        self._deferred_component: Component | None = None
+
+    @override
+    def apply(self, context: Context, component: Component) -> None:
+        self._deferred_context = context.copy()
+        self._deferred_component = component
+
+    def notify(self) -> None:
+        if self._deferred_context is not None and self._deferred_component is not None:
+            self.deferred_apply(self._deferred_context, self._deferred_component)
+            self._deferred_context = None
+            self._deferred_component = None
+        else:
+            raise RuntimeError(
+                "DeferredModifier.notify() called without prior apply()."
+            )
+
+    def deferred_apply(self, context: Context, component: Component) -> None:
+        pass
+
+
 class Attributes(Modifier):
     def __init__(self, *attributes: Attribute) -> None:
         self.data: OrderedDict[str, Attribute] = OrderedDict()
@@ -68,11 +92,3 @@ class Attributes(Modifier):
     @override
     def apply(self, context: Context, component: Component) -> None:
         component.attributes.add_all(self)
-
-
-class DebugModifier(Modifier):
-    def apply(self, context: Context, component: Component) -> None:
-        print(f"Before building {component.__class__.__name__}: {component}")
-
-    def apply_after_build(self, context: Context, component: Component) -> None:
-        print(f"After building {component.__class__.__name__}: {component}")

@@ -39,6 +39,7 @@ class Page(VoidComponentMixin, DocumentLevelComponent):
         self.head = head
         self.body = body
         self.theme = theme
+        self.content: htpy.Renderable | None = None
         self.view = view or ComposeView
 
     @override
@@ -51,8 +52,8 @@ class Page(VoidComponentMixin, DocumentLevelComponent):
             raise ValueError("Context must be provided to render the page.")
         if self.theme is not None:
             context = context.copy_with(theme=self.theme)
-        root = self.full_build(context)
-        return root.render()
+        self.content = self.full_build(context).render()
+        return self.content
 
 
 class ComposeApp:
@@ -69,13 +70,11 @@ class ComposeApp:
         self.style = style
         self.theme = theme
         self.starts_on = starts_on
-        self.router = Router(
-            pages={page.name: page for page in pages},
-        )
-        self.built_pages: dict[str, htpy.Renderable] = {}
+        self.router = Router(pages=pages)
 
     def build(self) -> None:
         theme = self.theme or Theme()
         context = Context(theme=theme, router=self.router)
         for route in self.router:
-            self.built_pages[route.page.name] = route.page.render(context)
+            built_page = route.page.render(context)
+            route.page.content

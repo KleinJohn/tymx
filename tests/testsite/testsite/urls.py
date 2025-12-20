@@ -17,8 +17,10 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import include, path
+from testapp.urls import app
 
 urlpatterns = [
     path("", include("testapp.urls")),
     path("admin/", admin.site.urls),
 ]
+app.router.build_links()

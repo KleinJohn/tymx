@@ -1,5 +1,5 @@
 from django_compose.base.app import ComposeApp
-from testapp.pages.test_page import index_page
+from testapp.pages.test_page import index_page, service_page
 
 
 app = ComposeApp(
@@ -7,6 +7,7 @@ app = ComposeApp(
     starts_on="index",
     pages=[
         index_page,
+        service_page,
     ],
 )
 

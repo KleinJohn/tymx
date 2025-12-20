@@ -6,7 +6,7 @@ from django_compose.base.components.base_components import (
 from django_compose.base.components.html_components import A, H1, Button, Div, Input
 from django_compose.base.attributes import classes, disabled, id, styles
 from django_compose.base.modifiers import Attributes
-from django_compose.base.modifiers.base_modifiers import DebugModifier
+from django_compose.base.modifiers.compose_modifiers import DebugModifier
 from django_compose.base.app import Page
 from django_compose.base.router import Router
 from django_compose.base.theme import Theme
@@ -47,7 +47,10 @@ def page_tests():
         name="home",
         body=lambda context: [
             H1((id("header1"), styles(color="blue", font_size="12px"), disabled))[
-                CustomDiv("button", "is-active", DebugModifier())[
+                CustomDiv(
+                    ("button", "is-active"),
+                    DebugModifier(),
+                )[
                     "Click Me",
                     Input(classes("input-field"), styles(margin="5px")),
                     # A(context.router.navigate("index"))["Back to Index"],

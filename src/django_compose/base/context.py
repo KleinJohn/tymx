@@ -13,6 +13,9 @@ class Context:
         self.theme = theme
         self.router = router
 
+    def copy(self) -> "Context":
+        return self.copy_with()
+
     def copy_with(self, **kwargs) -> "Context":
         theme = kwargs.get("theme", self.theme)
         router = kwargs.get("router", self.router)
