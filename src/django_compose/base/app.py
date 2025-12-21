@@ -4,10 +4,11 @@ from django_compose.base.components.base_components import (
     Children,
     VoidComponentMixin,
 )
+from django_compose.base.modifiers.base_modifiers import DeferredModifier
 from django_compose.base.router import Router
 from django_compose.base.theme import Theme
 from django_compose.base.context import Context
-from django_compose.base.views.view_base import ComposeView
+from django_compose.base.views.view_base import ComposePageView
 from .components.html_components import (
     Body,
     DocumentLevelComponent,
@@ -27,7 +28,7 @@ class Page(VoidComponentMixin, DocumentLevelComponent):
         theme: Theme | None = None,
         head: Children = None,
         body: Children = None,
-        view: type[ComposeView] | None = None,
+        view: type[ComposePageView] | None = None,
         **htpy_kwargs: str,
     ):
         super().__init__(
@@ -39,21 +40,31 @@ class Page(VoidComponentMixin, DocumentLevelComponent):
         self.head = head
         self.body = body
         self.theme = theme
-        self.content: htpy.Renderable | None = None
-        self.view = view or ComposeView
+        self._build_result: DocumentLevelComponent | None = None
+        self.view = view or ComposePageView
+        self.render_time_modifiers: list[DeferredModifier] = []
 
     @override
     def build(self, context: Context, children: Children) -> "DocumentLevelComponent":
         return Html()[children]
 
     @override
-    def render(self, context: Context | None = None) -> htpy.Renderable:
+    def full_build(self, context: Context | None = None) -> "DocumentLevelComponent":
         if context is None:
             raise ValueError("Context must be provided to render the page.")
         if self.theme is not None:
             context = context.copy_with(theme=self.theme)
-        self.content = self.full_build(context).render()
-        return self.content
+        context = context.copy_with(page=self)
+        self._build_result = super().full_build(context)
+        return self._build_result
+
+    @override
+    def render(self) -> htpy.Renderable:
+        if self._build_result is None:
+            raise ValueError("Page must be built before rendering.")
+        for modifier in self.render_time_modifiers:
+            modifier.notify()
+        return self._build_result.render()
 
 
 class ComposeApp:
@@ -76,5 +87,4 @@ class ComposeApp:
         theme = self.theme or Theme()
         context = Context(theme=theme, router=self.router)
         for route in self.router:
-            built_page = route.page.render(context)
-            route.page.content
+            route.page.full_build(context)

@@ -23,4 +23,3 @@ urlpatterns = [
     path("", include("testapp.urls")),
     path("admin/", admin.site.urls),
 ]
-app.router.build_links()

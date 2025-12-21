@@ -15,7 +15,7 @@ whitespaceComposer = ComposePolicy(
 
 id = SimpleAttribute("id")
 classes = ComposedAttribute("class", compose_policy=whitespaceComposer)
-styles = ComposedAttribute("style", compose_policy=styleComposer)
+style = ComposedAttribute("style", compose_policy=styleComposer)
 
 accept = SimpleAttribute("accept")
 accept_charset = SimpleAttribute("accept-charset")

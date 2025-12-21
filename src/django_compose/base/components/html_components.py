@@ -56,6 +56,7 @@ class HtmlComponent(Component):
 
     @override
     def render(self) -> htpy.Renderable:
+        print(self.__class__.__name__, "attributes:", str(len(self.attributes)))
         return self.element(**self.attributes.values(), **self._htpy_kwargs)[
             (child.render() for child in self.children)
         ]

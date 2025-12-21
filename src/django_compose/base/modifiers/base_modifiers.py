@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Sequence, TypeVar
 from abc import ABC
 from collections import OrderedDict
 from typing import Any, Iterator, Self, override
@@ -45,11 +45,10 @@ class DeferredModifier(Modifier):
     def notify(self) -> None:
         if self._deferred_context is not None and self._deferred_component is not None:
             self.deferred_apply(self._deferred_context, self._deferred_component)
-            self._deferred_context = None
-            self._deferred_component = None
         else:
             raise RuntimeError(
-                "DeferredModifier.notify() called without prior apply()."
+                """DeferredModifier.notify() called without prior apply().
+Make sure you call super().apply() in overrides."""
             )
 
     def deferred_apply(self, context: Context, component: Component) -> None:
@@ -65,6 +64,9 @@ class Attributes(Modifier):
     def __call__(self) -> Self:
         return self
 
+    def __len__(self) -> int:
+        return len(self.data)
+
     def __iter__(self) -> Iterator[Attribute]:
         return iter(self.data.values())
 
@@ -76,6 +78,9 @@ class Attributes(Modifier):
     def __str__(self) -> str:
         return " ".join(str(attr) for attr in self.data.values())
 
+    def __bool__(self) -> bool:
+        return bool(self.data)
+
     def values(self) -> dict[str, Any]:
         return {attr.name: attr.value for attr in self.data.values()}
 
@@ -85,7 +90,7 @@ class Attributes(Modifier):
         else:
             self.data[attribute.name].merge(attribute)
 
-    def add_all(self, attributes: "Attributes") -> None:
+    def add_all(self, attributes: "Attributes" | Sequence[Attribute]) -> None:
         for attr in attributes:
             self.add(attr)
 

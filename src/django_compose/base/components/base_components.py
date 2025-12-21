@@ -1,15 +1,13 @@
 from __future__ import annotations
 from typing import (
-    Iterable,
     Self,
-    Sequence,
     TypeAlias,
     TypeVar,
     Union,
     final,
     TYPE_CHECKING,
 )
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Sequence, Iterable
 from abc import ABC, abstractmethod
 import htpy
 
@@ -37,6 +35,7 @@ GenericComponentChildren: TypeAlias = Union[
 ComponentLike: TypeAlias = GenericComponentLike["ComponentBase"]
 Children: TypeAlias = GenericComponentChildren["ComponentBase"]
 
+AttributeLike: TypeAlias = str | Attribute | Iterable["AttributeLike"]
 ModifierLike: TypeAlias = str | Modifier | Attribute | Iterable["ModifierLike"]
 
 
@@ -49,23 +48,28 @@ class ComponentBase(ABC):
     # All Components that allow zero children have to provide an empty constructor.
     def __init__(
         self,
-        *attributes: str | Attribute | Iterable[Attribute],
+        *attributes: AttributeLike,
         children: Children = None,
         **htpy_kwargs: str,
     ) -> None:
-        attr_list: list[Attribute] = []
-        for attribute in attributes:
-            if isinstance(attribute, str):
-                attr_list.append(default_attribute(attribute))
-            elif isinstance(attribute, Iterable):
-                attr_list.extend(attribute)  # type: ignore
-            else:
-                attr_list.append(attribute)
-        self.attributes = Attributes(*attr_list)
+        self.attributes = Attributes()
+        self._init_attributes(attributes)
         self.children: list[ComponentBase] = self.__class__._children_base_to_list(
             children
         )
         self._htpy_kwargs = htpy_kwargs
+
+    def _init_attributes(self, attributes: Iterable[AttributeLike]) -> None:
+        for attribute in attributes:
+            match attribute:
+                case str():
+                    self.attributes.add(default_attribute(attribute))
+                case Attribute():
+                    self.attributes.add(attribute)
+                case Iterable():
+                    self._init_attributes(attribute)
+                case _:
+                    raise ValueError("Invalid attribute type.")
 
     def __getitem__(self, children: Children) -> ComponentBase:
         return self.__class__(
@@ -159,8 +163,10 @@ class Component(ComponentBase):
                     self.attributes.add(modifier)
                 case Modifier():
                     self.modifiers.append(modifier)
-                case _:
+                case Iterable():
                     self._init_modifiers(modifier)
+                case _:
+                    raise ValueError("Invalid modifier type.")
 
     @abstractmethod
     def build(self, context: Context, children: Children) -> Children:

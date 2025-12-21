@@ -20,9 +20,8 @@ class Route:
 
 class Router:
     def __init__(self, *, pages: Iterable[Page], **view_kwargs: Any):
-        self.routes = {page.name: Route(page) for page in pages}
+        self.routes: dict[str, Route] = {page.name: Route(page) for page in pages}
         self._view_kwargs = view_kwargs
-        self._links: list[NavigationModifier] = []
         self._iter = iter(self.routes.values())
 
     def __iter__(self) -> Iterator[Route]:
@@ -36,9 +35,7 @@ class Router:
         route = self.routes.get(page_name)
         if route is None:
             raise ValueError(f"Route '{page_name}' not found in router.")
-        modifier = NavigationModifier(self.routes[page_name])
-        self._links.append(modifier)
-        return modifier
+        return NavigationModifier()
 
     def get_urlpatterns(self) -> list[URLPattern]:
         urlpatterns: list[URLPattern] = []
@@ -46,14 +43,8 @@ class Router:
             urlpatterns.append(
                 path(
                     route.page.name + "/",
-                    route.page.view.as_view(
-                        content=route.page.content, **self._view_kwargs
-                    ),
+                    route.page.view.as_view(page=route.page, **self._view_kwargs),
                     name=route.page.name,
                 )
             )
         return urlpatterns
-
-    def build_links(self):
-        for link in self._links:
-            link.notify()

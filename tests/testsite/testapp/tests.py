@@ -4,7 +4,7 @@ from django_compose.base.components.base_components import (
     Context,
 )
 from django_compose.base.components.html_components import A, H1, Button, Div, Input
-from django_compose.base.attributes import classes, disabled, id, styles
+from django_compose.base.attributes import classes, disabled, id, style
 from django_compose.base.modifiers import Attributes
 from django_compose.base.modifiers.compose_modifiers import DebugModifier
 from django_compose.base.app import Page
@@ -35,10 +35,10 @@ def page_tests():
     index_page = Page(
         name="index",
         body=[
-            H1((id("header1"), styles(color="blue", font_size="12px"), disabled))[
+            H1((id("header1"), style(color="blue", font_size="12px"), disabled))[
                 CustomDiv("button", "is-active", DebugModifier())[
                     "Click Me",
-                    Input(classes("input-field"), styles(margin="5px")),
+                    Input(classes("input-field"), style(margin="5px")),
                 ],
             ],
         ],
@@ -46,20 +46,21 @@ def page_tests():
     home_page = Page(
         name="home",
         body=lambda context: [
-            H1((id("header1"), styles(color="blue", font_size="12px"), disabled))[
+            H1((id("header1"), style(color="blue", font_size="12px"), disabled))[
                 CustomDiv(
                     ("button", "is-active"),
                     DebugModifier(),
                 )[
                     "Click Me",
-                    Input(classes("input-field"), styles(margin="5px")),
+                    Input(classes("input-field"), style(margin="5px")),
                     # A(context.router.navigate("index"))["Back to Index"],
                 ],
             ],
         ],
     )
+    title = H1("title", style("font-size:3em"), DebugModifier())["Service Page"]
     context = Context(theme=Theme(), router=Router(pages=[home_page, index_page]))
-    print(home_page.render(context))
+    # print(home_page.render())
 
 
 def attribute_tests():
@@ -67,8 +68,8 @@ def attribute_tests():
     attr2 = id("submit-button")
     attr3 = classes("btn-primary")
     attr4 = classes("active", "btn-primary")
-    attr5 = styles(color="red", font_size="14px")
-    attr6 = styles(margin="10px", font_size="16px")
+    attr5 = style(color="red", font_size="14px")
+    attr6 = style(margin="10px", font_size="16px")
 
     attrs = Attributes(attr1, attr2, attr3)
     print("Before adding attr4:", attrs)

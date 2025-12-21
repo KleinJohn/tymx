@@ -188,20 +188,18 @@ class ComposedAttribute(SimpleAttribute):
         else:
             values = (value,) + values
         kwarg_values: tuple[str, ...] = (
-            tuple(
-                self.policy.kwarg_composer(key, value) for key, value in kwargs.items()
-            )
+            tuple(self.policy.kwarg_composer(key, val) for key, val in kwargs.items())
             if self.policy.kwarg_composer
             else tuple()
         )
-        if self.policy.decomposer:
-            decomposed_values: list[str | None] = []
-            for val in values:
-                if val is not None:
-                    decomposed_values.extend(self.policy.decomposer(val))
-                else:
-                    decomposed_values.append(val)
-            values = tuple(decomposed_values)
+        # if self.policy.decomposer:
+        #     decomposed_values: list[str | None] = []
+        #     for val in values:
+        #         if val is not None:
+        #             decomposed_values.extend(self.policy.decomposer(val))
+        #         else:
+        #             decomposed_values.append(val)
+        #     values = tuple(decomposed_values)
         joined_values = values + kwarg_values if add_after else kwarg_values + values
         composed_values = tuple(value for value in joined_values if value is not None)
         return super().__call__(
