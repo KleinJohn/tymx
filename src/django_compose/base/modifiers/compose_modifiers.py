@@ -11,16 +11,19 @@ if TYPE_CHECKING:
 
 class NavigationModifier(DeferredModifier):
 
-    def apply(self, context: Context, component: Component) -> None:
-        super().apply(context, component)
+    def __init__(self, route: Route) -> None:
+        super().__init__()
+        self._route = route
+
+    def apply_after_build(self, context: Context, component: Component) -> None:
+        super().apply_after_build(context, component)
         if not context.page:
             raise ValueError("No page found in context.")
         context.page.render_time_modifiers.append(self)
 
     def deferred_apply(self, context: Context, component: Component) -> None:
         super().deferred_apply(context, component)
-        print("deferred apply:", type(component), "url: ", context.url)
-        component.attributes.add(href(context.url))
+        component.attributes.add(href(self._route.url))
 
 
 class DebugModifier(Modifier):

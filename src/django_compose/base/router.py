@@ -35,7 +35,7 @@ class Router:
         route = self.routes.get(page_name)
         if route is None:
             raise ValueError(f"Route '{page_name}' not found in router.")
-        return NavigationModifier()
+        return NavigationModifier(route)
 
     def get_urlpatterns(self) -> list[URLPattern]:
         urlpatterns: list[URLPattern] = []

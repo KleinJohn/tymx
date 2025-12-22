@@ -181,6 +181,8 @@ class Component(ComponentBase):
 
     def full_build(self, context: Context) -> Component:
         children = self.build(context, self.children)
+        # Why do we need a ComponentBuilder? -> To allow the build method to
+        # return something other than a Component, e.g. a string or list
         builder: Component = self._create_component_builder(children)
         builder.full_build(context)
         return builder

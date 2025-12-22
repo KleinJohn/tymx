@@ -38,7 +38,8 @@ class DeferredModifier(Modifier):
         self._deferred_component: Component | None = None
 
     @override
-    def apply(self, context: Context, component: Component) -> None:
+    def apply_after_build(self, context: Context, component: Component) -> None:
+        super().apply_after_build(context, component)
         self._deferred_context = context.copy()
         self._deferred_component = component
 
