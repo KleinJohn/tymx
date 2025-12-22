@@ -4,7 +4,7 @@ from django_compose.base.components.base_components import (
     Children,
     VoidComponentMixin,
 )
-from django_compose.base.modifiers.base_modifiers import DeferredModifier
+from django_compose.base.modifiers.base_modifiers import PageRenderModifier
 from django_compose.base.router import Router
 from django_compose.base.theme import Theme
 from django_compose.base.context import Context
@@ -44,7 +44,7 @@ class Page(VoidComponentMixin, DocumentLevelComponent):
         self._build_result: DocumentLevelComponent | None = None
         self.view = view or ComposePageView
         self.route_pattern = f"{self.name}/" if route_pattern is None else route_pattern
-        self.render_time_modifiers: list[DeferredModifier] = []
+        self.render_time_modifiers: list[PageRenderModifier] = []
 
     @override
     def build(self, context: Context, children: Children) -> "DocumentLevelComponent":

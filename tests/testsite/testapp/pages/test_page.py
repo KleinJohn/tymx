@@ -36,7 +36,7 @@ index_page = Page(
         H1((id("header1"), style(color="blue", font_size="12px")))[
             CustomDiv("button", "is-active")["press"],
         ],
-        "Click Me",
+        "An Input:",
         Input(classes("input-field"), style(margin="5px"), disabled),
         A(context.router.navigate("service"))["Go to service page"],
     ],

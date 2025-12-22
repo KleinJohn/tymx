@@ -33,6 +33,9 @@ class Modifier(ABC):
 
 
 class DeferredModifier(Modifier):
+    """Since the referenced component is being saved, make sure to instantiate
+    a new DeferredModifier for each use."""
+
     def __init__(self) -> None:
         self._deferred_context: Context | None = None
         self._deferred_component: Component | None = None
@@ -45,15 +48,25 @@ class DeferredModifier(Modifier):
 
     def notify(self) -> None:
         if self._deferred_context is not None and self._deferred_component is not None:
-            self.deferred_apply(self._deferred_context, self._deferred_component)
+            self.apply_when_notified(self._deferred_context, self._deferred_component)
         else:
             raise RuntimeError(
                 """DeferredModifier.notify() called without prior apply().
 Make sure you call super().apply() in overrides."""
             )
 
-    def deferred_apply(self, context: Context, component: Component) -> None:
+    def apply_when_notified(self, context: Context, component: Component) -> None:
         pass
+
+
+class PageRenderModifier(DeferredModifier):
+
+    @override
+    def apply_after_build(self, context: Context, component: Component) -> None:
+        super().apply_after_build(context, component)
+        if not context.page:
+            raise ValueError("No page found in context.")
+        context.page.render_time_modifiers.append(self)
 
 
 class Attributes(Modifier):
