@@ -29,6 +29,7 @@ class Page(VoidComponentMixin, DocumentLevelComponent):
         head: Children = None,
         body: Children = None,
         view: type[ComposePageView] | None = None,
+        route_pattern: str | None = None,
         **htpy_kwargs: str,
     ):
         super().__init__(
@@ -42,6 +43,7 @@ class Page(VoidComponentMixin, DocumentLevelComponent):
         self.theme = theme
         self._build_result: DocumentLevelComponent | None = None
         self.view = view or ComposePageView
+        self.route_pattern = f"{self.name}/" if route_pattern is None else route_pattern
         self.render_time_modifiers: list[DeferredModifier] = []
 
     @override
@@ -81,7 +83,7 @@ class ComposeApp:
         self.style = style
         self.theme = theme
         self.starts_on = starts_on
-        self.router = Router(pages=pages)
+        self.router = Router(self.name, pages=pages)
 
     def build(self) -> None:
         theme = self.theme or Theme()

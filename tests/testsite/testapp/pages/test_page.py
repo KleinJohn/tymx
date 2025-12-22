@@ -31,12 +31,14 @@ class IndexLink(Component):
 
 index_page = Page(
     name="index",
-    body=[
-        H1((id("header1"), style(color="blue", font_size="12px"), disabled))[
+    route_pattern="",
+    body=lambda context: [
+        H1((id("header1"), style(color="blue", font_size="12px")))[
             CustomDiv("button", "is-active")["press"],
         ],
         "Click Me",
-        Input(classes("input-field"), style(margin="5px")),
+        Input(classes("input-field"), style(margin="5px"), disabled),
+        A(context.router.navigate("service"))["Go to service page"],
     ],
 )
 

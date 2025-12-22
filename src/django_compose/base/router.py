@@ -10,17 +10,22 @@ if TYPE_CHECKING:
 
 
 class Route:
-    def __init__(self, page: Page):
+    def __init__(self, app_name: str, page: Page):
+        self.app_name = app_name
         self.page = page
 
     @property
     def url(self) -> str:
-        return str(reverse_lazy("testapp:" + self.page.name))
+        """Only call this when Django is fully loaded (render time)"""
+        return str(reverse_lazy(f"{self.app_name}:{self.page.name}"))
 
 
 class Router:
-    def __init__(self, *, pages: Iterable[Page], **view_kwargs: Any):
-        self.routes: dict[str, Route] = {page.name: Route(page) for page in pages}
+    def __init__(self, app_name: str, *, pages: Iterable[Page], **view_kwargs: Any):
+        self.app_name = app_name
+        self.routes: dict[str, Route] = {
+            page.name: Route(self.app_name, page) for page in pages
+        }
         self._view_kwargs = view_kwargs
         self._iter = iter(self.routes.values())
 
@@ -42,7 +47,7 @@ class Router:
         for route in self.routes.values():
             urlpatterns.append(
                 path(
-                    route.page.name + "/",
+                    route.page.route_pattern,
                     route.page.view.as_view(page=route.page, **self._view_kwargs),
                     name=route.page.name,
                 )
