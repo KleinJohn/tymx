@@ -2,6 +2,7 @@ from typing import Iterable, override
 
 from django_compose.base.components.base_components import (
     Children,
+    ComponentPolicy,
     VoidComponentMixin,
 )
 from django_compose.base.modifiers.base_modifiers import PageRenderModifier
@@ -20,6 +21,9 @@ import htpy
 
 
 class Page(VoidComponentMixin, DocumentLevelComponent):
+    inheritance_policy = ComponentPolicy.NONE
+    build_policy = ComponentPolicy.COMPONENTS
+
     def __init__(
         self,
         name: str,
@@ -30,11 +34,15 @@ class Page(VoidComponentMixin, DocumentLevelComponent):
         body: Children = None,
         view: type[ComposePageView] | None = None,
         route_pattern: str | None = None,
+        inheritance_policy: ComponentPolicy | None = None,
+        build_policy: ComponentPolicy | None = None,
         **htpy_kwargs: str,
     ):
         super().__init__(
             *attributes,
             children=(Head[head], Body[body]),
+            inheritance_policy=inheritance_policy,
+            build_policy=build_policy,
             **htpy_kwargs,
         )
         self.name = name
@@ -48,7 +56,7 @@ class Page(VoidComponentMixin, DocumentLevelComponent):
 
     @override
     def build(self, context: Context, children: Children) -> "DocumentLevelComponent":
-        return Html()[children]
+        return Html[children]
 
     @override
     def full_build(self, context: Context | None = None) -> "DocumentLevelComponent":

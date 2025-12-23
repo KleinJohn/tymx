@@ -1,14 +1,11 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from django_compose.base.components.base_components import Component, Context
-from django_compose.base.context import Context
-from django_compose.base.modifiers.base_modifiers import (
-    PageRenderModifier,
-    Modifier,
-)
+from .base_modifiers import PageRenderModifier, Modifier
 from django_compose.base.attributes import href
 
 if TYPE_CHECKING:
+    from django_compose.base.components.base_components import Component
+    from django_compose.base.context import Context
     from django_compose.base.router import Route
 
 
@@ -25,8 +22,9 @@ class NavigationModifier(PageRenderModifier):
 
 
 class DebugModifier(Modifier):
-    def apply(self, context: Context, component: Component) -> None:
-        print(f"Before building {component.__class__.__name__}: {component}")
+    def apply_before_build(self, context: Context, component: Component) -> None:
+        print(f"Before building: {component}")
 
-    def apply_after_build(self, context: Context, component: Component) -> None:
-        print(f"After building {component.__class__.__name__}: {component}")
+    def apply(self, context: Context, component: Component) -> Component:
+        print(f"After building: {component}")
+        return component

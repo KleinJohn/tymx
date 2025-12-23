@@ -1,64 +1,49 @@
-from typing import override
+from typing import Protocol, override
+from django_compose.base.modifiers.base_modifiers import Attributes
 from .base_components import *
 
 
-class DocumentLevelComponent(ComponentBase):
-    """Reserved for document-level components like Html, Head, Body. Themes not applicable."""
-
+class IsHtml(Protocol):
     element: htpy.Element
-    inherit_attributes = False
+    attributes: Attributes
+    children: list[ComponentBase]
+    _htpy_kwargs: dict[str, str]
 
-    @override
-    def build(self, context: Context, children: Children) -> "DocumentLevelComponent":
-        return self[children]
+    def __getitem__(self, children: Children) -> Self: ...
+
+    def render(self) -> htpy.Node: ...
+
+
+class RendersHtmlMixin(RenderableComponentMixin):
+    element: htpy.Element
+
+    def render(self: IsHtml) -> htpy.Renderable:
+        return self.element(**self.attributes.values(), **self._htpy_kwargs)[
+            (child.render() for child in self.children)
+        ]
+
+
+class DocumentLevelComponent(RendersHtmlMixin, ComponentBase):
+    """Reserved for document-level components like Html, Head, Body."""
 
     def full_build(self, context: Context) -> "DocumentLevelComponent":
-        component = self.build(context, self.children)
-        component._build_children(context)
-        return component
-
-    @override
-    def render(self) -> htpy.Renderable:
-        return self.element(**self.attributes.values(), **self._htpy_kwargs)[
-            (child.render() for child in self.children)
-        ]
-
-    def __getitem__(self, children: Children) -> "DocumentLevelComponent":
-        return self.__class__(
-            *self.attributes,
-            children=ComponentBase._children_base_to_list(children),
-            **self._htpy_kwargs,
-        )
-
-    def __class_getitem__(cls, children: Children) -> Self:
-        return cls(
-            children=cls._children_base_to_list(children),
-        )
+        build_result = super().full_build(context)
+        if not isinstance(build_result, DocumentLevelComponent):
+            raise TypeError(
+                f"DocumentLevelComponent.build must return a DocumentLevelComponent, got {type(build_result)}"
+            )
+        return build_result
 
 
-class HtmlComponent(Component):
-    element: htpy.Element  # type: ignore
-    inherit_attributes = False
+class HtmlComponent(RendersHtmlMixin, Component):
 
     def full_build(self, context: Context) -> "HtmlComponent":
-        for modifier in self.modifiers:
-            modifier.apply(context, self)
-        component = self.build(context, self.children)
-        component._build_children(context)
-        component.apply_theme_to_children(context, self.theme)
-        for modifier in self.modifiers:
-            modifier.apply_after_build(context, component)
-        return component
-
-    @override
-    def build(self, context: Context, children: Children) -> "HtmlComponent":
-        return self[children]
-
-    @override
-    def render(self) -> htpy.Renderable:
-        return self.element(**self.attributes.values(), **self._htpy_kwargs)[
-            (child.render() for child in self.children)
-        ]
+        build_result = super().full_build(context)
+        if not isinstance(build_result, HtmlComponent):
+            raise TypeError(
+                f"HtmlComponent.build must return a HtmlComponent, got {type(build_result)}"
+            )
+        return build_result
 
 
 class HtmlVoidComponent(VoidComponentMixin, HtmlComponent):

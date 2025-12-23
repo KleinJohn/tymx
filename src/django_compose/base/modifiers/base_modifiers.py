@@ -1,21 +1,19 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Sequence, TypeVar
+from typing import TYPE_CHECKING, Sequence, Any, Iterator, Self, override
 from abc import ABC
 from collections import OrderedDict
-from typing import Any, Iterator, Self, override
-
-from django_compose.base.attributes import Attribute
 
 if TYPE_CHECKING:
     from django_compose.base.components.base_components import (
         Component,
         Context,
     )
+    from django_compose.base.attributes import Attribute
 
 
 class Modifier(ABC):
 
-    def apply(self, context: Context, component: Component) -> None:
+    def apply_before_build(self, context: Context, component: Component) -> None:
         """Injects behavior into the given component before the build process.
 
         It is safe to modify the component in place and return the same instance.
@@ -23,13 +21,13 @@ class Modifier(ABC):
         """
         pass
 
-    def apply_after_build(self, context: Context, component: Component) -> None:
+    def apply(self, context: Context, component: Component) -> Component:
         """Injects behavior into the given component after the build process.
 
         It is safe to modify the component in place and return the same instance.
         It is also possible to return a new instance of the component if needed.
         """
-        pass
+        return component
 
 
 class DeferredModifier(Modifier):
@@ -41,10 +39,11 @@ class DeferredModifier(Modifier):
         self._deferred_component: Component | None = None
 
     @override
-    def apply_after_build(self, context: Context, component: Component) -> None:
-        super().apply_after_build(context, component)
+    def apply(self, context: Context, component: Component) -> Component:
+        component = super().apply(context, component)
         self._deferred_context = context.copy()
         self._deferred_component = component
+        return component
 
     def notify(self) -> None:
         if self._deferred_context is not None and self._deferred_component is not None:
@@ -62,11 +61,12 @@ Make sure you call super().apply() in overrides."""
 class PageRenderModifier(DeferredModifier):
 
     @override
-    def apply_after_build(self, context: Context, component: Component) -> None:
-        super().apply_after_build(context, component)
+    def apply(self, context: Context, component: Component) -> Component:
+        component = super().apply(context, component)
         if not context.page:
             raise ValueError("No page found in context.")
         context.page.render_time_modifiers.append(self)
+        return component
 
 
 class Attributes(Modifier):
@@ -109,5 +109,5 @@ class Attributes(Modifier):
             self.add(attr)
 
     @override
-    def apply(self, context: Context, component: Component) -> None:
+    def apply_before_build(self, context: Context, component: Component) -> None:
         component.attributes.add_all(self)
