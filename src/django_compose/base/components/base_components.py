@@ -234,6 +234,12 @@ class Component(ComponentBase):
         )
 
     @override
+    def _inherit_to_component(self, context: Context, component: ComponentBase) -> None:
+        super()._inherit_to_component(context, component)
+        if isinstance(component, Component):
+            component.modifiers.extend(self.modifiers)
+
+    @override
     def _before_build(self, context: Context) -> None:
         """Called before components are built and anything is inherited"""
         super()._before_build(context)
