@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
 # TYPE DEFINITIONS:
 
+
 T = TypeVar("T", bound="ComponentBase")
 GenericComponentLike: TypeAlias = Union[None, T, list[T]]
 # prevent nesting of build functions:
@@ -33,12 +34,10 @@ GenericComponentChildrenNoLambda: TypeAlias = Union[
     type[T],
     Sequence["GenericComponentChildrenNoLambda[T]"],
 ]
-_buildFunctionType: TypeAlias = Callable[
-    [Context, "Children"], "GenericComponentChildrenNoLambda[T]"
-]
+BuildFunctionType: TypeAlias = Callable[[Context, "Children"], "Children"]
 GenericComponentChildren: TypeAlias = Union[
     GenericComponentChildrenNoLambda[T],
-    _buildFunctionType,
+    BuildFunctionType,
 ]
 
 ComponentLike: TypeAlias = GenericComponentLike["ComponentBase"]
@@ -333,7 +332,7 @@ class ContextBuilder(Component):
     def __init__(
         self,
         *modifiers: ModifierLike,
-        build_function: _buildFunctionType["ComponentBase"],
+        build_function: BuildFunctionType,
         theme: ComponentTheme | None = None,
         children: Children = None,
         inheritance_policy: ComponentPolicy | None = None,
