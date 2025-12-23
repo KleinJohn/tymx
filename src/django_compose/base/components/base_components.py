@@ -50,39 +50,34 @@ ModifierLike: TypeAlias = Union[str, Attribute, "Modifier", Iterable["ModifierLi
 default_attribute: Attribute = classes
 
 
-class ComponentPolicy(Enum):
+class BuildPolicy(Enum):
 
     NONE = 1
-    "No inheritance."
+    "Neither components nor children are built."
 
     COMPONENTS = 2
-    "Inherit to top-level components in build method."
+    "Fully builds the components returned from the Component's build() method."
 
     CHILDREN = 3
-    "Exclude components in the build function from inheritance."
+    "Fully builds the children referenced in the Component's getitem[] method."
 
 
 class ComponentBase(ABC):
-    inheritance_policy = ComponentPolicy.COMPONENTS
-    build_policy = ComponentPolicy.COMPONENTS
+    build_policy = BuildPolicy.COMPONENTS
 
     # All Components that allow zero children have to provide an empty constructor.
     def __init__(
         self,
         *attributes: AttributeLike,
         children: Children = None,
-        inheritance_policy: ComponentPolicy | None = None,
-        build_policy: ComponentPolicy | None = None,
-        **htpy_kwargs: str,
+        build_policy: BuildPolicy | None = None,
+        htpy_kwargs: dict[str, str] | None = None,
     ) -> None:
         self.attributes = Attributes()
         self._init_attributes(attributes)
         self.children: list[ComponentBase] = self._children_to_list(children)
-        self.inheritance_policy = (
-            inheritance_policy or self.__class__.inheritance_policy
-        )
         self.build_policy = build_policy or self.__class__.build_policy
-        self._htpy_kwargs = htpy_kwargs
+        self.htpy_kwargs = htpy_kwargs if htpy_kwargs is not None else {}
 
     def _init_attributes(self, attributes: Iterable[AttributeLike]) -> None:
         for attribute in attributes:
@@ -94,19 +89,21 @@ class ComponentBase(ABC):
                 case Iterable():
                     self._init_attributes(attribute)
                 case _:
-                    raise ValueError("Invalid attribute type.")
+                    raise ValueError(
+                        f"Invalid attribute type: {type(attribute)} on {self.__class__.__name__}."
+                    )
 
-    def __getitem__(self, children: Children) -> Self:
+    def __getitem__(self, children: Children, **kwargs) -> Self:
         return self.__class__(
             *self.attributes,
             children=children,
-            inheritance_policy=self.inheritance_policy,
             build_policy=self.build_policy,
-            **self._htpy_kwargs,
+            htpy_kwargs=self.htpy_kwargs,
+            **kwargs,
         )
 
-    def __class_getitem__(cls, children: Children) -> Self:
-        return cls(children=children)
+    def __class_getitem__(cls, children: Children, **kwargs) -> Self:
+        return cls(children=children, **kwargs)
 
     def __str__(self) -> str:
         if not self.children:
@@ -124,7 +121,6 @@ class ComponentBase(ABC):
     def full_build(self, context: Context) -> ComponentLike:
         self._before_build(context)
         components = self._handle_build(context)
-        self._handle_inheritance(context, components)
         self._after_build(context, components)
         return self._unwrap_component_list(components)
 
@@ -136,32 +132,28 @@ class ComponentBase(ABC):
         """Called after components are built and inheritance is handled."""
         pass
 
-    def _handle_inheritance(
-        self, context: Context, components: list[ComponentBase]
-    ) -> None:
-        if self.inheritance_policy == ComponentPolicy.COMPONENTS:
-            for component in components:
-                self._inherit_to_component(context, component)
-        elif self.inheritance_policy == ComponentPolicy.CHILDREN:
-            for component in self.children:
-                self._inherit_to_component(context, component)
-
     def _inherit_to_component(self, context: Context, component: ComponentBase) -> None:
         component.attributes.add_all(self.attributes)
 
     def _handle_build(self, context: Context) -> list[ComponentBase]:
         lst: list[ComponentBase] = []
         children = self.children
+        # always do inheritance first, then full build
 
-        if self.build_policy == ComponentPolicy.CHILDREN:
+        if self.build_policy == BuildPolicy.CHILDREN:
             for child in self.children:
+                self._inherit_to_component(context, child)
                 lst.extend(self._children_to_list(child.full_build(context)))
             children = lst
+
         components = self._children_to_list(self.build(context, children))
-        if self.build_policy == ComponentPolicy.COMPONENTS:
+
+        if self.build_policy == BuildPolicy.COMPONENTS:
             for component in components:
+                self._inherit_to_component(context, component)
                 lst.extend(self._children_to_list(component.full_build(context)))
             components = lst
+
         return components
 
     def _unwrap_component_list(self, components: list[ComponentBase]) -> ComponentLike:
@@ -181,7 +173,7 @@ class ComponentBase(ABC):
             case type():
                 return [children()]
             case str():
-                return [Text(children)]
+                return [Text(text=children)]
             case ComponentBase():
                 return [children]
             case Sequence():
@@ -200,19 +192,17 @@ class Component(ComponentBase):
     def __init__(
         self,
         *modifiers: ModifierLike,
-        theme: ComponentTheme | None = None,
+        component_theme: ComponentTheme | None = None,
         children: Children = None,
-        inheritance_policy: ComponentPolicy | None = None,
-        build_policy: ComponentPolicy | None = None,
-        **htpy_kwargs: str,
+        build_policy: BuildPolicy | None = None,
+        htpy_kwargs: dict[str, str] | None = None,
     ) -> None:
         super().__init__(
             children=children,
-            inheritance_policy=inheritance_policy,
             build_policy=build_policy,
-            **htpy_kwargs,
+            htpy_kwargs=htpy_kwargs,
         )
-        self.theme = theme
+        self.component_theme = component_theme
         self.modifiers: list[Modifier] = []
         self._init_modifiers(modifiers)
 
@@ -255,7 +245,9 @@ class Component(ComponentBase):
         """Called after components are built and inheritance is handled."""
         super()._after_build(context, components)
 
-        theme = self.theme  # or in future: context.theme.get_component_theme(self)
+        theme = (
+            self.component_theme
+        )  # or in future: context.theme.get_component_theme(self)
         for i, component in enumerate(components):
             if not isinstance(component, Component):
                 continue
@@ -267,35 +259,34 @@ class Component(ComponentBase):
             components[i] = component
 
     @override
-    def __getitem__(self, children: Children) -> Self:
+    def __getitem__(self, children: Children, **kwargs) -> Self:
         return self.__class__(
             *self.attributes,
             *self.modifiers,
             children=children,
-            theme=self.theme,
-            inheritance_policy=self.inheritance_policy,
+            component_theme=self.component_theme,
             build_policy=self.build_policy,
-            **self._htpy_kwargs,
+            htpy_kwargs=self.htpy_kwargs,
+            **kwargs,
         )
 
 
 class VoidComponentMixin:
-    inheritance_policy = ComponentPolicy.NONE
-    build_policy = ComponentPolicy.NONE
+    build_policy = BuildPolicy.NONE
 
-    def __getitem__(self, children: Children) -> ComponentBase:
+    def __getitem__(self, children: Children, **kwargs) -> Self:
         if children:
             raise ValueError(f"{self.__class__.__name__} does not accept any children.")
-        return super().__getitem__(children)  # type: ignore
+        return super().__getitem__(children, **kwargs)
 
-    def __class_getitem__(cls, children: Children) -> Self:
+    def __class_getitem__(cls, children: Children, **kwargs) -> Self:
         if children:
             raise ValueError(f"{cls.__name__} does not accept any children.")
-        return super().__getitem__(children)  # type: ignore
+        return super().__getitem__(children, **kwargs)
 
 
 class SingleChildComponentMixin:
-    def __getitem__(self, children: Children) -> ComponentBase:
+    def __getitem__(self, children: Children, **kwargs) -> ComponentBase:
         if (
             isinstance(children, Sequence)
             and not isinstance(children, str)
@@ -304,21 +295,20 @@ class SingleChildComponentMixin:
             raise ValueError(
                 f"{self.__class__.__name__} only accepts exactly one child."
             )
-        return super().__getitem__(children)  # type: ignore
+        return super().__getitem__(children, **kwargs)
 
-    def __class_getitem__(cls, children: Children) -> Self:
+    def __class_getitem__(cls, children: Children, **kwargs) -> Self:
         if (
             isinstance(children, Sequence)
             and not isinstance(children, str)
             and len(children) != 1
         ):
             raise ValueError(f"{cls.__name__} only accepts exactly one child.")
-        return super().__getitem__(children)  # type: ignore
+        return super().__getitem__(children, **kwargs)
 
 
 class RenderableComponentMixin:
-    build_policy = ComponentPolicy.CHILDREN
-    inheritance_policy = ComponentPolicy.CHILDREN
+    build_policy = BuildPolicy.CHILDREN
 
     def build(
         self: ComponentBase, context: Context, children: Children
@@ -333,19 +323,17 @@ class ContextBuilder(Component):
         self,
         *modifiers: ModifierLike,
         build_function: BuildFunctionType,
-        theme: ComponentTheme | None = None,
+        component_theme: ComponentTheme | None = None,
         children: Children = None,
-        inheritance_policy: ComponentPolicy | None = None,
-        build_policy: ComponentPolicy | None = None,
-        **htpy_kwargs: str,
+        build_policy: BuildPolicy | None = None,
+        htpy_kwargs: dict[str, str] | None = None,
     ) -> None:
         super().__init__(
             *modifiers,
-            theme=theme,
+            component_theme=component_theme,
             children=children,
-            inheritance_policy=inheritance_policy,
             build_policy=build_policy,
-            **htpy_kwargs,
+            htpy_kwargs=htpy_kwargs,
         )
         self.build_function = build_function
 
@@ -353,25 +341,27 @@ class ContextBuilder(Component):
     def build(self, context: Context, children: Children) -> Children:
         return self.build_function(context, children)
 
+    @override
+    def __getitem__(self, children: Children, **kwargs) -> Self:
+        return super().__getitem__(
+            children, build_function=self.build_function, **kwargs
+        )
+
 
 @final
-class Text(VoidComponentMixin, Component):
+class Text(VoidComponentMixin, RenderableComponentMixin, Component):
 
-    def __init__(self, text: str):
-        super().__init__()
+    def __init__(self, *args, text: str = "", **kwargs):
+        super().__init__(*args, **kwargs)
         self.text = text
-
-    @override
-    def full_build(self, context: Context) -> "Text":
-        return Text(self.text)
-
-    @override
-    def build(self, context: Context, children: Children) -> "Component":
-        return Text(self.text)
 
     @override
     def render(self) -> str:
         return self.text
+
+    @override
+    def __getitem__(self, children: Children, **kwargs) -> Self:
+        return super().__getitem__(children, text=self.text, **kwargs)
 
     @override
     def __str__(self) -> str:

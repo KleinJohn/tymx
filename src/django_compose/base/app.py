@@ -2,8 +2,10 @@ from typing import Iterable, override
 
 from django_compose.base.components.base_components import (
     Children,
-    ComponentPolicy,
+    BuildPolicy,
+    ModifierLike,
     VoidComponentMixin,
+    Component,
 )
 from django_compose.base.modifiers.base_modifiers import PageRenderModifier
 from django_compose.base.router import Router
@@ -20,30 +22,27 @@ from django_compose.base.attributes import Attribute
 import htpy
 
 
-class Page(VoidComponentMixin, DocumentLevelComponent):
-    inheritance_policy = ComponentPolicy.NONE
-    build_policy = ComponentPolicy.COMPONENTS
+class Page(VoidComponentMixin, Component):
+    build_policy = BuildPolicy.COMPONENTS
 
     def __init__(
         self,
         name: str,
-        *attributes: Attribute | Iterable[Attribute],
+        *modifiers: ModifierLike,
         children: Children = None,
         theme: Theme | None = None,
         head: Children = None,
         body: Children = None,
         view: type[ComposePageView] | None = None,
         route_pattern: str | None = None,
-        inheritance_policy: ComponentPolicy | None = None,
-        build_policy: ComponentPolicy | None = None,
-        **htpy_kwargs: str,
+        build_policy: BuildPolicy | None = None,
+        htpy_kwargs: dict[str, str] | None = None,
     ):
         super().__init__(
-            *attributes,
-            children=(Head[head], Body[body]),
-            inheritance_policy=inheritance_policy,
+            *modifiers,
+            children=Html[Head[head], Body[body]],
             build_policy=build_policy,
-            **htpy_kwargs,
+            htpy_kwargs=htpy_kwargs,
         )
         self.name = name
         self.head = head
@@ -55,18 +54,23 @@ class Page(VoidComponentMixin, DocumentLevelComponent):
         self.render_time_modifiers: list[PageRenderModifier] = []
 
     @override
-    def build(self, context: Context, children: Children) -> "DocumentLevelComponent":
-        return Html[children]
-
-    @override
-    def full_build(self, context: Context | None = None) -> "DocumentLevelComponent":
+    def full_build(self, context: Context | None = None) -> DocumentLevelComponent:
         if context is None:
             raise ValueError("Context must be provided to render the page.")
         if self.theme is not None:
             context = context.copy_with(theme=self.theme)
         context = context.copy_with(page=self)
-        self._build_result = super().full_build(context)
+        build_result = super().full_build(context)
+        if not isinstance(build_result, DocumentLevelComponent):
+            raise TypeError(
+                f"Page.build must return a DocumentLevelComponent, got {type(build_result)}"
+            )
+        self._build_result = build_result
         return self._build_result
+
+    @override
+    def build(self, context: Context, children: Children) -> Children:
+        return children
 
     @override
     def render(self) -> htpy.Renderable:

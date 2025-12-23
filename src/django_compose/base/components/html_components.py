@@ -7,7 +7,7 @@ class IsHtml(Protocol):
     element: htpy.Element
     attributes: Attributes
     children: list[ComponentBase]
-    _htpy_kwargs: dict[str, str]
+    htpy_kwargs: dict[str, str]
 
     def __getitem__(self, children: Children) -> Self: ...
 
@@ -15,43 +15,44 @@ class IsHtml(Protocol):
 
 
 class RendersHtmlMixin(RenderableComponentMixin):
-    element: htpy.Element
-
     def render(self: IsHtml) -> htpy.Renderable:
-        return self.element(**self.attributes.values(), **self._htpy_kwargs)[
+        return self.element(**self.attributes.values(), **self.htpy_kwargs)[
             (child.render() for child in self.children)
         ]
 
 
-class DocumentLevelComponent(RendersHtmlMixin, ComponentBase):
+class HtmlComponentBase(Component):
+    element: htpy.BaseElement
+
+    def full_build(self, context: Context) -> Self:
+        build_result = super().full_build(context)
+        if not isinstance(build_result, self.__class__):
+            tname = self.__class__.__name__
+            raise TypeError(
+                f"{tname}.build must return a {tname}, got {type(build_result)}"
+            )
+        return build_result
+
+
+class DocumentLevelComponent(RendersHtmlMixin, HtmlComponentBase):
     """Reserved for document-level components like Html, Head, Body."""
 
-    def full_build(self, context: Context) -> "DocumentLevelComponent":
-        build_result = super().full_build(context)
-        if not isinstance(build_result, DocumentLevelComponent):
-            raise TypeError(
-                f"DocumentLevelComponent.build must return a DocumentLevelComponent, got {type(build_result)}"
-            )
-        return build_result
+    element: htpy.Element
 
 
-class HtmlComponent(RendersHtmlMixin, Component):
-
-    def full_build(self, context: Context) -> "HtmlComponent":
-        build_result = super().full_build(context)
-        if not isinstance(build_result, HtmlComponent):
-            raise TypeError(
-                f"HtmlComponent.build must return a HtmlComponent, got {type(build_result)}"
-            )
-        return build_result
+class HtmlComponent(RendersHtmlMixin, HtmlComponentBase):
+    element: htpy.Element
 
 
-class HtmlVoidComponent(VoidComponentMixin, HtmlComponent):
-    element: htpy.VoidElement  # type: ignore
+# HtmlVoidComponents do not have children and do not implement RendersHtmlMixin
+class HtmlVoidComponent(
+    VoidComponentMixin, RenderableComponentMixin, HtmlComponentBase
+):
+    element: htpy.VoidElement
 
     @override
     def render(self) -> htpy.Renderable:
-        return self.element(**self.attributes.values(), **self._htpy_kwargs)
+        return self.element(**self.attributes.values(), **self.htpy_kwargs)
 
 
 @final

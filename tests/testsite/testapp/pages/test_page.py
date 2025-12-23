@@ -32,7 +32,7 @@ class IndexLink(Component):
 index_page = Page(
     name="index",
     route_pattern="",
-    body=lambda context: [
+    body=lambda context, children: [
         H1((id("header1"), style(color="blue", font_size="12px")))[
             CustomDiv("button", "is-active")["press"],
         ],

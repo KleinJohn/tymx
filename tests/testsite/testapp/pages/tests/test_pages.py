@@ -51,10 +51,11 @@ index_page = Page(
 )
 
 service_page = Page(
-    name="service",
+    "service",
+    DebugModifier(),
     body=[
         H1("title", style("font-size:3em"))["Service Page"],
-        IndexLink(DebugModifier())["Go to Index Page"],
+        IndexLink["Go to Index Page"],
     ],
 )
 
