@@ -1,7 +1,20 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Sequence, Any, Iterator, Self, override
-from abc import ABC
+from abc import abstractmethod
+from typing import (
+    TYPE_CHECKING,
+    Protocol,
+    Sequence,
+    Any,
+    Iterator,
+    Self,
+    TypeAlias,
+    TypeVar,
+    final,
+    override,
+)
 from collections import OrderedDict
+
+from django_compose.base.context import Consumable, ConsumerPolicy
 
 if TYPE_CHECKING:
     from django_compose.base.components.base_components import (
@@ -11,8 +24,18 @@ if TYPE_CHECKING:
     from django_compose.base.attributes import Attribute
 
 
-class Modifier(ABC):
+class BaseModifier(Consumable):
 
+    @abstractmethod
+    def apply_before_build(self, context: Context, component: Component) -> None: ...
+
+    @abstractmethod
+    def apply(self, context: Context, component: Component) -> Component: ...
+
+
+class Modifier(BaseModifier):
+
+    @override
     def apply_before_build(self, context: Context, component: Component) -> None:
         """Injects behavior into the given component before the build process.
 
@@ -21,6 +44,7 @@ class Modifier(ABC):
         """
         pass
 
+    @override
     def apply(self, context: Context, component: Component) -> Component:
         """Injects behavior into the given component after the build process.
 
@@ -69,11 +93,36 @@ class PageRenderModifier(DeferredModifier):
         return component
 
 
-class Attributes(Modifier):
-    def __init__(self, *attributes: Attribute) -> None:
-        self.data: OrderedDict[str, Attribute] = OrderedDict()
-        for attr in attributes:
-            self.add(attr)
+T = TypeVar("T", bound="Modifier")
+ModifierDict = OrderedDict[type[T], T]
+
+
+@final
+class Modifiers(BaseModifier):
+
+    def __init__(self, *modifiers: T) -> None:
+        self.data: ModifierDict = OrderedDict()
+        for modifier in modifiers:
+            self.add(modifier)
+
+    def values(self) -> ModifierDict:
+        return OrderedDict(((m.key, m) for m in self.data.values()))
+
+    def add(self, modifier: T, overwrite=True) -> None:
+        if overwrite or type(modifier) not in self.data:
+            self.data[type(modifier)] = modifier
+
+    def add_all(self, modifiers: Modifiers | Sequence[T], overwrite=True) -> None:
+        for modifier in modifiers:
+            self.add(modifier, overwrite=overwrite)
+
+    @override
+    def apply_before_build(self, context: Context, component: Component) -> None:
+        component.modifiers.add_all(self)
+
+    @override
+    def apply(self, context: Context, component: Component) -> Component:
+        return component
 
     def __call__(self) -> Self:
         return self
@@ -81,33 +130,70 @@ class Attributes(Modifier):
     def __len__(self) -> int:
         return len(self.data)
 
-    def __iter__(self) -> Iterator[Attribute]:
+    def __iter__(self) -> Iterator[Modifier]:
         return iter(self.data.values())
 
-    def __contains__(self, item: str | Attribute) -> bool:
-        if isinstance(item, str):
+    def __contains__(self, item: type[T] | T) -> bool:
+        if isinstance(item, type):
             return item in self.data
-        return item.name in self.data
+        return type(item) in self.data
 
     def __str__(self) -> str:
-        return " ".join(str(attr) for attr in self.data.values())
+        return ", ".join(str(attr) for attr in self.data.values())
 
     def __bool__(self) -> bool:
         return bool(self.data)
 
-    def values(self) -> dict[str, Any]:
-        return {attr.name: attr.value for attr in self.data.values()}
 
-    def add(self, attribute: Attribute) -> None:
-        if attribute.name not in self.data:
-            self.data[attribute.name] = attribute
-        else:
-            self.data[attribute.name].merge(attribute)
+@final
+class Attributes(BaseModifier):
 
-    def add_all(self, attributes: "Attributes" | Sequence[Attribute]) -> None:
+    def __init__(self, *attributes: Attribute) -> None:
+        self._data: OrderedDict[str, Attribute] = OrderedDict()
         for attr in attributes:
             self.add(attr)
+
+    def values(self) -> dict[str, Any]:
+        return {attr.name: attr.value for attr in self._data.values()}
+
+    def add(self, attribute: Attribute, overwrite=True) -> None:
+        if attribute.name not in self._data:
+            self._data[attribute.name] = attribute
+        elif overwrite:
+            self._data[attribute.name] = self._data[attribute.name] | attribute
+        else:
+            self._data[attribute.name] = attribute | self._data[attribute.name]
+
+    def add_all(
+        self, attributes: "Attributes" | Sequence[Attribute], overwrite=True
+    ) -> None:
+        for attr in attributes:
+            self.add(attr, overwrite=overwrite)
 
     @override
     def apply_before_build(self, context: Context, component: Component) -> None:
         component.attributes.add_all(self)
+
+    @override
+    def apply(self, context: Context, component: Component) -> Component:
+        return component
+
+    def __call__(self) -> Self:
+        return self
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __iter__(self) -> Iterator[Attribute]:
+        return iter(self._data.values())
+
+    def __contains__(self, item: str | Attribute) -> bool:
+        if isinstance(item, str):
+            return item in self._data
+        return item.name in self._data
+
+    def __str__(self) -> str:
+        return " ".join(str(attr) for attr in self._data.values())
+
+    def __bool__(self) -> bool:
+        return bool(self._data)

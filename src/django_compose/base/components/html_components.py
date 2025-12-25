@@ -6,7 +6,7 @@ from .base_components import *
 class IsHtml(Protocol):
     element: htpy.Element
     attributes: Attributes
-    children: list[ComponentBase]
+    children: list[BaseComponent]
     htpy_kwargs: dict[str, str]
 
     def __getitem__(self, children: Children) -> Self: ...
@@ -14,39 +14,31 @@ class IsHtml(Protocol):
     def render(self) -> htpy.Node: ...
 
 
-class RendersHtmlMixin(RenderableComponentMixin):
+class RendersHtmlMixin(BuildsItselfMixin, Renderable):
+    @override
     def render(self: IsHtml) -> htpy.Renderable:
         return self.element(**self.attributes.values(), **self.htpy_kwargs)[
             (child.render() for child in self.children)
         ]
 
 
-class HtmlComponentBase(Component):
+class BaseHtmlComponent(Component):
     element: htpy.BaseElement
 
-    def full_build(self, context: Context) -> Self:
-        build_result = super().full_build(context)
-        if not isinstance(build_result, self.__class__):
-            tname = self.__class__.__name__
-            raise TypeError(
-                f"{tname}.build must return a {tname}, got {type(build_result)}"
-            )
-        return build_result
 
-
-class DocumentLevelComponent(RendersHtmlMixin, HtmlComponentBase):
+class DocumentLevelComponent(RendersHtmlMixin, BaseHtmlComponent):
     """Reserved for document-level components like Html, Head, Body."""
 
     element: htpy.Element
 
 
-class HtmlComponent(RendersHtmlMixin, HtmlComponentBase):
+class HtmlComponent(RendersHtmlMixin, BaseHtmlComponent):
     element: htpy.Element
 
 
 # HtmlVoidComponents do not have children and do not implement RendersHtmlMixin
 class HtmlVoidComponent(
-    VoidComponentMixin, RenderableComponentMixin, HtmlComponentBase
+    VoidComponentMixin, BuildsItselfMixin, Renderable, BaseHtmlComponent
 ):
     element: htpy.VoidElement
 

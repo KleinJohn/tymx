@@ -1,5 +1,5 @@
 from __future__ import annotations
-from enum import Enum
+from enum import Enum, auto
 from typing import (
     Self,
     TypeAlias,
@@ -14,8 +14,12 @@ from abc import ABC, abstractmethod
 import htpy
 
 from django_compose.base.attributes import Attribute, classes
-from django_compose.base.context import Context
-from django_compose.base.modifiers.base_modifiers import Modifier, Attributes
+from django_compose.base.context import Consumable, Context, DataDict
+from django_compose.base.modifiers.base_modifiers import (
+    Modifier,
+    Attributes,
+    Modifiers,
+)
 
 if TYPE_CHECKING:
     from django_compose.base.theme import ComponentTheme
@@ -24,7 +28,7 @@ if TYPE_CHECKING:
 # TYPE DEFINITIONS:
 
 
-T = TypeVar("T", bound="ComponentBase")
+T = TypeVar("T", bound="BaseComponent")
 GenericComponentLike: TypeAlias = Union[None, T, list[T]]
 # prevent nesting of build functions:
 GenericComponentChildrenNoLambda: TypeAlias = Union[
@@ -40,75 +44,36 @@ GenericComponentChildren: TypeAlias = Union[
     BuildFunctionType,
 ]
 
-ComponentLike: TypeAlias = GenericComponentLike["ComponentBase"]
-Children: TypeAlias = GenericComponentChildren["ComponentBase"]
+ComponentLike: TypeAlias = GenericComponentLike["BaseComponent"]
+Children: TypeAlias = GenericComponentChildren["BaseComponent"]
 
-AttributeLike: TypeAlias = str | Attribute | Iterable["AttributeLike"]
-ModifierLike: TypeAlias = Union[str, Attribute, "Modifier", Iterable["ModifierLike"]]
+AttributeLike: TypeAlias = str | Attribute | Attributes | Iterable["AttributeLike"]
+ModifierLike: TypeAlias = Union[
+    str, Attribute, Attributes, Modifier, Modifiers, Iterable["ModifierLike"]
+]
 
 
 default_attribute: Attribute = classes
 
 
-class BuildPolicy(Enum):
-
-    NONE = 1
-    "Neither components nor children are built."
-
-    COMPONENTS = 2
-    "Fully builds the components returned from the Component's build() method."
-
-    CHILDREN = 3
-    "Fully builds the children referenced in the Component's getitem[] method."
-
-
-class ComponentBase(ABC):
-    build_policy = BuildPolicy.COMPONENTS
+class BaseComponent(ABC):
 
     # All Components that allow zero children have to provide an empty constructor.
     def __init__(
         self,
         *attributes: AttributeLike,
         children: Children = None,
-        build_policy: BuildPolicy | None = None,
         htpy_kwargs: dict[str, str] | None = None,
     ) -> None:
         self.attributes = Attributes()
         self._init_attributes(attributes)
-        self.children: list[ComponentBase] = self._children_to_list(children)
-        self.build_policy = build_policy or self.__class__.build_policy
+        self._children: list[BaseComponent] = self._children_to_list(children)
         self.htpy_kwargs = htpy_kwargs if htpy_kwargs is not None else {}
-
-    def _init_attributes(self, attributes: Iterable[AttributeLike]) -> None:
-        for attribute in attributes:
-            match attribute:
-                case str():
-                    self.attributes.add(default_attribute(attribute))
-                case Attribute():
-                    self.attributes.add(attribute)
-                case Iterable():
-                    self._init_attributes(attribute)
-                case _:
-                    raise ValueError(
-                        f"Invalid attribute type: {type(attribute)} on {self.__class__.__name__}."
-                    )
-
-    def __getitem__(self, children: Children, **kwargs) -> Self:
-        return self.__class__(
-            *self.attributes,
-            children=children,
-            build_policy=self.build_policy,
-            htpy_kwargs=self.htpy_kwargs,
-            **kwargs,
-        )
-
-    def __class_getitem__(cls, children: Children, **kwargs) -> Self:
-        return cls(children=children, **kwargs)
-
-    def __str__(self) -> str:
-        if not self.children:
-            return self.__class__.__name__
-        return f"{self.__class__.__name__}({", ".join(str(child) for child in self.children)})"
+        self.provides: DataDict = {}
+        if self.attributes:
+            self.provides[Attributes] = self.attributes
+        self._building = False
+        self._do_build = True  # use to prevent recursion in build()
 
     @abstractmethod
     def build(self, context: Context, children: Children) -> Children:
@@ -119,44 +84,60 @@ class ComponentBase(ABC):
         raise NotImplementedError()
 
     def full_build(self, context: Context) -> ComponentLike:
+        self.consume_data(context)
         self._before_build(context)
-        components = self._handle_build(context)
-        self._after_build(context, components)
-        return self._unwrap_component_list(components)
+        children = self._handle_build(context)
+        self._after_build(context, children)
+        return self._unwrap_component_list(children)
+
+    def update_provider_data(self) -> DataDict:
+        return {}
+
+    def consume_data(self, context: Context) -> None:
+        attributes = context.get(Attributes)
+        if attributes:
+            self.attributes.add_all(attributes, overwrite=False)
 
     def _before_build(self, context: Context) -> None:
-        """Called before components are built and anything is inherited"""
         pass
 
-    def _after_build(self, context: Context, components: list[ComponentBase]) -> None:
-        """Called after components are built and inheritance is handled."""
+    def _after_build(self, context: Context, components: list[BaseComponent]) -> None:
         pass
 
-    def _inherit_to_component(self, context: Context, component: ComponentBase) -> None:
-        component.attributes.add_all(self.attributes)
+    def _before_build_children(
+        self, context: Context, children: list[BaseComponent]
+    ) -> None:
+        self.provides.update(self.update_provider_data())
+        context.add_data_frame(self.provides)
 
-    def _handle_build(self, context: Context) -> list[ComponentBase]:
-        lst: list[ComponentBase] = []
-        children = self.children
-        # always do inheritance first, then full build
+    def _after_build_children(
+        self, context: Context, children: list[BaseComponent]
+    ) -> None:
+        context.pop_data_frame()
 
-        if self.build_policy == BuildPolicy.CHILDREN:
-            for child in self.children:
-                self._inherit_to_component(context, child)
-                lst.extend(self._children_to_list(child.full_build(context)))
-            children = lst
+    def _build_children(
+        self, context: Context, children: list[BaseComponent]
+    ) -> list[BaseComponent]:
+        lst: list[BaseComponent] = []
+        self._before_build_children(context, children)
+        for child in children:
+            lst.extend(self._children_to_list(child.full_build(context)))
+        self._after_build_children(context, children)
+        return lst
 
-        components = self._children_to_list(self.build(context, children))
+    def _handle_build(self, context: Context) -> list[BaseComponent]:
+        children = self._build_children(context, self._children)
+        if self._do_build:
+            self._building = True
+            print(
+                self.__class__.__name__,
+                [str(frame.data.keys()) for frame in context._data_stack],
+            )
+            children = self._children_to_list(self.build(context, children))
+            self._building = False
+        return children
 
-        if self.build_policy == BuildPolicy.COMPONENTS:
-            for component in components:
-                self._inherit_to_component(context, component)
-                lst.extend(self._children_to_list(component.full_build(context)))
-            components = lst
-
-        return components
-
-    def _unwrap_component_list(self, components: list[ComponentBase]) -> ComponentLike:
+    def _unwrap_component_list(self, components: list[BaseComponent]) -> ComponentLike:
         match len(components):
             case 0:
                 return None
@@ -165,8 +146,43 @@ class ComponentBase(ABC):
             case _:
                 return components
 
+    def _init_attributes(self, attributes: Iterable[AttributeLike]) -> None:
+        for attribute in attributes:
+            match attribute:
+                case str():
+                    self.attributes.add(default_attribute(attribute))
+                case Attribute():
+                    self.attributes.add(attribute)
+                case Attributes():
+                    self.attributes.add_all(attribute)
+                case Iterable():
+                    self._init_attributes(attribute)
+                case _:
+                    raise ValueError(
+                        f"Invalid attribute type: {type(attribute)} on {self.__class__.__name__}."
+                    )
+
+    def __getitem__(self, children: Children, **kwargs) -> Self:
+        copy = self.__class__(
+            *self.attributes,
+            children=children,
+            htpy_kwargs=self.htpy_kwargs,
+            **kwargs,
+        )
+        # break potential build recursion:
+        copy._do_build = not self._building
+        return copy
+
+    def __class_getitem__(cls, children: Children, **kwargs) -> Self:
+        return cls(children=children, **kwargs)
+
+    def __str__(self) -> str:
+        if not self._children:
+            return self.__class__.__name__
+        return f"{self.__class__.__name__}({", ".join(str(child) for child in self._children)})"
+
     @classmethod
-    def _children_to_list(cls, children: Children) -> list[ComponentBase]:
+    def _children_to_list(cls, children: Children) -> list[BaseComponent]:
         if not children:
             return []
         match children:
@@ -174,10 +190,10 @@ class ComponentBase(ABC):
                 return [children()]
             case str():
                 return [Text(text=children)]
-            case ComponentBase():
+            case BaseComponent():
                 return [children]
             case Sequence():
-                lst: list["ComponentBase"] = []
+                lst: list["BaseComponent"] = []
                 for child in children:
                     lst.extend(cls._children_to_list(child))
                 return lst
@@ -187,24 +203,24 @@ class ComponentBase(ABC):
                 raise ValueError("Invalid child type.")
 
 
-class Component(ComponentBase):
+class Component(BaseComponent):
 
     def __init__(
         self,
         *modifiers: ModifierLike,
         component_theme: ComponentTheme | None = None,
         children: Children = None,
-        build_policy: BuildPolicy | None = None,
         htpy_kwargs: dict[str, str] | None = None,
     ) -> None:
         super().__init__(
             children=children,
-            build_policy=build_policy,
             htpy_kwargs=htpy_kwargs,
         )
         self.component_theme = component_theme
-        self.modifiers: list[Modifier] = []
+        self.modifiers = Modifiers()
         self._init_modifiers(modifiers)
+        if self.modifiers:
+            self.provides[Modifiers] = self.modifiers
 
     def _init_modifiers(self, modifiers: Iterable[ModifierLike]) -> None:
         for modifier in modifiers:
@@ -213,8 +229,12 @@ class Component(ComponentBase):
                     self.attributes.add(default_attribute(modifier))
                 case Attribute():
                     self.attributes.add(modifier)
+                case Attributes():
+                    self.attributes.add_all(modifier)
                 case Modifier():
-                    self.modifiers.append(modifier)
+                    self.modifiers.add(modifier)
+                case Modifiers():
+                    self.modifiers.add_all(modifier)
                 case Iterable():
                     self._init_modifiers(modifier)
                 case _:
@@ -234,10 +254,11 @@ class Component(ComponentBase):
         )
 
     @override
-    def _inherit_to_component(self, context: Context, component: ComponentBase) -> None:
-        super()._inherit_to_component(context, component)
-        if isinstance(component, Component):
-            component.modifiers.extend(self.modifiers)
+    def consume_data(self, context: Context) -> None:
+        super().consume_data(context)
+        modifiers = context.get(Modifiers)
+        if modifiers:
+            self.modifiers.add_all(self.modifiers, overwrite=False)
 
     @override
     def _before_build(self, context: Context) -> None:
@@ -247,13 +268,12 @@ class Component(ComponentBase):
             modifier.apply_before_build(context, self)
 
     @override
-    def _after_build(self, context: Context, components: list[ComponentBase]) -> None:
+    def _after_build(self, context: Context, components: list[BaseComponent]) -> None:
         """Called after components are built and inheritance is handled."""
         super()._after_build(context, components)
 
-        theme = (
-            self.component_theme
-        )  # or in future: context.theme.get_component_theme(self)
+        # or in future: context.get(Theme).get_component_theme(self)
+        theme = self.component_theme
         for i, component in enumerate(components):
             if not isinstance(component, Component):
                 continue
@@ -266,19 +286,19 @@ class Component(ComponentBase):
 
     @override
     def __getitem__(self, children: Children, **kwargs) -> Self:
-        return self.__class__(
+        copy = self.__class__(
             *self.attributes,
             *self.modifiers,
             children=children,
             component_theme=self.component_theme,
-            build_policy=self.build_policy,
             htpy_kwargs=self.htpy_kwargs,
             **kwargs,
         )
+        copy._do_build = not self._building
+        return copy
 
 
 class VoidComponentMixin:
-    build_policy = BuildPolicy.NONE
 
     def __getitem__(self, children: Children, **kwargs) -> Self:
         if children:
@@ -292,7 +312,7 @@ class VoidComponentMixin:
 
 
 class SingleChildComponentMixin:
-    def __getitem__(self, children: Children, **kwargs) -> ComponentBase:
+    def __getitem__(self, children: Children, **kwargs) -> BaseComponent:
         if (
             isinstance(children, Sequence)
             and not isinstance(children, str)
@@ -313,12 +333,16 @@ class SingleChildComponentMixin:
         return super().__getitem__(children, **kwargs)
 
 
-class RenderableComponentMixin:
-    build_policy = BuildPolicy.CHILDREN
+class Renderable(ABC):
+    @abstractmethod
+    def render(self) -> htpy.Renderable: ...
+
+
+class BuildsItselfMixin:
 
     def build(
-        self: ComponentBase, context: Context, children: Children
-    ) -> ComponentBase:
+        self: BaseComponent, context: Context, children: Children
+    ) -> BaseComponent:
         return self[children]
 
 
@@ -331,14 +355,12 @@ class ContextBuilder(Component):
         build_function: BuildFunctionType,
         component_theme: ComponentTheme | None = None,
         children: Children = None,
-        build_policy: BuildPolicy | None = None,
         htpy_kwargs: dict[str, str] | None = None,
     ) -> None:
         super().__init__(
             *modifiers,
             component_theme=component_theme,
             children=children,
-            build_policy=build_policy,
             htpy_kwargs=htpy_kwargs,
         )
         self.build_function = build_function
@@ -355,7 +377,7 @@ class ContextBuilder(Component):
 
 
 @final
-class Text(VoidComponentMixin, RenderableComponentMixin, Component):
+class Text(VoidComponentMixin, BuildsItselfMixin, Component):
 
     def __init__(self, *args, text: str = "", **kwargs):
         super().__init__(*args, **kwargs)

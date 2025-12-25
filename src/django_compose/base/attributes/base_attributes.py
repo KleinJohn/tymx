@@ -58,16 +58,20 @@ class Attribute(ABC):
                 + "\n- likely due to subclass not passing all required arguments for __init__ in its __call__ method."
             )
 
-    def __ior__(self, other: Self) -> None:
+    def __or__(self, other: Self) -> Self:
         return self.merge(other)
 
     @abstractmethod
     def __str__(self) -> str:
         raise NotImplementedError()
 
-    def merge(self, other: "Attribute") -> None:
+    def merge(self, other: "Attribute") -> Self:
         """Default behavior is to override own value with the other attribute's value."""
-        self.value = other.value
+        if self.name != other.name:
+            raise ValueError(
+                f"Cannot merge attributes with different names: {self.name} and {other.name}"
+            )
+        return self.__class__(self.name, value=other.value)
 
 
 class SimpleAttribute(Attribute):
@@ -209,10 +213,13 @@ class ComposedAttribute(SimpleAttribute):
             ),
         )
 
-    def merge(self, other: Attribute) -> None:
+    def merge(self, other: Attribute) -> "ComposedAttribute":
         if not isinstance(other, ComposedAttribute):
-            super().merge(other)
-            return
+            return super().merge(other)
+        if self.name != other.name:
+            raise ValueError(
+                f"Cannot merge attributes with different names: {self.name} and {other.name}"
+            )
         self_values: tuple[str, ...] = (
             self.composed_values if self.composed_values else tuple()
         )
@@ -222,4 +229,4 @@ class ComposedAttribute(SimpleAttribute):
         total_values = self_values + other_values
         if self.policy.remove_duplicates:
             total_values = tuple(OrderedDict.fromkeys(total_values).keys())
-        self.value = self.policy.composer(total_values)
+        return self(self.policy.composer(total_values))

@@ -2,7 +2,7 @@ from typing import Iterable, override
 
 from django_compose.base.components.base_components import (
     Children,
-    BuildPolicy,
+    ComponentLike,
     ModifierLike,
     VoidComponentMixin,
     Component,
@@ -23,7 +23,6 @@ import htpy
 
 
 class Page(VoidComponentMixin, Component):
-    build_policy = BuildPolicy.COMPONENTS
 
     def __init__(
         self,
@@ -35,13 +34,11 @@ class Page(VoidComponentMixin, Component):
         body: Children = None,
         view: type[ComposePageView] | None = None,
         route_pattern: str | None = None,
-        build_policy: BuildPolicy | None = None,
         htpy_kwargs: dict[str, str] | None = None,
     ):
         super().__init__(
             *modifiers,
             children=Html[Head[head], Body[body]],
-            build_policy=build_policy,
             htpy_kwargs=htpy_kwargs,
         )
         self.name = name
@@ -54,19 +51,11 @@ class Page(VoidComponentMixin, Component):
         self.render_time_modifiers: list[PageRenderModifier] = []
 
     @override
-    def full_build(self, context: Context | None = None) -> DocumentLevelComponent:
-        if context is None:
-            raise ValueError("Context must be provided to render the page.")
+    def full_build(self, context: Context) -> ComponentLike:
         if self.theme is not None:
             context = context.copy_with(theme=self.theme)
         context = context.copy_with(page=self)
-        build_result = super().full_build(context)
-        if not isinstance(build_result, DocumentLevelComponent):
-            raise TypeError(
-                f"Page.build must return a DocumentLevelComponent, got {type(build_result)}"
-            )
-        self._build_result = build_result
-        return self._build_result
+        return super().full_build(context)
 
     @override
     def build(self, context: Context, children: Children) -> Children:
@@ -99,6 +88,6 @@ class ComposeApp:
 
     def build(self) -> None:
         theme = self.theme or Theme()
-        context = Context(theme=theme, router=self.router)
+        context = Context(router=self.router)
         for route in self.router:
             route.page.full_build(context)
