@@ -157,7 +157,7 @@ class Attributes(BaseModifier):
         return {attr.name: attr.value for attr in self._data.values()}
 
     def add(self, attribute: Attribute, overwrite=True) -> None:
-        if attribute.name not in self._data:
+        if attribute.name not in self:
             self._data[attribute.name] = attribute
         elif overwrite:
             self._data[attribute.name] = self._data[attribute.name] | attribute

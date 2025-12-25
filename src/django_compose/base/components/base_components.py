@@ -83,13 +83,6 @@ class BaseComponent(ABC):
     def render(self) -> htpy.Node:
         raise NotImplementedError()
 
-    def full_build(self, context: Context) -> ComponentLike:
-        self.consume_data(context)
-        self._before_build(context)
-        children = self._handle_build(context)
-        self._after_build(context, children)
-        return self._unwrap_component_list(children)
-
     def update_provider_data(self) -> DataDict:
         return {}
 
@@ -97,6 +90,39 @@ class BaseComponent(ABC):
         attributes = context.get(Attributes)
         if attributes:
             self.attributes.add_all(attributes, overwrite=False)
+
+    def full_build(self, context: Context) -> ComponentLike:
+        self.consume_data(context)
+        self._before_build(context)
+        children = self._handle_build(context)
+        self._after_build(context, children)
+        return self._unwrap_component_list(children)
+
+    def _handle_build(self, context: Context) -> list[BaseComponent]:
+        children = self._children
+        if self._do_build:
+            self._building = True
+            # print(
+            #     self.__class__.__name__,
+            #     [list(map(str, s.data.keys())) for s in context._data_stack],
+            # )
+            children = self._children_to_list(self.build(context, self._children))
+            self._building = False
+            children = self._build_children(context, children)
+        else:
+            self._children = self._build_children(context, self._children)
+            return [self]
+        return children
+
+    def _build_children(
+        self, context: Context, children: list[BaseComponent]
+    ) -> list[BaseComponent]:
+        lst: list[BaseComponent] = []
+        self._before_build_children(context, children)
+        for child in children:
+            lst.extend(self._children_to_list(child.full_build(context)))
+        self._after_build_children(context, children)
+        return lst
 
     def _before_build(self, context: Context) -> None:
         pass
@@ -115,28 +141,6 @@ class BaseComponent(ABC):
     ) -> None:
         context.pop_data_frame()
 
-    def _build_children(
-        self, context: Context, children: list[BaseComponent]
-    ) -> list[BaseComponent]:
-        lst: list[BaseComponent] = []
-        self._before_build_children(context, children)
-        for child in children:
-            lst.extend(self._children_to_list(child.full_build(context)))
-        self._after_build_children(context, children)
-        return lst
-
-    def _handle_build(self, context: Context) -> list[BaseComponent]:
-        children = self._build_children(context, self._children)
-        if self._do_build:
-            self._building = True
-            print(
-                self.__class__.__name__,
-                [str(frame.data.keys()) for frame in context._data_stack],
-            )
-            children = self._children_to_list(self.build(context, children))
-            self._building = False
-        return children
-
     def _unwrap_component_list(self, components: list[BaseComponent]) -> ComponentLike:
         match len(components):
             case 0:
@@ -146,8 +150,8 @@ class BaseComponent(ABC):
             case _:
                 return components
 
-    def _init_attributes(self, attributes: Iterable[AttributeLike]) -> None:
-        for attribute in attributes:
+    def _init_attributes(self, attr_like: Iterable[AttributeLike]) -> None:
+        for attribute in attr_like:
             match attribute:
                 case str():
                     self.attributes.add(default_attribute(attribute))
@@ -219,11 +223,13 @@ class Component(BaseComponent):
         self.component_theme = component_theme
         self.modifiers = Modifiers()
         self._init_modifiers(modifiers)
+        if self.attributes:
+            self.provides[Attributes] = self.attributes
         if self.modifiers:
             self.provides[Modifiers] = self.modifiers
 
-    def _init_modifiers(self, modifiers: Iterable[ModifierLike]) -> None:
-        for modifier in modifiers:
+    def _init_modifiers(self, mod_like: Iterable[ModifierLike]) -> None:
+        for modifier in mod_like:
             match modifier:
                 case str():
                     self.attributes.add(default_attribute(modifier))
