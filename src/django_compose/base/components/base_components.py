@@ -69,9 +69,9 @@ class BaseComponent(ABC):
         self._init_attributes(attributes)
         self._children: list[BaseComponent] = self._children_to_list(children)
         self.htpy_kwargs = htpy_kwargs if htpy_kwargs is not None else {}
-        self.provides: DataDict = {}
+        self._provides: DataDict = {}
         if self.attributes:
-            self.provides[Attributes] = self.attributes
+            self.provide(self.attributes)
         self._building = False
         self._do_build = True  # use to prevent recursion in build()
 
@@ -83,13 +83,17 @@ class BaseComponent(ABC):
     def render(self) -> htpy.Node:
         raise NotImplementedError()
 
-    def update_provider_data(self) -> DataDict:
-        return {}
+    def provide(self, consumable: Consumable) -> None:
+        self._provides[type(consumable)] = consumable
+
+    def provide_data(self) -> None:
+        """add statements like self.provide(SomeData()) here to provide data to children."""
+        pass
 
     def consume_data(self, context: Context) -> None:
         attributes = context.get(Attributes)
         if attributes:
-            self.attributes.add_all(attributes, overwrite=False)
+            self.attributes.update(attributes, overwrite=False)
 
     def full_build(self, context: Context) -> ComponentLike:
         self.consume_data(context)
@@ -102,13 +106,12 @@ class BaseComponent(ABC):
         children = self._children
         if self._do_build:
             self._building = True
-            # print(
-            #     self.__class__.__name__,
-            #     [list(map(str, s.data.keys())) for s in context._data_stack],
-            # )
             children = self._children_to_list(self.build(context, self._children))
             self._building = False
+
+            self._before_build_children(context, children)
             children = self._build_children(context, children)
+            self._after_build_children(context, children)
         else:
             self._children = self._build_children(context, self._children)
             return [self]
@@ -118,10 +121,8 @@ class BaseComponent(ABC):
         self, context: Context, children: list[BaseComponent]
     ) -> list[BaseComponent]:
         lst: list[BaseComponent] = []
-        self._before_build_children(context, children)
         for child in children:
             lst.extend(self._children_to_list(child.full_build(context)))
-        self._after_build_children(context, children)
         return lst
 
     def _before_build(self, context: Context) -> None:
@@ -133,8 +134,8 @@ class BaseComponent(ABC):
     def _before_build_children(
         self, context: Context, children: list[BaseComponent]
     ) -> None:
-        self.provides.update(self.update_provider_data())
-        context.add_data_frame(self.provides)
+        self.provide_data()
+        context.add_data_frame(self._provides)
 
     def _after_build_children(
         self, context: Context, children: list[BaseComponent]
@@ -158,7 +159,7 @@ class BaseComponent(ABC):
                 case Attribute():
                     self.attributes.add(attribute)
                 case Attributes():
-                    self.attributes.add_all(attribute)
+                    self.attributes.update(attribute)
                 case Iterable():
                     self._init_attributes(attribute)
                 case _:
@@ -224,9 +225,9 @@ class Component(BaseComponent):
         self.modifiers = Modifiers()
         self._init_modifiers(modifiers)
         if self.attributes:
-            self.provides[Attributes] = self.attributes
+            self.provide(self.attributes)
         if self.modifiers:
-            self.provides[Modifiers] = self.modifiers
+            self.provide(self.modifiers)
 
     def _init_modifiers(self, mod_like: Iterable[ModifierLike]) -> None:
         for modifier in mod_like:
@@ -236,11 +237,11 @@ class Component(BaseComponent):
                 case Attribute():
                     self.attributes.add(modifier)
                 case Attributes():
-                    self.attributes.add_all(modifier)
+                    self.attributes.update(modifier)
                 case Modifier():
                     self.modifiers.add(modifier)
                 case Modifiers():
-                    self.modifiers.add_all(modifier)
+                    self.modifiers.update(modifier)
                 case Iterable():
                     self._init_modifiers(modifier)
                 case _:
@@ -262,9 +263,8 @@ class Component(BaseComponent):
     @override
     def consume_data(self, context: Context) -> None:
         super().consume_data(context)
-        modifiers = context.get(Modifiers)
-        if modifiers:
-            self.modifiers.add_all(self.modifiers, overwrite=False)
+        modifiers = context.get_all(Modifiers)
+        self.modifiers.update(modifiers, overwrite=False)
 
     @override
     def _before_build(self, context: Context) -> None:

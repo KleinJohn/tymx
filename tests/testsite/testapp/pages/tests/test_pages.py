@@ -11,7 +11,7 @@ from django_compose.base.components import (
 from django_compose.base.context import Context
 from django_compose.base.attributes import id, style, classes, disabled
 from django_compose.base.app import Page, Router, Theme
-from django_compose.base.modifiers import DebugModifier
+from django_compose.base.modifiers import DebugModifier, PrintContextModifier
 
 
 class CustomButton(Component):
@@ -39,10 +39,11 @@ class IndexLink(Component):
 
 
 index_page = Page(
+    PrintContextModifier(),
     name="index",
     route_pattern="",
     body=lambda context, children: [
-        H1((id("header1"), style(color="blue", font_size="12px")))[
+        H1(id("header1"), style(color="blue", font_size="12px"))[
             CustomDiv("button", "is-active")["press"],
         ],
         "An Input:",
@@ -51,7 +52,7 @@ index_page = Page(
 )
 
 service_page = Page(
-    "service",
+    name="service",
     body=[
         H1("title", style("font-size:3em"))["Service Page"],
         IndexLink["Go to Index Page"],
@@ -61,6 +62,6 @@ service_page = Page(
 if __name__ == "__main__":
     context = Context(router=Router("test", pages=[index_page]))
     built_index_page = index_page.full_build(context)
-    built_service_page = service_page.full_build(context)
+    # built_service_page = service_page.full_build(context)
     print(built_index_page)
-    print(built_service_page)
+    # print(built_service_page)

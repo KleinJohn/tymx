@@ -26,8 +26,8 @@ class Page(VoidComponentMixin, Component):
 
     def __init__(
         self,
-        name: str,
         *modifiers: ModifierLike,
+        name: str,
         children: Children = None,
         theme: Theme | None = None,
         head: Children = None,

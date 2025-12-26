@@ -2,19 +2,17 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import (
     TYPE_CHECKING,
-    Protocol,
     Sequence,
     Any,
     Iterator,
     Self,
-    TypeAlias,
     TypeVar,
     final,
     override,
 )
 from collections import OrderedDict
 
-from django_compose.base.context import Consumable, ConsumerPolicy
+from django_compose.base.context import Consumable, ConsumerPolicy, UpdateableMixin
 
 if TYPE_CHECKING:
     from django_compose.base.components.base_components import (
@@ -22,6 +20,10 @@ if TYPE_CHECKING:
         Context,
     )
     from django_compose.base.attributes import Attribute
+
+
+T = TypeVar("T", bound="Modifier")
+ModifierDict = OrderedDict[type[T], T]
 
 
 class BaseModifier(Consumable):
@@ -78,8 +80,8 @@ class DeferredModifier(Modifier):
 Make sure you call super().apply() in overrides."""
             )
 
-    def apply_when_notified(self, context: Context, component: Component) -> None:
-        pass
+    @abstractmethod
+    def apply_when_notified(self, context: Context, component: Component) -> None: ...
 
 
 class PageRenderModifier(DeferredModifier):
@@ -93,12 +95,9 @@ class PageRenderModifier(DeferredModifier):
         return component
 
 
-T = TypeVar("T", bound="Modifier")
-ModifierDict = OrderedDict[type[T], T]
-
-
 @final
-class Modifiers(BaseModifier):
+class Modifiers(UpdateableMixin, BaseModifier):
+    consumer_policy = ConsumerPolicy.ALL_CHILDREN
 
     def __init__(self, *modifiers: T) -> None:
         self.data: ModifierDict = OrderedDict()
@@ -112,13 +111,14 @@ class Modifiers(BaseModifier):
         if overwrite or type(modifier) not in self.data:
             self.data[type(modifier)] = modifier
 
-    def add_all(self, modifiers: Modifiers | Sequence[T], overwrite=True) -> None:
+    @override
+    def update(self, modifiers: Modifiers | Sequence[Modifier], overwrite=True) -> None:
         for modifier in modifiers:
             self.add(modifier, overwrite=overwrite)
 
     @override
     def apply_before_build(self, context: Context, component: Component) -> None:
-        component.modifiers.add_all(self)
+        component.modifiers.update(self)
 
     @override
     def apply(self, context: Context, component: Component) -> Component:
@@ -146,7 +146,8 @@ class Modifiers(BaseModifier):
 
 
 @final
-class Attributes(BaseModifier):
+class Attributes(UpdateableMixin, BaseModifier):
+    consumer_policy = ConsumerPolicy.DIRECT_CHILDREN
 
     def __init__(self, *attributes: Attribute) -> None:
         self._data: OrderedDict[str, Attribute] = OrderedDict()
@@ -164,7 +165,8 @@ class Attributes(BaseModifier):
         else:
             self._data[attribute.name] = attribute | self._data[attribute.name]
 
-    def add_all(
+    @override
+    def update(
         self, attributes: "Attributes" | Sequence[Attribute], overwrite=True
     ) -> None:
         for attr in attributes:
@@ -172,7 +174,7 @@ class Attributes(BaseModifier):
 
     @override
     def apply_before_build(self, context: Context, component: Component) -> None:
-        component.attributes.add_all(self)
+        component.attributes.update(self)
 
     @override
     def apply(self, context: Context, component: Component) -> Component:

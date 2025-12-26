@@ -1,40 +1,54 @@
 from __future__ import annotations
-from abc import ABC
+from abc import ABC, abstractmethod
 from enum import Enum, auto
-from typing import TYPE_CHECKING, TypeVar, TypeAlias
+from typing import TYPE_CHECKING, Callable, TypeVar, TypeAlias
 
 if TYPE_CHECKING:
     from django_compose.base.app import Router, Page
     from django_compose.base.components.base_components import BaseComponent, Renderable
 
 
+T = TypeVar("T", bound="Consumable")
+T_Update = TypeVar("T_Update", bound="UpdateableMixin")
+DataDict: TypeAlias = dict[type[T], T]
+
+
 class ConsumerPolicy(Enum):
     """Defines who can consume a Consumable."""
 
     NONE = auto()
-    ALL = auto()
-    ALL_DIRECT = auto()
+    ALL_CHILDREN = auto()
+    DIRECT_CHILDREN = auto()
     RENDERABLES = auto()
+    CUSTOM = auto()
 
 
 class Consumable(ABC):
     consumer_policy = ConsumerPolicy.NONE
+    auto_get = False
 
     def applies_to(self, consumer: BaseComponent, parent: BaseComponent) -> bool:
         match self.consumer_policy:
             case ConsumerPolicy.NONE:
                 return False
-            case ConsumerPolicy.ALL:
+            case ConsumerPolicy.ALL_CHILDREN:
                 return True
-            case ConsumerPolicy.ALL_DIRECT:
+            case ConsumerPolicy.DIRECT_CHILDREN:
                 return True
             case ConsumerPolicy.RENDERABLES:
                 return isinstance(consumer, Renderable)
+            case ConsumerPolicy.CUSTOM:
+                return self.custom_applies_to(consumer, parent)
         return False
 
+    def custom_applies_to(self, consumer: BaseComponent, parent: BaseComponent) -> bool:
+        raise NotImplementedError()
 
-T = TypeVar("T", bound="Consumable")
-DataDict: TypeAlias = dict[type[T], T]
+
+class UpdateableMixin(ABC):
+
+    @abstractmethod
+    def update(self: T, other: T) -> None: ...
 
 
 class ContextFrame:
@@ -79,13 +93,22 @@ class Context:
         self._data_stack.pop()
 
     def get(self, key: type[T]) -> T | None:
+        # TODO: enforce ConsumerPolicy
         for frame in reversed(self._data_stack):
             if key in frame.data:
                 return frame.data[key]
         return None
 
+    def get_all(self, key: type[T_Update]) -> T_Update:
+        # TODO: enforce ConsumerPolicy
+        temp = key()
+        for frame in self._data_stack:
+            if key in frame.data:
+                temp.update(frame.data[key])
+        return temp
+
     @property
-    def url(self) -> str:
+    def current_url(self) -> str:
         if not self.page:
             raise ValueError("No page found in context.")
         return self.router.routes[self.page.name].url
