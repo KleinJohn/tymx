@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Callable, TypeVar, TypeAlias
+from typing import TYPE_CHECKING, Any, Callable, TypeVar, TypeAlias
 
 if TYPE_CHECKING:
     from django_compose.base.app import Router, Page
@@ -52,8 +52,20 @@ class UpdateableMixin(ABC):
 
 
 class ContextFrame:
-    def __init__(self, data: DataDict):
-        self.data = data
+    def __init__(self, data: DataDict | None = None):
+        self.data = data if data is not None else {}
+
+    def get(self, key: type[T]) -> T | None:
+        return self.data.get(key)
+
+    def __getitem__(self, key: type[T]) -> T:
+        value = self.get(key)
+        if value is None:
+            raise KeyError(f"Key {key} not found in context frame.")
+        return value
+
+    def __setitem__(self, key: type[T], value: T) -> None:
+        self.data[key] = value
 
 
 class Context:
@@ -84,10 +96,10 @@ class Context:
             data_stack = [*data_stack]
         return Context(router=router, page=page, data_stack=data_stack)
 
-    def add_data_frame(self, data: DataDict) -> None:
+    def push_data(self, data: DataDict) -> None:
         self._data_stack.append(ContextFrame(data))
 
-    def pop_data_frame(self) -> None:
+    def pop_frame(self) -> None:
         if not self._data_stack:
             raise IndexError("No provider to pop from the context.")
         self._data_stack.pop()

@@ -38,8 +38,5 @@ class PrintContextModifier(Modifier):
         super().apply_before_build(context, component)
         print(
             f"{component.__class__.__name__:<20}\t",
-            [
-                list(map(lambda f: f.__name__, s.data.keys()))
-                for s in context._data_stack
-            ],
+            [[f.__name__ for f in s.data.keys()] for s in context._data_stack],
         )

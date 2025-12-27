@@ -19,16 +19,16 @@ class CustomButton(Component):
     def build(self, context: Context, children: Children) -> Children:
         return Div[
             "Custom Button Start",
-            Button[children],
+            children,
             "End of Custom Button",
         ]
 
 
 class CustomDiv(Component):
     def build(self, context: Context, children: Children) -> Children:
-        return Div[
+        return CustomButton[
             ["Custom Div Start"],
-            CustomButton(disabled)[children],
+            children,
             "Custom Div End",
         ]
 
@@ -44,7 +44,7 @@ index_page = Page(
     route_pattern="",
     body=lambda context, children: [
         H1(id("header1"), style(color="blue", font_size="12px"))[
-            CustomDiv("button", "is-active")["press"],
+            CustomDiv("button", "is-active")[H1["press"]],
         ],
         "An Input:",
         Input(classes("input-field"), style(margin="5px"), disabled),
@@ -64,4 +64,5 @@ if __name__ == "__main__":
     built_index_page = index_page.full_build(context)
     # built_service_page = service_page.full_build(context)
     print(built_index_page)
+    print(built_index_page.render())
     # print(built_service_page)

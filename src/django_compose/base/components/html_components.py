@@ -6,8 +6,8 @@ from .base_components import *
 class IsHtml(Protocol):
     element: htpy.Element
     attributes: Attributes
-    children: list[BaseComponent]
-    htpy_kwargs: dict[str, str]
+    _children: list[BaseComponent]
+    _htpy_kwargs: dict[str, str]
 
     def __getitem__(self, children: Children) -> Self: ...
 
@@ -17,8 +17,8 @@ class IsHtml(Protocol):
 class RendersHtmlMixin(BuildsItselfMixin, Renderable):
     @override
     def render(self: IsHtml) -> htpy.Renderable:
-        return self.element(**self.attributes.values(), **self.htpy_kwargs)[
-            (child.render() for child in self.children)
+        return self.element(**self.attributes.values(), **self._htpy_kwargs)[
+            (child.render() for child in self._children)
         ]
 
 
@@ -44,7 +44,7 @@ class HtmlVoidComponent(
 
     @override
     def render(self) -> htpy.Renderable:
-        return self.element(**self.attributes.values(), **self.htpy_kwargs)
+        return self.element(**self._attributes.values(), **self._htpy_kwargs)
 
 
 @final

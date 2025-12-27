@@ -107,6 +107,11 @@ class Modifiers(UpdateableMixin, BaseModifier):
     def values(self) -> ModifierDict:
         return OrderedDict(((m.key, m) for m in self.data.values()))
 
+    def merge(self, other: Modifiers) -> Modifiers:
+        merged = Modifiers(*self.data.values())
+        merged.update(other, overwrite=True)
+        return merged
+
     def add(self, modifier: T, overwrite=True) -> None:
         if overwrite or type(modifier) not in self.data:
             self.data[type(modifier)] = modifier
@@ -118,7 +123,7 @@ class Modifiers(UpdateableMixin, BaseModifier):
 
     @override
     def apply_before_build(self, context: Context, component: Component) -> None:
-        component.modifiers.update(self)
+        component._modifiers.update(self)
 
     @override
     def apply(self, context: Context, component: Component) -> Component:
@@ -144,6 +149,13 @@ class Modifiers(UpdateableMixin, BaseModifier):
     def __bool__(self) -> bool:
         return bool(self.data)
 
+    def __or__(self, other: Modifiers) -> Modifiers:
+        return self.merge(other)
+
+    def __ior__(self, other: Modifiers) -> Modifiers:
+        self.update(other)
+        return self
+
 
 @final
 class Attributes(UpdateableMixin, BaseModifier):
@@ -156,6 +168,11 @@ class Attributes(UpdateableMixin, BaseModifier):
 
     def values(self) -> dict[str, Any]:
         return {attr.name: attr.value for attr in self._data.values()}
+
+    def merge(self, other: Attributes) -> Attributes:
+        merged = Attributes(*self._data.values())
+        merged.update(other, overwrite=True)
+        return merged
 
     def add(self, attribute: Attribute, overwrite=True) -> None:
         if attribute.name not in self:
@@ -174,7 +191,7 @@ class Attributes(UpdateableMixin, BaseModifier):
 
     @override
     def apply_before_build(self, context: Context, component: Component) -> None:
-        component.attributes.update(self)
+        component._attributes.update(self)
 
     @override
     def apply(self, context: Context, component: Component) -> Component:
@@ -199,3 +216,10 @@ class Attributes(UpdateableMixin, BaseModifier):
 
     def __bool__(self) -> bool:
         return bool(self._data)
+
+    def __or__(self, other: Attributes) -> Attributes:
+        return self.merge(other)
+
+    def __ior__(self, other: Attributes) -> Attributes:
+        self.update(other)
+        return self
