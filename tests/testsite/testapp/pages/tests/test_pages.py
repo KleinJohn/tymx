@@ -39,10 +39,9 @@ class IndexLink(Component):
 
 
 index_page = Page(
-    PrintContextModifier(),
     name="index",
     route_pattern="",
-    body=lambda context, children: [
+    body=[
         H1(id("header1"), style(color="blue", font_size="12px"))[
             CustomDiv("button", "is-active")[H1["press"]],
         ],
@@ -63,6 +62,6 @@ if __name__ == "__main__":
     context = Context(router=Router("test", pages=[index_page]))
     built_index_page = index_page.full_build(context)
     # built_service_page = service_page.full_build(context)
-    print(built_index_page)
-    print(built_index_page.render())
+    print(built_index_page.__str__(True, True))
+    # print(built_index_page.render())
     # print(built_service_page)

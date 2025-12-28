@@ -178,6 +178,9 @@ class BaseComponent(ABC):
                         f"Invalid attribute type: {type(attribute)} on {self.__class__.__name__}."
                     )
 
+    def _verbose_str(self) -> Iterable[str]:
+        return (str(self._attributes),)
+
     def __getitem__(self, children: Children, **kwargs) -> Self:
         copy = self.__class__(
             *self._attributes,
@@ -192,10 +195,22 @@ class BaseComponent(ABC):
     def __class_getitem__(cls, children: Children, **kwargs) -> Self:
         return cls(children=children, **kwargs)
 
-    def __str__(self) -> str:
-        if not self._children:
-            return self.__class__.__name__
-        return f"{self.__class__.__name__}({", ".join(str(child) for child in self._children)})"
+    def __str__(self, pretty=False, verbose=False, level=0, tab_length=4) -> str:
+        own_str = (" " * level * tab_length + ("- " if self._children else "")) * int(
+            pretty
+        ) + self.__class__.__name__
+        v_str = ""
+        if verbose:
+            v_content = " | ".join(filter(bool, self._verbose_str()))
+            if v_content:
+                v_str = f"({v_content})"
+        if pretty:
+            child_str = "".join(
+                "\n" + c.__str__(pretty, verbose, level + 1) for c in self._children
+            )
+        else:
+            child_str = f'[{", ".join(c.__str__(pretty, verbose, level+1) for c in self._children)}]'
+        return f"{own_str}{v_str}{child_str}"
 
     @classmethod
     def _children_to_list(cls, children: Children) -> list[BaseComponent]:
@@ -296,6 +311,10 @@ class Component(BaseComponent):
             for modifier in self.modifiers:
                 component = modifier.apply(context, component)
             children[i] = component
+
+    @override
+    def _verbose_str(self) -> Iterable[str]:
+        return (str(self.attributes), str(self.modifiers))
 
     @override
     def __getitem__(self, children: Children, **kwargs) -> Self:
@@ -423,5 +442,5 @@ class Text(VoidComponentMixin, BuildsItselfMixin, Component):
         return super().__getitem__(children, text=self.text, **kwargs)
 
     @override
-    def __str__(self) -> str:
-        return f'"{self.text}"'
+    def __str__(self, pretty=False, verbose=False, level=0, tab_length=4) -> str:
+        return " " * level * tab_length * int(pretty) + f'"{self.text}"'
