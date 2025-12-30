@@ -121,6 +121,8 @@ class Modifiers(BaseModifier):
             self.data[type(modifier)] = modifier
 
     def update(self, modifiers: Modifiers | Sequence[Modifier], overwrite=True) -> None:
+        if modifiers is None:
+            return
         for modifier in modifiers:
             self.add(modifier, overwrite=overwrite)
 
@@ -133,12 +135,20 @@ class Modifiers(BaseModifier):
     @override
     def merge_if_policy_applies(
         self: Modifiers,
-        other: Modifiers,
+        other: Modifiers | None,
         context: Context,
         consumer: BaseComponent,
         consumer_level: int,
         self_level: int,
     ) -> Modifiers:
+        if other is None:
+            return Modifiers(
+                *(
+                    m
+                    for m in self
+                    if m.policy_applies(context, consumer, consumer_level, self_level)
+                )
+            )
         merged = self.copy()
         for modifier in other:
             if modifier.policy_applies(context, consumer, consumer_level, self_level):

@@ -85,7 +85,7 @@ class Consumable(ABC):
 
     def merge_if_policy_applies(
         self: T_Consumable,
-        other: T_Consumable,
+        other: T_Consumable | None,
         context: Context,
         consumer: BaseComponent,
         consumer_level: int,
@@ -96,6 +96,8 @@ class Consumable(ABC):
         # this is not supposed to check whether the policy applies to the
         # consumable itself, but it is supposed to merge all collected consumables
         # to which the policy applies
+        if other is None:
+            return self
         return self.merge(other)
 
 
@@ -166,16 +168,6 @@ class Context:
             return None
         temp: T_Consumable | None = None
         depth = len(self._data_stack)
-        # print(self.current.__class__.__name__, str(self))
-        # print(self.current.__class__.__name__, key.consumer_policy)
-        # print(
-        #     self.current.__class__.__name__,
-        #     str([frame.component.__class__.__name__ for frame in self._data_stack]),
-        # )
-        # print(
-        #     self.current.__class__.__name__,
-        #     str([frame.component.can_render for frame in self._data_stack]),
-        # )
         for level in reversed(range(depth)):
             frame = self.get_frame(level)
             consumable = frame.get(key)
@@ -192,7 +184,7 @@ class Context:
                 case ConsumerPolicy.DIRECT_BUILT_CHILDREN:
                     if frame.component.is_built:
                         break
-                    can_consume = True
+                    can_consume = True  # is_built checked above
                 case ConsumerPolicy.CUSTOM:
                     can_consume = (
                         consumable.custom_policy(self, self.current, depth, level)
@@ -201,12 +193,9 @@ class Context:
                     )
             if not can_consume or consumable is None:
                 continue
-            if temp is None:
-                temp = consumable
-            else:
-                temp = consumable.merge_if_policy_applies(
-                    temp, self, self.current, depth, level
-                )
+            temp = consumable.merge_if_policy_applies(
+                temp, self, self.current, depth, level
+            )
             if can_consume and key.consume_first_matching:
                 break
         return temp

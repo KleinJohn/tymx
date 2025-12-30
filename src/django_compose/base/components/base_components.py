@@ -30,18 +30,14 @@ if TYPE_CHECKING:
 
 T = TypeVar("T", bound="BaseComponent")
 GenericComponentLike: TypeAlias = Union[None, T, list[T]]
-# prevent nesting of build functions:
-GenericComponentChildrenNoLambda: TypeAlias = Union[
+BuildFunctionType: TypeAlias = Callable[[Context, "Children"], "Children"]
+GenericComponentChildren: TypeAlias = Union[
     None,
     str,
     T,
     type[T],
-    Sequence["GenericComponentChildrenNoLambda[T]"],
-]
-BuildFunctionType: TypeAlias = Callable[[Context, "Children"], "Children"]
-GenericComponentChildren: TypeAlias = Union[
-    GenericComponentChildrenNoLambda[T],
     BuildFunctionType,
+    Sequence["GenericComponentChildren[T]"],
 ]
 
 ComponentLike: TypeAlias = GenericComponentLike["BaseComponent"]
@@ -196,7 +192,7 @@ class BaseComponent(ABC):
                     )
 
     def _verbose_str(self) -> Iterable[str]:
-        return (str(self._attributes),)
+        return (str(self.attributes),)
 
     def __getitem__(self, children: Children, **kwargs) -> Self:
         copy = self.__class__(
@@ -232,8 +228,7 @@ class BaseComponent(ABC):
                 child_str = ""
         return f"{own_str}{v_str}{child_str}"
 
-    @classmethod
-    def _children_to_list(cls, children: Children) -> list[BaseComponent]:
+    def _children_to_list(self, children: Children) -> list[BaseComponent]:
         if not children:
             return []
         match children:
@@ -246,10 +241,12 @@ class BaseComponent(ABC):
             case Sequence():
                 lst: list["BaseComponent"] = []
                 for child in children:
-                    lst.extend(cls._children_to_list(child))
+                    lst.extend(self._children_to_list(child))
                 return lst
             case Callable():
-                return [ContextBuilder(build_function=children)]
+                return [
+                    ContextBuilder(build_function=children, children=self._children)
+                ]
             case _:
                 raise ValueError("Invalid child type.")
 

@@ -67,7 +67,7 @@ service_page = Page(
 )
 
 
-def custom_label(self, context: Context, children: Children) -> Children:
+def custom_label(context: Context, children: Children) -> Children:
     return [
         Div["Here: "],
         Label[children],
@@ -83,7 +83,7 @@ class CustomContent(Component):
 
 
 test_page = Page(
-    PrintContextModifier(),
+    PrintComponentModifier(),
     name="test",
     body=[
         H1["Title"],
@@ -94,4 +94,4 @@ test_page = Page(
 if __name__ == "__main__":
     context = Context(router=Router("test", pages=[test_page]))
     built_test_page = test_page.full_build(context)
-    print(built_test_page.__str__(pretty=True, verbose=True))
+    # print(built_test_page.__str__(pretty=True, verbose=True))
