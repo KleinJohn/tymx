@@ -1,5 +1,5 @@
 from __future__ import annotations
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import (
     TYPE_CHECKING,
     Sequence,
@@ -12,18 +12,22 @@ from typing import (
 )
 from collections import OrderedDict
 
-from django_compose.base.context import Consumable, ConsumerPolicy, UpdateableMixin
+from django_compose.base.context import (
+    Consumable,
+    ConsumerPolicy,
+)
 
 if TYPE_CHECKING:
     from django_compose.base.components.base_components import (
+        BaseComponent,
         Component,
         Context,
     )
     from django_compose.base.attributes import Attribute
 
 
-T = TypeVar("T", bound="Modifier")
-ModifierDict = OrderedDict[type[T], T]
+T_Modifier = TypeVar("T_Modifier", bound="Modifier")
+ModifierDict = OrderedDict[type[T_Modifier], T_Modifier]
 
 
 class BaseModifier(Consumable):
@@ -32,10 +36,14 @@ class BaseModifier(Consumable):
     def apply_before_build(self, context: Context, component: Component) -> None: ...
 
     @abstractmethod
-    def apply(self, context: Context, component: Component) -> Component: ...
+    def apply_to_child(self, context: Context, component: Component) -> Component: ...
+
+    def __str__(self) -> str:
+        return self.__class__.__name__
 
 
 class Modifier(BaseModifier):
+    consumer_policy = ConsumerPolicy.ALL_CHILDREN
 
     @override
     def apply_before_build(self, context: Context, component: Component) -> None:
@@ -47,7 +55,7 @@ class Modifier(BaseModifier):
         pass
 
     @override
-    def apply(self, context: Context, component: Component) -> Component:
+    def apply_to_child(self, context: Context, component: Component) -> Component:
         """Injects behavior into the given component after the build process.
 
         It is safe to modify the component in place and return the same instance.
@@ -65,8 +73,8 @@ class DeferredModifier(Modifier):
         self._deferred_component: Component | None = None
 
     @override
-    def apply(self, context: Context, component: Component) -> Component:
-        component = super().apply(context, component)
+    def apply_to_child(self, context: Context, component: Component) -> Component:
+        component = super().apply_to_child(context, component)
         self._deferred_context = context.copy()
         self._deferred_component = component
         return component
@@ -87,8 +95,8 @@ Make sure you call super().apply() in overrides."""
 class PageRenderModifier(DeferredModifier):
 
     @override
-    def apply(self, context: Context, component: Component) -> Component:
-        component = super().apply(context, component)
+    def apply_to_child(self, context: Context, component: Component) -> Component:
+        component = super().apply_to_child(context, component)
         if not context.page:
             raise ValueError("No page found in context.")
         context.page.render_time_modifiers.append(self)
@@ -96,10 +104,11 @@ class PageRenderModifier(DeferredModifier):
 
 
 @final
-class Modifiers(UpdateableMixin, BaseModifier):
+class Modifiers(BaseModifier):
     consumer_policy = ConsumerPolicy.ALL_CHILDREN
+    consume_first_matching = False
 
-    def __init__(self, *modifiers: T) -> None:
+    def __init__(self, *modifiers: T_Modifier) -> None:
         self.data: ModifierDict = OrderedDict()
         for modifier in modifiers:
             self.add(modifier)
@@ -107,27 +116,45 @@ class Modifiers(UpdateableMixin, BaseModifier):
     def values(self) -> ModifierDict:
         return OrderedDict(((m.key, m) for m in self.data.values()))
 
-    def merge(self, other: Modifiers) -> Modifiers:
-        merged = Modifiers(*self.data.values())
-        merged.update(other, overwrite=True)
-        return merged
-
-    def add(self, modifier: T, overwrite=True) -> None:
+    def add(self, modifier: T_Modifier, overwrite=True) -> None:
         if overwrite or type(modifier) not in self.data:
             self.data[type(modifier)] = modifier
 
-    @override
     def update(self, modifiers: Modifiers | Sequence[Modifier], overwrite=True) -> None:
         for modifier in modifiers:
             self.add(modifier, overwrite=overwrite)
+
+    @override
+    def merge(self, other: Modifiers) -> Modifiers:
+        merged = self.copy()
+        merged.update(other, overwrite=True)
+        return merged
+
+    @override
+    def merge_if_policy_applies(
+        self: Modifiers,
+        other: Modifiers,
+        context: Context,
+        consumer: BaseComponent,
+        consumer_level: int,
+        self_level: int,
+    ) -> Modifiers:
+        merged = self.copy()
+        for modifier in other:
+            if modifier.policy_applies(context, consumer, consumer_level, self_level):
+                merged.add(modifier)
+        return merged
 
     @override
     def apply_before_build(self, context: Context, component: Component) -> None:
         component._modifiers.update(self)
 
     @override
-    def apply(self, context: Context, component: Component) -> Component:
+    def apply_to_child(self, context: Context, component: Component) -> Component:
         return component
+
+    def copy(self) -> Modifiers:
+        return Modifiers(*self.data.values())
 
     def __call__(self) -> Self:
         return self
@@ -138,7 +165,7 @@ class Modifiers(UpdateableMixin, BaseModifier):
     def __iter__(self) -> Iterator[Modifier]:
         return iter(self.data.values())
 
-    def __contains__(self, item: type[T] | T) -> bool:
+    def __contains__(self, item: type[T_Modifier] | T_Modifier) -> bool:
         if isinstance(item, type):
             return item in self.data
         return type(item) in self.data
@@ -158,8 +185,9 @@ class Modifiers(UpdateableMixin, BaseModifier):
 
 
 @final
-class Attributes(UpdateableMixin, BaseModifier):
-    consumer_policy = ConsumerPolicy.DIRECT_CHILDREN
+class Attributes(BaseModifier):
+    consumer_policy = ConsumerPolicy.DIRECT_BUILT_CHILDREN
+    consume_first_matching = False
 
     def __init__(self, *attributes: Attribute) -> None:
         self._data: OrderedDict[str, Attribute] = OrderedDict()
@@ -169,11 +197,6 @@ class Attributes(UpdateableMixin, BaseModifier):
     def values(self) -> dict[str, Any]:
         return {attr.name: attr.value for attr in self._data.values()}
 
-    def merge(self, other: Attributes) -> Attributes:
-        merged = Attributes(*self._data.values())
-        merged.update(other, overwrite=True)
-        return merged
-
     def add(self, attribute: Attribute, overwrite=True) -> None:
         if attribute.name not in self:
             self._data[attribute.name] = attribute
@@ -182,7 +205,6 @@ class Attributes(UpdateableMixin, BaseModifier):
         else:
             self._data[attribute.name] = attribute | self._data[attribute.name]
 
-    @override
     def update(
         self, attributes: "Attributes" | Sequence[Attribute], overwrite=True
     ) -> None:
@@ -190,12 +212,21 @@ class Attributes(UpdateableMixin, BaseModifier):
             self.add(attr, overwrite=overwrite)
 
     @override
-    def apply_before_build(self, context: Context, component: Component) -> None:
-        component._attributes.update(self)
+    def merge(self, other: Attributes) -> Attributes:
+        merged = self.copy()
+        merged.update(other, overwrite=True)
+        return merged
 
     @override
-    def apply(self, context: Context, component: Component) -> Component:
+    def apply_before_build(self, context: Context, component: Component) -> None:
+        component.attributes.update(self)
+
+    @override
+    def apply_to_child(self, context: Context, component: Component) -> Component:
         return component
+
+    def copy(self) -> Attributes:
+        return Attributes(*self._data.values())
 
     def __call__(self) -> Self:
         return self

@@ -14,7 +14,7 @@ from abc import ABC, abstractmethod
 import htpy
 
 from django_compose.base.attributes import Attribute, classes
-from django_compose.base.context import Consumable, Context, ContextFrame, DataDict
+from django_compose.base.context import Context, ContextFrame, DataDict
 from django_compose.base.modifiers.base_modifiers import (
     Modifier,
     Attributes,
@@ -55,6 +55,7 @@ ModifierLike: TypeAlias = Union[
 
 class BaseComponent(ABC):
     default_attribute: Attribute = classes
+    # inherit_properties: set[type] = {Attributes}
 
     # All Components that allow zero children have to provide an empty constructor.
     def __init__(
@@ -68,20 +69,36 @@ class BaseComponent(ABC):
         self._children: list[BaseComponent] = self._children_to_list(children)
         self._htpy_kwargs = htpy_kwargs if htpy_kwargs is not None else {}
         self._building = False
-        self._build_data: ContextFrame = ContextFrame()
-        self._renders_itself = False  # use to prevent recursion in build()
+        self._build_data: ContextFrame = ContextFrame(self)
+        self._build_context: Context | None = None
+        self._is_built = False  # use to prevent recursion in build()
 
     @property
     def attributes(self) -> Attributes:
-        if self._renders_itself:
+        if self.is_built:
             return self._attributes
         return self._build_data.get(Attributes) or Attributes()
 
     @attributes.setter
     def attributes(self, value: Attributes) -> None:
-        if self._renders_itself:
+        if self.is_built:
             self._attributes = value
         self._build_data[Attributes] = value
+
+    @property
+    def context(self) -> Context:
+        if self._build_context is None:
+            raise ValueError("Component is not being built, no context available.")
+        self._build_context.current = self
+        return self._build_context
+
+    @context.setter
+    def context(self, value: Context | None) -> None:
+        self._build_context = value
+
+    @property
+    def is_built(self) -> bool:
+        return self._is_built
 
     @abstractmethod
     def build(self, context: Context, children: Children) -> Children:
@@ -91,67 +108,67 @@ class BaseComponent(ABC):
     def render(self) -> htpy.Node:
         raise NotImplementedError()
 
-    def provide_data(self, context: Context) -> DataDict:
+    def provide_data(self) -> DataDict:
         data: DataDict = {}
-        if self._attributes:
+        if self._attributes and not self.is_built:
             data[Attributes] = self._attributes
         return data
 
-    def consume_data(self, context: Context) -> None:
-        self._build_data = ContextFrame()
-        attributes = context.get(Attributes) or Attributes()
-        self.attributes = attributes | self._attributes
+    def consume_data(self) -> None:
+        inherited_attributes = self.context.get(Attributes) or Attributes()
+        self.attributes = inherited_attributes | self._attributes
 
     def full_build(self, context: Context) -> ComponentLike:
         """The component should return to its original state after building."""
-        self.consume_data(context)
-        self._before_build(context)
-        children = self._handle_build(context)
-        self._after_build(context, children)
-        self._build_data = ContextFrame()
+        self._prepare_build(context)
+        self.consume_data()
+        self._before_build()
+        children = self._handle_build()
+        self._after_build(children)
+        self._do_cleanup()
         return self._unwrap_component_list(children)
 
-    def _handle_build(self, context: Context) -> list[BaseComponent]:
+    def _handle_build(self) -> list[BaseComponent]:
         children = self._children
-        if not self._renders_itself:
+        if not self.is_built:
             self._building = True
-            children = self._children_to_list(self.build(context, self._children))
+            children = self._children_to_list(self.build(self.context, self._children))
             self._building = False
 
-        self._before_build_children(context, children)
-        children = self._build_children(context, children)
-        self._after_build_children(context, children)
+        self._before_build_children(children)
+        children = self._build_children(children)
+        self._after_build_children(children)
 
-        if self._renders_itself:
+        if self.is_built:
             self._children = children
             children = [self]
         return children
 
-    def _build_children(
-        self, context: Context, children: list[BaseComponent]
-    ) -> list[BaseComponent]:
+    def _build_children(self, children: list[BaseComponent]) -> list[BaseComponent]:
         lst: list[BaseComponent] = []
         for child in children:
-            lst.extend(self._children_to_list(child.full_build(context)))
+            lst.extend(self._children_to_list(child.full_build(self.context)))
         return lst
 
-    def _before_build(self, context: Context) -> None:
+    def _before_build(self) -> None:
         pass
 
-    def _after_build(self, context: Context, components: list[BaseComponent]) -> None:
+    def _after_build(self, components: list[BaseComponent]) -> None:
         pass
 
-    def _before_build_children(
-        self, context: Context, children: list[BaseComponent]
-    ) -> None:
-        if not self._renders_itself:
-            context.push_data(self.provide_data(context))
+    def _before_build_children(self, children: list[BaseComponent]) -> None:
+        self.context.push_data(self.provide_data())
 
-    def _after_build_children(
-        self, context: Context, children: list[BaseComponent]
-    ) -> None:
-        if not self._renders_itself:
-            context.pop_frame()
+    def _after_build_children(self, children: list[BaseComponent]) -> None:
+        self.context.pop_frame()
+
+    def _prepare_build(self, context: Context) -> None:
+        self._build_data = ContextFrame(self)
+        self._build_context = context
+
+    def _do_cleanup(self) -> None:
+        self._build_data = ContextFrame(self)
+        self._build_context = None
 
     def _unwrap_component_list(self, components: list[BaseComponent]) -> ComponentLike:
         match len(components):
@@ -183,13 +200,13 @@ class BaseComponent(ABC):
 
     def __getitem__(self, children: Children, **kwargs) -> Self:
         copy = self.__class__(
-            *self._attributes,
+            *self._attributes if not self._building else [],
             children=children,
             htpy_kwargs=self._htpy_kwargs,
             **kwargs,
         )
         # break potential build recursion:
-        copy._renders_itself = self._building
+        copy._is_built = self._building
         return copy
 
     def __class_getitem__(cls, children: Children, **kwargs) -> Self:
@@ -209,7 +226,10 @@ class BaseComponent(ABC):
                 "\n" + c.__str__(pretty, verbose, level + 1) for c in self._children
             )
         else:
-            child_str = f'[{", ".join(c.__str__(pretty, verbose, level+1) for c in self._children)}]'
+            if self._children:
+                child_str = f'[{", ".join(c.__str__(pretty, verbose, level+1) for c in self._children)}]'
+            else:
+                child_str = ""
         return f"{own_str}{v_str}{child_str}"
 
     @classmethod
@@ -253,13 +273,13 @@ class Component(BaseComponent):
 
     @property
     def modifiers(self) -> Modifiers:
-        if self._renders_itself:
+        if self.is_built:
             return self._modifiers
         return self._build_data.get(Modifiers) or Modifiers()
 
     @modifiers.setter
     def modifiers(self, value: Modifiers) -> None:
-        if self._renders_itself:
+        if self.is_built:
             self._modifiers = value
         self._build_data[Modifiers] = value
 
@@ -277,28 +297,29 @@ class Component(BaseComponent):
         )
 
     @override
-    def provide_data(self, context: Context) -> DataDict:
-        data = super().provide_data(context)
-        if self._modifiers:
+    def provide_data(self) -> DataDict:
+        data = super().provide_data()
+        if self._modifiers and not self.is_built:
             data[Modifiers] = self._modifiers
         return data
 
     @override
-    def consume_data(self, context: Context) -> None:
-        super().consume_data(context)
-        self.modifiers = context.get_all(Modifiers)
+    def consume_data(self) -> None:
+        super().consume_data()
+        inherited_modifiers = self.context.get(Modifiers) or Modifiers()
+        self.modifiers = inherited_modifiers | self._modifiers
 
     @override
-    def _before_build(self, context: Context) -> None:
+    def _before_build(self) -> None:
         """Called before components are built and anything is inherited"""
-        super()._before_build(context)
+        super()._before_build()
         for modifier in self.modifiers:
-            modifier.apply_before_build(context, self)
+            modifier.apply_before_build(self.context, self)
 
     @override
-    def _after_build(self, context: Context, children: list[BaseComponent]) -> None:
+    def _after_build(self, children: list[BaseComponent]) -> None:
         """Called after components are built and inheritance is handled."""
-        super()._after_build(context, children)
+        super()._after_build(children)
 
         # or in future: context.get(Theme).get_component_theme(self)
         theme = self._component_theme
@@ -306,10 +327,10 @@ class Component(BaseComponent):
             if not isinstance(component, Component):
                 continue
             if theme:
-                component = theme.modify_build(context, component)
+                component = theme.modify_build(self.context, component)
                 component.attributes = theme.modify_attributes(component.attributes)
             for modifier in self.modifiers:
-                component = modifier.apply(context, component)
+                component = modifier.apply_to_child(self.context, component)
             children[i] = component
 
     @override
@@ -319,14 +340,14 @@ class Component(BaseComponent):
     @override
     def __getitem__(self, children: Children, **kwargs) -> Self:
         copy = self.__class__(
-            *self._attributes,
-            *self._modifiers,
+            *self._attributes if not self._building else [],
+            *self._modifiers if not self._building else [],
             children=children,
             component_theme=self._component_theme,
             htpy_kwargs=self._htpy_kwargs,
             **kwargs,
         )
-        copy._renders_itself = self._building
+        copy._is_built = self._building
         return copy
 
     def _init_modifiers(self, mod_like: Iterable[ModifierLike]) -> None:
@@ -442,5 +463,11 @@ class Text(VoidComponentMixin, BuildsItselfMixin, Component):
         return super().__getitem__(children, text=self.text, **kwargs)
 
     @override
+    def _verbose_str(self) -> Iterable[str]:
+        return (f"text='{self.text}'", str(self.attributes), str(self.modifiers))
+
+    @override
     def __str__(self, pretty=False, verbose=False, level=0, tab_length=4) -> str:
+        if pretty or verbose:
+            return super().__str__(pretty, verbose, level, tab_length)
         return " " * level * tab_length * int(pretty) + f'"{self.text}"'

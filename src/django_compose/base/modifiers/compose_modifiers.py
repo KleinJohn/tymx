@@ -20,23 +20,3 @@ class NavigationModifier(PageRenderModifier):
 
     def apply_when_notified(self, context: Context, component: Component) -> None:
         component.attributes.add(href(self._route.url))
-
-
-class DebugModifier(Modifier):
-    def apply_before_build(self, context: Context, component: Component) -> None:
-        print(f"Before building: {component}")
-
-    def apply(self, context: Context, component: Component) -> Component:
-        print(f"After building: {component}")
-        return component
-
-
-class PrintContextModifier(Modifier):
-    consumer_policy = ConsumerPolicy.ALL_CHILDREN
-
-    def apply_before_build(self, context: Context, component: Component) -> None:
-        super().apply_before_build(context, component)
-        print(
-            f"{component.__class__.__name__:<20}\t",
-            [[f.__name__ for f in s.data.keys()] for s in context._data_stack],
-        )

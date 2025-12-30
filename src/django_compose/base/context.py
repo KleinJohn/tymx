@@ -1,16 +1,16 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Any, Callable, TypeVar, TypeAlias
+from typing import TYPE_CHECKING, TypeVar, TypeAlias
 
 if TYPE_CHECKING:
     from django_compose.base.app import Router, Page
-    from django_compose.base.components.base_components import BaseComponent, Renderable
+    from django_compose.base.components.base_components import BaseComponent
+    from django_compose.base.components.html_components import BaseHtmlComponent
 
 
-T = TypeVar("T", bound="Consumable")
-T_Update = TypeVar("T_Update", bound="UpdateableMixin")
-DataDict: TypeAlias = dict[type[T], T]
+T_Consumable = TypeVar("T_Consumable", bound="Consumable")
+DataDict: TypeAlias = dict[type[T_Consumable], T_Consumable]
 
 
 class ConsumerPolicy(Enum):
@@ -19,53 +19,105 @@ class ConsumerPolicy(Enum):
     NONE = auto()
     ALL_CHILDREN = auto()
     DIRECT_CHILDREN = auto()
-    RENDERABLES = auto()
+    ALL_BUILT_CHILDREN = auto()
+    DIRECT_BUILT_CHILDREN = auto()
     CUSTOM = auto()
+
+    @property
+    def is_direct(self) -> bool:
+        return self in {
+            ConsumerPolicy.DIRECT_CHILDREN,
+            ConsumerPolicy.DIRECT_BUILT_CHILDREN,
+        }
+
+    @property
+    def is_built_only(self) -> bool:
+        return self in {
+            ConsumerPolicy.ALL_BUILT_CHILDREN,
+            ConsumerPolicy.DIRECT_BUILT_CHILDREN,
+        }
 
 
 class Consumable(ABC):
     consumer_policy = ConsumerPolicy.NONE
-    auto_get = False
+    consume_first_matching = True
 
-    def applies_to(self, consumer: BaseComponent, parent: BaseComponent) -> bool:
+    def policy_applies(
+        self,
+        context: Context,
+        consumer: BaseComponent,
+        consumer_level: int,
+        self_level: int,
+    ) -> bool:
         match self.consumer_policy:
             case ConsumerPolicy.NONE:
                 return False
             case ConsumerPolicy.ALL_CHILDREN:
                 return True
             case ConsumerPolicy.DIRECT_CHILDREN:
-                return True
-            case ConsumerPolicy.RENDERABLES:
-                return isinstance(consumer, Renderable)
+                return consumer_level == self_level + 1
+            case ConsumerPolicy.ALL_BUILT_CHILDREN:
+                return consumer.is_built
+            case ConsumerPolicy.DIRECT_BUILT_CHILDREN:
+                # true, if all frames between self and consumer are not renderable
+                return all(
+                    map(
+                        lambda frame: not frame.component.is_built,
+                        context._data_stack[self_level + 1 : consumer_level],
+                    )
+                )
             case ConsumerPolicy.CUSTOM:
-                return self.custom_applies_to(consumer, parent)
+                return self.custom_policy(context, consumer, consumer_level, self_level)
         return False
 
-    def custom_applies_to(self, consumer: BaseComponent, parent: BaseComponent) -> bool:
+    def custom_policy(
+        self,
+        context: Context,
+        consumer: BaseComponent,
+        consumer_level: int,
+        self_level: int,
+    ) -> bool:
         raise NotImplementedError()
 
+    def merge(self: T_Consumable, other: T_Consumable) -> T_Consumable:
+        """Overwrites by default."""
+        return other
 
-class UpdateableMixin(ABC):
-
-    @abstractmethod
-    def update(self: T, other: T) -> None: ...
+    def merge_if_policy_applies(
+        self: T_Consumable,
+        other: T_Consumable,
+        context: Context,
+        consumer: BaseComponent,
+        consumer_level: int,
+        self_level: int,
+    ) -> T_Consumable:
+        """Only override if you want to check if policy applies to parts of
+        a collection of this consumable."""
+        # this is not supposed to check whether the policy applies to the
+        # consumable itself, but it is supposed to merge all collected consumables
+        # to which the policy applies
+        return self.merge(other)
 
 
 class ContextFrame:
-    def __init__(self, data: DataDict | None = None):
+    def __init__(self, component: BaseComponent, data: DataDict | None = None) -> None:
+        self.component = component
         self.data = data if data is not None else {}
 
-    def get(self, key: type[T]) -> T | None:
+    def get(self, key: type[T_Consumable]) -> T_Consumable | None:
         return self.data.get(key)
 
-    def __getitem__(self, key: type[T]) -> T:
+    def __getitem__(self, key: type[T_Consumable]) -> T_Consumable:
         value = self.get(key)
         if value is None:
             raise KeyError(f"Key {key} not found in context frame.")
         return value
 
-    def __setitem__(self, key: type[T], value: T) -> None:
+    def __setitem__(self, key: type[T_Consumable], value: T_Consumable) -> None:
         self.data[key] = value
+
+    def __contains__(self, key: type[T_Consumable]) -> bool:
+        return key in self.data
 
 
 class Context:
@@ -82,6 +134,7 @@ class Context:
         self._data_stack: list[ContextFrame] = (
             data_stack if data_stack is not None else []
         )
+        self.current: BaseComponent | None = None
 
     def copy(self) -> "Context":
         return self.copy_with()
@@ -97,27 +150,75 @@ class Context:
         return Context(router=router, page=page, data_stack=data_stack)
 
     def push_data(self, data: DataDict) -> None:
-        self._data_stack.append(ContextFrame(data))
+        assert self.current is not None
+        self._data_stack.append(ContextFrame(self.current, data))
 
     def pop_frame(self) -> None:
         if not self._data_stack:
             raise IndexError("No provider to pop from the context.")
         self._data_stack.pop()
 
-    def get(self, key: type[T]) -> T | None:
-        # TODO: enforce ConsumerPolicy
-        for frame in reversed(self._data_stack):
-            if key in frame.data:
-                return frame.data[key]
-        return None
-
-    def get_all(self, key: type[T_Update]) -> T_Update:
-        # TODO: enforce ConsumerPolicy
-        temp = key()
-        for frame in self._data_stack:
-            if key in frame.data:
-                temp.update(frame.data[key])
+    def get(self, key: type[T_Consumable]) -> T_Consumable | None:
+        assert self.current is not None
+        if key.consumer_policy == ConsumerPolicy.NONE:
+            return None
+        elif key.consumer_policy.is_built_only and not self.current.is_built:
+            return None
+        temp: T_Consumable | None = None
+        depth = len(self._data_stack)
+        # print(self.current.__class__.__name__, str(self))
+        # print(self.current.__class__.__name__, key.consumer_policy)
+        # print(
+        #     self.current.__class__.__name__,
+        #     str([frame.component.__class__.__name__ for frame in self._data_stack]),
+        # )
+        # print(
+        #     self.current.__class__.__name__,
+        #     str([frame.component.can_render for frame in self._data_stack]),
+        # )
+        for level in reversed(range(depth)):
+            frame = self.get_frame(level)
+            consumable = frame.get(key)
+            can_consume = False
+            # we could use consumable.policy_applies here
+            # but we can optimize for early breaks this way
+            match key.consumer_policy:
+                case ConsumerPolicy.ALL_CHILDREN:
+                    can_consume = True
+                case ConsumerPolicy.DIRECT_CHILDREN:
+                    can_consume = level == depth - 1
+                case ConsumerPolicy.ALL_BUILT_CHILDREN:
+                    can_consume = True
+                case ConsumerPolicy.DIRECT_BUILT_CHILDREN:
+                    if frame.component.is_built:
+                        break
+                    can_consume = True
+                case ConsumerPolicy.CUSTOM:
+                    can_consume = (
+                        consumable.custom_policy(self, self.current, depth, level)
+                        if consumable is not None
+                        else False
+                    )
+            if not can_consume or consumable is None:
+                continue
+            if temp is None:
+                temp = consumable
+            else:
+                temp = consumable.merge_if_policy_applies(
+                    temp, self, self.current, depth, level
+                )
+            if can_consume and key.consume_first_matching:
+                break
         return temp
+
+    def get_frame(self, level: int) -> ContextFrame:
+        return self._data_stack[level]
+
+    def __len__(self) -> int:
+        return len(self._data_stack)
+
+    def __str__(self) -> str:
+        return str([[f.__name__ for f in s.data.keys()] for s in self._data_stack])
 
     @property
     def current_url(self) -> str:

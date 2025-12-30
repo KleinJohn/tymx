@@ -1,8 +1,8 @@
-import unittest
 from django_compose.base.components import (
     Component,
     Div,
     Button,
+    Label,
     A,
     H1,
     Input,
@@ -11,7 +11,10 @@ from django_compose.base.components import (
 from django_compose.base.context import Context
 from django_compose.base.attributes import id, style, classes, disabled
 from django_compose.base.app import Page, Router, Theme
-from django_compose.base.modifiers import DebugModifier, PrintContextModifier
+from django_compose.base.modifiers.debug_modifiers import (
+    PrintComponentModifier,
+    PrintContextModifier,
+)
 
 
 class CustomButton(Component):
@@ -26,10 +29,13 @@ class CustomButton(Component):
 
 class CustomDiv(Component):
     def build(self, context: Context, children: Children) -> Children:
-        return CustomButton[
-            ["Custom Div Start"],
-            children,
-            "Custom Div End",
+        return [
+            CustomButton[
+                Div["Custom Div Start"],
+                children,
+                Div["Custom Div End"],
+            ],
+            Div["After custom button"],
         ]
 
 
@@ -39,11 +45,13 @@ class IndexLink(Component):
 
 
 index_page = Page(
+    PrintContextModifier(),
     name="index",
     route_pattern="",
     body=[
         H1(id("header1"), style(color="blue", font_size="12px"))[
-            CustomDiv("button", "is-active")[H1["press"]],
+            CustomDiv("custom-div")[H1["press"]],
+            IndexLink["Go to Service Page"],
         ],
         "An Input:",
         Input(classes("input-field"), style(margin="5px"), disabled),
@@ -58,10 +66,32 @@ service_page = Page(
     ],
 )
 
+
+def custom_label(self, context: Context, children: Children) -> Children:
+    return [
+        Div["Here: "],
+        Label[children],
+    ]
+
+
+class CustomContent(Component):
+    def build(self, context: Context, children: Children) -> Children:
+        return [
+            custom_label,
+            Button(id("button"))["press"],
+        ]
+
+
+test_page = Page(
+    PrintContextModifier(),
+    name="test",
+    body=[
+        H1["Title"],
+        CustomContent("custom-content")["Label"],
+    ],
+)
+
 if __name__ == "__main__":
-    context = Context(router=Router("test", pages=[index_page]))
-    built_index_page = index_page.full_build(context)
-    # built_service_page = service_page.full_build(context)
-    print(built_index_page.__str__(True, True))
-    # print(built_index_page.render())
-    # print(built_service_page)
+    context = Context(router=Router("test", pages=[test_page]))
+    built_test_page = test_page.full_build(context)
+    print(built_test_page.__str__(pretty=True, verbose=True))
