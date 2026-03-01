@@ -1,21 +1,25 @@
-from .base_attributes import *
+from .base_attributes import (
+    BooleanAttribute,
+    ComposedAttribute,
+    ComposePolicy,
+    SimpleAttribute,
+)
 
-
-styleComposer = ComposePolicy(
+style_composer = ComposePolicy(
     lambda values: ";".join(values) + (";" if values else ""),
     lambda values: filter(lambda v: not v, values.split(";")),
     lambda k, v: f"{k}:{v}",
 )
 
-whitespaceComposer = ComposePolicy(
+whitespace_composer = ComposePolicy(
     lambda values: " ".join(values),
     lambda values: values.split(" "),
 )
 
 
 id = SimpleAttribute("id")
-classes = ComposedAttribute("class", compose_policy=whitespaceComposer)
-style = ComposedAttribute("style", compose_policy=styleComposer)
+classes = ComposedAttribute("class", compose_policy=whitespace_composer)
+style = ComposedAttribute("style", compose_policy=style_composer)
 
 accept = SimpleAttribute("accept")
 accept_charset = SimpleAttribute("accept-charset")
@@ -94,20 +98,20 @@ novalidate = BooleanAttribute("novalidate")
 open = BooleanAttribute("open")
 optimum = SimpleAttribute("optimum")
 pattern = SimpleAttribute("pattern")
-ping = ComposedAttribute("ping", compose_policy=whitespaceComposer)
+ping = ComposedAttribute("ping", compose_policy=whitespace_composer)
 placeholder = SimpleAttribute("placeholder")
 playsinline = BooleanAttribute("playsinline")
 poster = SimpleAttribute("poster")
 preload = SimpleAttribute("preload")
 readonly = BooleanAttribute("readonly")
 referrerpolicy = SimpleAttribute("referrerpolicy")
-rel = ComposedAttribute("rel", compose_policy=whitespaceComposer)
+rel = ComposedAttribute("rel", compose_policy=whitespace_composer)
 required = BooleanAttribute("required")
 reversed = BooleanAttribute("reversed")
 role = SimpleAttribute("role")
 rows = SimpleAttribute("rows")
 rowspan = SimpleAttribute("rowspan")
-sandbox = ComposedAttribute("sandbox", compose_policy=whitespaceComposer)
+sandbox = ComposedAttribute("sandbox", compose_policy=whitespace_composer)
 scope = SimpleAttribute("scope")
 selected = BooleanAttribute("selected")
 shape = SimpleAttribute("shape")

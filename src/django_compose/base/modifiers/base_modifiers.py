@@ -1,16 +1,16 @@
 from __future__ import annotations
-from abc import ABC, abstractmethod
-from typing import (
-    TYPE_CHECKING,
-    Sequence,
+
+from abc import abstractmethod
+from collections import OrderedDict
+from typing import TYPE_CHECKING
+
+from typing_extensions import (
     Any,
-    Iterator,
     Self,
     TypeVar,
     final,
     override,
 )
-from collections import OrderedDict
 
 from django_compose.base.context import (
     Consumable,
@@ -18,12 +18,14 @@ from django_compose.base.context import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator, Sequence
+
+    from django_compose.base.attributes import Attribute
     from django_compose.base.components.base_components import (
         BaseComponent,
         Component,
-        Context,
     )
-    from django_compose.base.attributes import Attribute
+    from django_compose.base.context import Context
 
 
 T_Modifier = TypeVar("T_Modifier", bound="Modifier")
@@ -31,7 +33,6 @@ ModifierDict = OrderedDict[type[T_Modifier], T_Modifier]
 
 
 class BaseModifier(Consumable):
-
     @abstractmethod
     def apply_before_build(self, context: Context, component: Component) -> None: ...
 
@@ -93,7 +94,6 @@ Make sure you call super().apply() in overrides."""
 
 
 class PageRenderModifier(DeferredModifier):
-
     @override
     def apply_to_child(self, context: Context, component: Component) -> Component:
         component = super().apply_to_child(context, component)
@@ -114,13 +114,13 @@ class Modifiers(BaseModifier):
             self.add(modifier)
 
     def values(self) -> ModifierDict:
-        return OrderedDict(((m.key, m) for m in self.data.values()))
+        return OrderedDict((m.key, m) for m in self.data.values())
 
-    def add(self, modifier: T_Modifier, overwrite=True) -> None:
+    def add(self, modifier: T_Modifier, overwrite: bool = True) -> None:
         if overwrite or type(modifier) not in self.data:
             self.data[type(modifier)] = modifier
 
-    def update(self, modifiers: Modifiers | Sequence[Modifier], overwrite=True) -> None:
+    def update(self, modifiers: Modifiers | Sequence[Modifier], overwrite: bool = True) -> None:
         if modifiers is None:
             return
         for modifier in modifiers:
@@ -207,7 +207,7 @@ class Attributes(BaseModifier):
     def values(self) -> dict[str, Any]:
         return {attr.name: attr.value for attr in self._data.values()}
 
-    def add(self, attribute: Attribute, overwrite=True) -> None:
+    def add(self, attribute: Attribute, overwrite: bool = True) -> None:
         if attribute.name not in self:
             self._data[attribute.name] = attribute
         elif overwrite:
@@ -215,9 +215,7 @@ class Attributes(BaseModifier):
         else:
             self._data[attribute.name] = attribute | self._data[attribute.name]
 
-    def update(
-        self, attributes: "Attributes" | Sequence[Attribute], overwrite=True
-    ) -> None:
+    def update(self, attributes: Attributes | Sequence[Attribute], overwrite: bool = True) -> None:
         for attr in attributes:
             self.add(attr, overwrite=overwrite)
 

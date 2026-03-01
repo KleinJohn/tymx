@@ -1,11 +1,15 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, Iterable, Iterator
+
+from typing import TYPE_CHECKING
 
 from django.urls import URLPattern, path, reverse_lazy
+from typing_extensions import Any
 
 from django_compose.base.modifiers.compose_modifiers import NavigationModifier
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator
+
     from django_compose.base.app import Page
 
 
@@ -23,9 +27,7 @@ class Route:
 class Router:
     def __init__(self, app_name: str, *, pages: Iterable[Page], **view_kwargs: Any):
         self.app_name = app_name
-        self.routes: dict[str, Route] = {
-            page.name: Route(self.app_name, page) for page in pages
-        }
+        self.routes: dict[str, Route] = {page.name: Route(self.app_name, page) for page in pages}
         self._view_kwargs = view_kwargs
         self._iter = iter(self.routes.values())
 

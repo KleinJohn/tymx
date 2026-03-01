@@ -1,7 +1,11 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
+from typing_extensions import Any
+
 from django_compose.base.context import ConsumerPolicy
+
 from .base_modifiers import Modifier
 
 if TYPE_CHECKING:
@@ -32,7 +36,7 @@ class PrintContextModifier(Modifier):
 class PrintComponentModifier(Modifier):
     consumer_policy = ConsumerPolicy.NONE
 
-    def __init__(self, pretty=True, verbose=True, **print_kwargs) -> None:
+    def __init__(self, pretty: bool = True, verbose: bool = True, **print_kwargs: Any) -> None:
         super().__init__()
         self.pretty = pretty
         self.verbose = verbose

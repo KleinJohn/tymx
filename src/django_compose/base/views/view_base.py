@@ -1,7 +1,10 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
-from django.http import HttpResponse, HttpResponseNotFound
+
+from django.http import HttpRequest, HttpResponse, HttpResponseNotFound
 from django.views import View
+from typing_extensions import Any
 
 if TYPE_CHECKING:
     from django_compose.base.app import Page
@@ -10,7 +13,7 @@ if TYPE_CHECKING:
 class ComposePageView(View):
     page: Page | None = None
 
-    def get(self, request, *args, **kwargs):
+    def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
         print(self.page)
         if not self.page:
             return HttpResponseNotFound("Page is not built.")

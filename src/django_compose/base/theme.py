@@ -1,5 +1,6 @@
-from .components import Context, Component
-from .modifiers import Attributes
+from django_compose.base.components import Component
+from django_compose.base.context import Context
+from django_compose.base.modifiers import Attributes
 
 
 class ComponentTheme:
@@ -35,6 +36,6 @@ class ComponentTheme:
 class Theme:
     def __init__(
         self,
-        buttonTheme: ComponentTheme | None = None,
+        button_theme: ComponentTheme | None = None,
     ) -> None:
-        self.buttonTheme = buttonTheme or ComponentTheme()
+        self.button_theme = button_theme or ComponentTheme()

@@ -1,29 +1,33 @@
-from typing import Iterable, override
+from collections.abc import Iterable
+from typing import TYPE_CHECKING
+
+import htpy
+from typing_extensions import override
 
 from django_compose.base.components.base_components import (
     Children,
+    Component,
     ComponentLike,
     ModifierLike,
     VoidComponentMixin,
-    Component,
 )
-from django_compose.base.modifiers.base_modifiers import PageRenderModifier
+from django_compose.base.context import Context
 from django_compose.base.router import Router
 from django_compose.base.theme import Theme
-from django_compose.base.context import Context
 from django_compose.base.views.view_base import ComposePageView
+
 from .components.html_components import (
     Body,
     DocumentLevelComponent,
     Head,
     Html,
 )
-from django_compose.base.attributes import Attribute
-import htpy
+
+if TYPE_CHECKING:
+    from django_compose.base.modifiers import PageRenderModifier
 
 
 class Page(VoidComponentMixin, Component):
-
     def __init__(
         self,
         *modifiers: ModifierLike,
@@ -87,7 +91,7 @@ class ComposeApp:
         self.router = Router(self.name, pages=pages)
 
     def build(self) -> None:
-        theme = self.theme or Theme()
+        # theme = self.theme or Theme()
         context = Context(router=self.router)
         for route in self.router:
             route.page.full_build(context)

@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
 from collections import OrderedDict
-from typing import Any, Callable, Iterable, Self
+from collections.abc import Callable, Iterable
+
+from typing_extensions import Any, Self
 
 
-def _add_init_kwargs(
-    init_kwargs: dict[str, Any] | None, **kwargs: Any
-) -> dict[str, Any]:
+def _add_init_kwargs(init_kwargs: dict[str, Any] | None, **kwargs: Any) -> dict[str, Any]:
     if init_kwargs is None:
-        init_kwargs = dict()
+        init_kwargs = {}
     init_kwargs.update(kwargs)
     return init_kwargs
 
@@ -50,13 +50,13 @@ class Attribute(ABC):
             return self.__class__(
                 self.name,
                 value=value,
-                **(init_kwargs if init_kwargs else dict()),
+                **(init_kwargs if init_kwargs else {}),
             )
         except TypeError as e:
             raise TypeError(
                 str(e)
                 + "\n- likely due to subclass not passing all required arguments for __init__ in its __call__ method."
-            )
+            ) from e
 
     def __or__(self, other: Self) -> Self:
         return self.merge(other)
@@ -75,7 +75,6 @@ class Attribute(ABC):
 
 
 class SimpleAttribute(Attribute):
-
     def __init__(self, name: str, *, value: str | None = None) -> None:
         super().__init__(name, value=value)
 
@@ -120,9 +119,7 @@ class BooleanAttribute(Attribute):
             value = self.use_true_false[0] if value else self.use_true_false[1]
         return super().__call__(
             value,
-            init_kwargs=_add_init_kwargs(
-                init_kwargs, use_true_false=self.use_true_false
-            ),
+            init_kwargs=_add_init_kwargs(init_kwargs, use_true_false=self.use_true_false),
         )
 
     def __str__(self) -> str:
@@ -180,9 +177,7 @@ class ComposedAttribute(SimpleAttribute):
     ) -> Self:
         """The flag add_after determines whether to include kwargs before or after values."""
         if kwargs and not self.policy.kwarg_composer:
-            raise ValueError(
-                "kwarg_composer must be provided to use keyword arguments."
-            )
+            raise ValueError("kwarg_composer must be provided to use keyword arguments.")
         kwargs = _clean_kwargs(kwargs, underscores_to_hyphens=clean_underscores)
         # The items in value of type dict are not being cleaned.
         if isinstance(value, dict):
@@ -194,7 +189,7 @@ class ComposedAttribute(SimpleAttribute):
         kwarg_values: tuple[str, ...] = (
             tuple(self.policy.kwarg_composer(key, val) for key, val in kwargs.items())
             if self.policy.kwarg_composer
-            else tuple()
+            else ()
         )
         # if self.policy.decomposer:
         #     decomposed_values: list[str | None] = []
@@ -220,12 +215,8 @@ class ComposedAttribute(SimpleAttribute):
             raise ValueError(
                 f"Cannot merge attributes with different names: {self.name} and {other.name}"
             )
-        self_values: tuple[str, ...] = (
-            self.composed_values if self.composed_values else tuple()
-        )
-        other_values: tuple[str, ...] = (
-            other.composed_values if other.composed_values else tuple()
-        )
+        self_values: tuple[str, ...] = self.composed_values if self.composed_values else ()
+        other_values: tuple[str, ...] = other.composed_values if other.composed_values else ()
         total_values = self_values + other_values
         if self.policy.remove_duplicates:
             total_values = tuple(OrderedDict.fromkeys(total_values).keys())

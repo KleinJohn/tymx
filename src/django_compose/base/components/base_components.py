@@ -1,27 +1,28 @@
 from __future__ import annotations
-from enum import Enum, auto
-from typing import (
+
+from abc import ABC, abstractmethod
+from collections.abc import Callable, Iterable, Sequence
+from typing import TYPE_CHECKING, TypeAlias
+
+from typing_extensions import (
+    Any,
     Self,
-    TypeAlias,
     TypeVar,
-    Union,
     final,
-    TYPE_CHECKING,
     override,
 )
-from collections.abc import Callable, Sequence, Iterable
-from abc import ABC, abstractmethod
-import htpy
 
 from django_compose.base.attributes import Attribute, classes
 from django_compose.base.context import Context, ContextFrame, DataDict
 from django_compose.base.modifiers.base_modifiers import (
-    Modifier,
     Attributes,
+    Modifier,
     Modifiers,
 )
 
 if TYPE_CHECKING:
+    import htpy
+
     from django_compose.base.theme import ComponentTheme
 
 
@@ -29,24 +30,19 @@ if TYPE_CHECKING:
 
 
 T = TypeVar("T", bound="BaseComponent")
-GenericComponentLike: TypeAlias = Union[None, T, list[T]]
+GenericComponentLike: TypeAlias = None | T | list[T]
 BuildFunctionType: TypeAlias = Callable[[Context, "Children"], "Children"]
-GenericComponentChildren: TypeAlias = Union[
-    None,
-    str,
-    T,
-    type[T],
-    BuildFunctionType,
-    Sequence["GenericComponentChildren[T]"],
-]
+GenericComponentChildren: TypeAlias = (
+    None | str | T | type[T] | BuildFunctionType | Sequence["GenericComponentChildren[T]"]
+)
 
 ComponentLike: TypeAlias = GenericComponentLike["BaseComponent"]
 Children: TypeAlias = GenericComponentChildren["BaseComponent"]
 
 AttributeLike: TypeAlias = str | Attribute | Attributes | Iterable["AttributeLike"]
-ModifierLike: TypeAlias = Union[
-    str, Attribute, Attributes, Modifier, Modifiers, Iterable["ModifierLike"]
-]
+ModifierLike: TypeAlias = (
+    str | Attribute | Attributes | Modifier | Modifiers | Iterable["ModifierLike"]
+)
 
 
 class BaseComponent(ABC):
@@ -59,6 +55,7 @@ class BaseComponent(ABC):
         *attributes: AttributeLike,
         children: Children = None,
         htpy_kwargs: dict[str, str] | None = None,
+        **kwargs: Any,
     ) -> None:
         self._attributes = Attributes()
         self._init_attributes(attributes)
@@ -68,6 +65,7 @@ class BaseComponent(ABC):
         self._build_data: ContextFrame = ContextFrame(self)
         self._build_context: Context | None = None
         self._is_built = False  # use to prevent recursion in build()
+        self.kwargs = kwargs
 
     @property
     def attributes(self) -> Attributes:
@@ -121,7 +119,7 @@ class BaseComponent(ABC):
         self._before_build()
         children = self._handle_build()
         self._after_build(children)
-        self._do_cleanup()
+        self._finish_build()
         return self._unwrap_component_list(children)
 
     def _handle_build(self) -> list[BaseComponent]:
@@ -147,10 +145,10 @@ class BaseComponent(ABC):
         return lst
 
     def _before_build(self) -> None:
-        pass
+        return None
 
     def _after_build(self, components: list[BaseComponent]) -> None:
-        pass
+        return None
 
     def _before_build_children(self, children: list[BaseComponent]) -> None:
         self.context.push_data(self.provide_data())
@@ -162,7 +160,7 @@ class BaseComponent(ABC):
         self._build_data = ContextFrame(self)
         self._build_context = context
 
-    def _do_cleanup(self) -> None:
+    def _finish_build(self) -> None:
         self._build_data = ContextFrame(self)
         self._build_context = None
 
@@ -194,7 +192,7 @@ class BaseComponent(ABC):
     def _verbose_str(self) -> Iterable[str]:
         return (str(self.attributes),)
 
-    def __getitem__(self, children: Children, **kwargs) -> Self:
+    def __getitem__(self, children: Children, **kwargs: Any) -> Self:
         copy = self.__class__(
             *self._attributes if not self._building else [],
             children=children,
@@ -205,10 +203,16 @@ class BaseComponent(ABC):
         copy._is_built = self._building
         return copy
 
-    def __class_getitem__(cls, children: Children, **kwargs) -> Self:
+    def __class_getitem__(cls, children: Children, **kwargs: Any) -> Self:
         return cls(children=children, **kwargs)
 
-    def __str__(self, pretty=False, verbose=False, level=0, tab_length=4) -> str:
+    def __str__(
+        self,
+        pretty: bool = False,
+        verbose: bool = False,
+        level: int = 0,
+        tab_length: int = 4,
+    ) -> str:
         own_str = (" " * level * tab_length + ("- " if self._children else "")) * int(
             pretty
         ) + self.__class__.__name__
@@ -223,7 +227,9 @@ class BaseComponent(ABC):
             )
         else:
             if self._children:
-                child_str = f'[{", ".join(c.__str__(pretty, verbose, level+1) for c in self._children)}]'
+                child_str = (
+                    f"[{', '.join(c.__str__(pretty, verbose, level + 1) for c in self._children)}]"
+                )
             else:
                 child_str = ""
         return f"{own_str}{v_str}{child_str}"
@@ -239,20 +245,17 @@ class BaseComponent(ABC):
             case BaseComponent():
                 return [children]
             case Sequence():
-                lst: list["BaseComponent"] = []
+                lst: list[BaseComponent] = []
                 for child in children:
                     lst.extend(self._children_to_list(child))
                 return lst
             case Callable():
-                return [
-                    ContextBuilder(build_function=children, children=self._children)
-                ]
+                return [ContextBuilder(build_function=children, children=self._children)]
             case _:
                 raise ValueError("Invalid child type.")
 
 
 class Component(BaseComponent):
-
     def __init__(
         self,
         *modifiers: ModifierLike,
@@ -335,7 +338,7 @@ class Component(BaseComponent):
         return (str(self.attributes), str(self.modifiers))
 
     @override
-    def __getitem__(self, children: Children, **kwargs) -> Self:
+    def __getitem__(self, children: Children, **kwargs: Any) -> Self:
         copy = self.__class__(
             *self._attributes if not self._building else [],
             *self._modifiers if not self._building else [],
@@ -367,38 +370,29 @@ class Component(BaseComponent):
 
 
 class VoidComponentMixin:
+    # ignore return types, since mypy does not handle mro in mixins well
 
-    def __getitem__(self, children: Children, **kwargs) -> Self:
+    def __getitem__(self, children: Children, **kwargs: Any) -> Self:
         if children:
             raise ValueError(f"{self.__class__.__name__} does not accept any children.")
-        return super().__getitem__(children, **kwargs)
+        return super().__getitem__(children, **kwargs)  # type: ignore
 
-    def __class_getitem__(cls, children: Children, **kwargs) -> Self:
+    def __class_getitem__(cls, children: Children, **kwargs: Any) -> Self:
         if children:
             raise ValueError(f"{cls.__name__} does not accept any children.")
-        return super().__getitem__(children, **kwargs)
+        return super().__getitem__(children, **kwargs)  # type: ignore
 
 
 class SingleChildComponentMixin:
-    def __getitem__(self, children: Children, **kwargs) -> BaseComponent:
-        if (
-            isinstance(children, Sequence)
-            and not isinstance(children, str)
-            and len(children) != 1
-        ):
-            raise ValueError(
-                f"{self.__class__.__name__} only accepts exactly one child."
-            )
-        return super().__getitem__(children, **kwargs)
+    def __getitem__(self, children: Children, **kwargs: Any) -> BaseComponent:
+        if isinstance(children, Sequence) and not isinstance(children, str) and len(children) != 1:
+            raise ValueError(f"{self.__class__.__name__} only accepts exactly one child.")
+        return super().__getitem__(children, **kwargs)  # type: ignore
 
-    def __class_getitem__(cls, children: Children, **kwargs) -> Self:
-        if (
-            isinstance(children, Sequence)
-            and not isinstance(children, str)
-            and len(children) != 1
-        ):
+    def __class_getitem__(cls, children: Children, **kwargs: Any) -> Self:
+        if isinstance(children, Sequence) and not isinstance(children, str) and len(children) != 1:
             raise ValueError(f"{cls.__name__} only accepts exactly one child.")
-        return super().__getitem__(children, **kwargs)
+        return super().__getitem__(children, **kwargs)  # type: ignore
 
 
 class Renderable(ABC):
@@ -407,10 +401,7 @@ class Renderable(ABC):
 
 
 class BuildsItselfMixin:
-
-    def build(
-        self: BaseComponent, context: Context, children: Children
-    ) -> BaseComponent:
+    def build(self: BaseComponent, context: Context, children: Children) -> BaseComponent:
         return self[children]
 
 
@@ -438,16 +429,13 @@ class ContextBuilder(Component):
         return self.build_function(context, children)
 
     @override
-    def __getitem__(self, children: Children, **kwargs) -> Self:
-        return super().__getitem__(
-            children, build_function=self.build_function, **kwargs
-        )
+    def __getitem__(self, children: Children, **kwargs: Any) -> Self:
+        return super().__getitem__(children, build_function=self.build_function, **kwargs)
 
 
 @final
 class Text(VoidComponentMixin, BuildsItselfMixin, Component):
-
-    def __init__(self, *args, text: str = "", **kwargs):
+    def __init__(self, *args: Any, text: str = "", **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.text = text
 
@@ -456,7 +444,7 @@ class Text(VoidComponentMixin, BuildsItselfMixin, Component):
         return self.text
 
     @override
-    def __getitem__(self, children: Children, **kwargs) -> Self:
+    def __getitem__(self, children: Children, **kwargs: Any) -> Self:
         return super().__getitem__(children, text=self.text, **kwargs)
 
     @override
@@ -464,7 +452,13 @@ class Text(VoidComponentMixin, BuildsItselfMixin, Component):
         return (f"text='{self.text}'", str(self.attributes), str(self.modifiers))
 
     @override
-    def __str__(self, pretty=False, verbose=False, level=0, tab_length=4) -> str:
+    def __str__(
+        self,
+        pretty: bool = False,
+        verbose: bool = False,
+        level: int = 0,
+        tab_length: int = 4,
+    ) -> str:
         if pretty or verbose:
             return super().__str__(pretty, verbose, level, tab_length)
         return " " * level * tab_length * int(pretty) + f'"{self.text}"'

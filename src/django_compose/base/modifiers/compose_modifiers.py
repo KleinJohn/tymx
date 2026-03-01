@@ -1,9 +1,9 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
-from django_compose.base.context import ConsumerPolicy
-from .base_modifiers import PageRenderModifier, Modifier
 from django_compose.base.attributes import href
+from django_compose.base.modifiers import PageRenderModifier
 
 if TYPE_CHECKING:
     from django_compose.base.components.base_components import Component

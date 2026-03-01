@@ -1,12 +1,13 @@
 from __future__ import annotations
-from abc import ABC, abstractmethod
+
 from enum import Enum, auto
-from typing import TYPE_CHECKING, TypeVar, TypeAlias
+from typing import TYPE_CHECKING, TypeAlias
+
+from typing_extensions import Any, TypeVar
 
 if TYPE_CHECKING:
-    from django_compose.base.app import Router, Page
+    from django_compose.base import Page, Router
     from django_compose.base.components.base_components import BaseComponent
-    from django_compose.base.components.html_components import BaseHtmlComponent
 
 
 T_Consumable = TypeVar("T_Consumable", bound="Consumable")
@@ -38,7 +39,7 @@ class ConsumerPolicy(Enum):
         }
 
 
-class Consumable(ABC):
+class Consumable:
     consumer_policy = ConsumerPolicy.NONE
     consume_first_matching = True
 
@@ -61,10 +62,8 @@ class Consumable(ABC):
             case ConsumerPolicy.DIRECT_BUILT_CHILDREN:
                 # true, if all frames between self and consumer are not renderable
                 return all(
-                    map(
-                        lambda frame: not frame.component.is_built,
-                        context._data_stack[self_level + 1 : consumer_level],
-                    )
+                    frame.component.is_built
+                    for frame in context._data_stack[self_level + 1 : consumer_level]
                 )
             case ConsumerPolicy.CUSTOM:
                 return self.custom_policy(context, consumer, consumer_level, self_level)
@@ -133,20 +132,16 @@ class Context:
     ) -> None:
         self.router = router
         self.page = page
-        self._data_stack: list[ContextFrame] = (
-            data_stack if data_stack is not None else []
-        )
+        self._data_stack: list[ContextFrame] = data_stack if data_stack is not None else []
         self.current: BaseComponent | None = None
 
-    def copy(self) -> "Context":
+    def copy(self) -> Context:
         return self.copy_with()
 
-    def copy_with(self, **kwargs) -> "Context":
+    def copy_with(self, **kwargs: Any) -> Context:
         router = kwargs.get("router", self.router)
         page = kwargs.get("page", self.page)
-        data_stack: list[ContextFrame] | None = kwargs.get(
-            "data_stack", self._data_stack
-        )
+        data_stack: list[ContextFrame] | None = kwargs.get("data_stack", self._data_stack)
         if data_stack is not None:
             data_stack = [*data_stack]
         return Context(router=router, page=page, data_stack=data_stack)
@@ -162,9 +157,11 @@ class Context:
 
     def get(self, key: type[T_Consumable]) -> T_Consumable | None:
         assert self.current is not None
-        if key.consumer_policy == ConsumerPolicy.NONE:
-            return None
-        elif key.consumer_policy.is_built_only and not self.current.is_built:
+        if (
+            key.consumer_policy == ConsumerPolicy.NONE
+            or key.consumer_policy.is_built_only
+            and not self.current.is_built
+        ):
             return None
         temp: T_Consumable | None = None
         depth = len(self._data_stack)
@@ -193,9 +190,7 @@ class Context:
                     )
             if not can_consume or consumable is None:
                 continue
-            temp = consumable.merge_if_policy_applies(
-                temp, self, self.current, depth, level
-            )
+            temp = consumable.merge_if_policy_applies(temp, self, self.current, depth, level)
             if can_consume and key.consume_first_matching:
                 break
         return temp
@@ -207,7 +202,7 @@ class Context:
         return len(self._data_stack)
 
     def __str__(self) -> str:
-        return str([[f.__name__ for f in s.data.keys()] for s in self._data_stack])
+        return str([[f.__name__ for f in s.data] for s in self._data_stack])
 
     @property
     def current_url(self) -> str:

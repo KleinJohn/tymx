@@ -1,6 +1,15 @@
-from typing import Protocol, override
+import htpy
+from typing_extensions import Protocol, final, override
+
 from django_compose.base.modifiers.base_modifiers import Attributes
-from .base_components import *
+
+from .base_components import (
+    BaseComponent,
+    BuildsItselfMixin,
+    Component,
+    Renderable,
+    VoidComponentMixin,
+)
 
 
 class IsHtml(Protocol):
@@ -9,9 +18,7 @@ class IsHtml(Protocol):
     _children: list[BaseComponent]
     _htpy_kwargs: dict[str, str]
 
-    def __getitem__(self, children: Children) -> Self: ...
-
-    def render(self) -> htpy.Node: ...
+    def render(self) -> htpy.Renderable: ...
 
 
 class RendersHtmlMixin(BuildsItselfMixin, Renderable):
@@ -37,14 +44,12 @@ class HtmlComponent(RendersHtmlMixin, BaseHtmlComponent):
 
 
 # HtmlVoidComponents do not have children and do not implement RendersHtmlMixin
-class HtmlVoidComponent(
-    VoidComponentMixin, BuildsItselfMixin, Renderable, BaseHtmlComponent
-):
+class HtmlVoidComponent(VoidComponentMixin, BuildsItselfMixin, Renderable, BaseHtmlComponent):
     element: htpy.VoidElement
 
     @override
-    def render(self) -> htpy.Renderable:
-        return self.element(**self._attributes.values(), **self._htpy_kwargs)
+    def render(self: IsHtml) -> htpy.Renderable:
+        return self.element(**self.attributes.values(), **self._htpy_kwargs)
 
 
 @final

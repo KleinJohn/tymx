@@ -10,7 +10,7 @@ from django_compose.base.components import (
 )
 from django_compose.base.context import Context
 from django_compose.base.attributes import id, style, classes, disabled
-from django_compose.base.app import Page, Router, Theme
+from django_compose.base import Page, Router
 from django_compose.base.modifiers.debug_modifiers import (
     PrintComponentModifier,
     PrintContextModifier,
