@@ -15,16 +15,14 @@ from typing_extensions import (
 from django_compose.base.context import (
     Consumable,
     ConsumerPolicy,
+    ContextTraversalSnapshot,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
 
     from django_compose.base.attributes import Attribute
-    from django_compose.base.components.base_components import (
-        BaseComponent,
-        Component,
-    )
+    from django_compose.base.components import Component
     from django_compose.base.context import Context
 
 
@@ -120,7 +118,9 @@ class Modifiers(BaseModifier):
         if overwrite or type(modifier) not in self.data:
             self.data[type(modifier)] = modifier
 
-    def update(self, modifiers: Modifiers | Sequence[Modifier], overwrite: bool = True) -> None:
+    def update(
+        self, modifiers: Modifiers | Sequence[Modifier], overwrite: bool = True
+    ) -> None:
         if modifiers is None:
             return
         for modifier in modifiers:
@@ -136,22 +136,16 @@ class Modifiers(BaseModifier):
     def merge_if_policy_applies(
         self: Modifiers,
         other: Modifiers | None,
-        context: Context,
-        consumer: BaseComponent,
-        consumer_level: int,
-        self_level: int,
+        context_snapshot: ContextTraversalSnapshot,
     ) -> Modifiers:
         if other is None:
             return Modifiers(
-                *(
-                    m
-                    for m in self
-                    if m.policy_applies(context, consumer, consumer_level, self_level)
-                )
+                # only include modifiers which can be consumed -> [0]
+                *(m for m in self if m.policy_applies(context_snapshot))
             )
         merged = self.copy()
         for modifier in other:
-            if modifier.policy_applies(context, consumer, consumer_level, self_level):
+            if modifier.policy_applies(context_snapshot):
                 merged.add(modifier)
         return merged
 
@@ -215,7 +209,9 @@ class Attributes(BaseModifier):
         else:
             self._data[attribute.name] = attribute | self._data[attribute.name]
 
-    def update(self, attributes: Attributes | Sequence[Attribute], overwrite: bool = True) -> None:
+    def update(
+        self, attributes: Attributes | Sequence[Attribute], overwrite: bool = True
+    ) -> None:
         for attr in attributes:
             self.add(attr, overwrite=overwrite)
 

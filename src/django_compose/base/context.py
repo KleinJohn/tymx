@@ -18,11 +18,22 @@ class ConsumerPolicy(Enum):
     """Defines who can consume a Consumable."""
 
     NONE = auto()
+    "Applies only to the unbuilt component itself"
+
     ALL_CHILDREN = auto()
+    "Applies to all children including unbuilt ones."
+
     DIRECT_CHILDREN = auto()
+    "Applies only to direct children, including unbuilt ones."
+
     ALL_BUILT_CHILDREN = auto()
+    "Applies to all built children (html components)."
+
     DIRECT_BUILT_CHILDREN = auto()
+    "Applies only to the the first layer of built children under the applying component."
+
     CUSTOM = auto()
+    "Calls the custom_policy method to determine applicability"
 
     @property
     def is_direct(self) -> bool:
@@ -43,39 +54,39 @@ class Consumable:
     consumer_policy = ConsumerPolicy.NONE
     consume_first_matching = True
 
-    def policy_applies(
+    def policy_applies(self, context_snapshot: ContextTraversalSnapshot) -> bool:
+        # TODO: check if we need to adjust this, so that a full check is done
+        # (since during_traversal assumes a break would have happened if needed)
+        return self.policy_applies_during_traversal(context_snapshot)[0]
+
+    def policy_applies_during_traversal(
         self,
-        context: Context,
-        consumer: BaseComponent,
-        consumer_level: int,
-        self_level: int,
-    ) -> bool:
+        context_snapshot: ContextTraversalSnapshot,
+    ) -> tuple[bool, bool]:
+        """Returns a tuple of (can_consume, should_break)."""
         match self.consumer_policy:
             case ConsumerPolicy.NONE:
-                return False
+                return (False, True)
             case ConsumerPolicy.ALL_CHILDREN:
-                return True
+                return (True, False)
             case ConsumerPolicy.DIRECT_CHILDREN:
-                return consumer_level == self_level + 1
+                return (True, True)
             case ConsumerPolicy.ALL_BUILT_CHILDREN:
-                return consumer.is_built
+                component = context_snapshot.context.current_component
+                component_is_built = component.is_built if component else False
+                return (component_is_built, False)
             case ConsumerPolicy.DIRECT_BUILT_CHILDREN:
-                # true, if all frames between self and consumer are not renderable
-                return all(
-                    frame.component.is_built
-                    for frame in context._data_stack[self_level + 1 : consumer_level]
-                )
+                # assume it would have break'ed during traversal if one component in the path was not built
+                component = context_snapshot.context.current_component
+                component_is_built = component.is_built if component else False
+                return (component_is_built, True)
             case ConsumerPolicy.CUSTOM:
-                return self.custom_policy(context, consumer, consumer_level, self_level)
-        return False
+                return self.custom_policy(context_snapshot)
 
     def custom_policy(
         self,
-        context: Context,
-        consumer: BaseComponent,
-        consumer_level: int,
-        self_level: int,
-    ) -> bool:
+        context_snapshot: ContextTraversalSnapshot,
+    ) -> tuple[bool, bool]:
         raise NotImplementedError()
 
     def merge(self: T_Consumable, other: T_Consumable) -> T_Consumable:
@@ -85,16 +96,13 @@ class Consumable:
     def merge_if_policy_applies(
         self: T_Consumable,
         other: T_Consumable | None,
-        context: Context,
-        consumer: BaseComponent,
-        consumer_level: int,
-        self_level: int,
+        context_snapshot: ContextTraversalSnapshot,
     ) -> T_Consumable:
         """Only override if you want to check if policy applies to parts of
         a collection of this consumable."""
         # this is not supposed to check whether the policy applies to the
         # consumable itself, but it is supposed to merge all collected consumables
-        # to which the policy applies
+        # to which the policy applies (the policy check on this is already done in get())
         if other is None:
             return self
         return self.merge(other)
@@ -121,6 +129,22 @@ class ContextFrame:
         return key in self.data
 
 
+class ContextTraversalSnapshot:
+    """A snapshot of a traversal through the context's data stack"""
+
+    def __init__(
+        self,
+        context: Context,
+        max_depth: int,
+        current_depth: int,
+        frame: ContextFrame,
+    ) -> None:
+        self.context = context
+        self.max_depth = max_depth
+        self.current_depth = current_depth
+        self.frame = frame
+
+
 class Context:
     """Context for building and rendering components."""
 
@@ -132,8 +156,10 @@ class Context:
     ) -> None:
         self.router = router
         self.page = page
-        self._data_stack: list[ContextFrame] = data_stack if data_stack is not None else []
-        self.current: BaseComponent | None = None
+        self._data_stack: list[ContextFrame] = (
+            data_stack if data_stack is not None else []
+        )
+        self.current_component: BaseComponent | None = None
 
     def copy(self) -> Context:
         return self.copy_with()
@@ -141,14 +167,16 @@ class Context:
     def copy_with(self, **kwargs: Any) -> Context:
         router = kwargs.get("router", self.router)
         page = kwargs.get("page", self.page)
-        data_stack: list[ContextFrame] | None = kwargs.get("data_stack", self._data_stack)
+        data_stack: list[ContextFrame] | None = kwargs.get(
+            "data_stack", self._data_stack
+        )
         if data_stack is not None:
             data_stack = [*data_stack]
         return Context(router=router, page=page, data_stack=data_stack)
 
     def push_data(self, data: DataDict) -> None:
-        assert self.current is not None
-        self._data_stack.append(ContextFrame(self.current, data))
+        assert self.current_component is not None
+        self._data_stack.append(ContextFrame(self.current_component, data))
 
     def pop_frame(self) -> None:
         if not self._data_stack:
@@ -156,42 +184,31 @@ class Context:
         self._data_stack.pop()
 
     def get(self, key: type[T_Consumable]) -> T_Consumable | None:
-        assert self.current is not None
-        if (
-            key.consumer_policy == ConsumerPolicy.NONE
-            or key.consumer_policy.is_built_only
-            and not self.current.is_built
-        ):
+        assert self.current_component is not None
+        if key.consumer_policy.is_built_only and not self.current_component.is_built:
             return None
         temp: T_Consumable | None = None
         depth = len(self._data_stack)
         for level in reversed(range(depth)):
             frame = self.get_frame(level)
             consumable = frame.get(key)
-            can_consume = False
-            # we could use consumable.policy_applies here
-            # but we can optimize for early breaks this way
-            match key.consumer_policy:
-                case ConsumerPolicy.ALL_CHILDREN:
-                    can_consume = True
-                case ConsumerPolicy.DIRECT_CHILDREN:
-                    can_consume = level == depth - 1
-                case ConsumerPolicy.ALL_BUILT_CHILDREN:
-                    can_consume = True
-                case ConsumerPolicy.DIRECT_BUILT_CHILDREN:
-                    if frame.component.is_built:
-                        break
-                    can_consume = True  # is_built checked above
-                case ConsumerPolicy.CUSTOM:
-                    can_consume = (
-                        consumable.custom_policy(self, self.current, depth, level)
-                        if consumable is not None
-                        else False
-                    )
-            if not can_consume or consumable is None:
+            snapshot = ContextTraversalSnapshot(
+                context=self,
+                max_depth=depth,
+                current_depth=level,
+                frame=frame,
+            )
+            if consumable is None:
                 continue
-            temp = consumable.merge_if_policy_applies(temp, self, self.current, depth, level)
-            if can_consume and key.consume_first_matching:
+            can_consume, should_break = consumable.policy_applies_during_traversal(
+                snapshot
+            )
+            if should_break:
+                break
+            if not can_consume:
+                continue
+            temp = consumable.merge_if_policy_applies(temp, snapshot)
+            if key.consume_first_matching:
                 break
         return temp
 

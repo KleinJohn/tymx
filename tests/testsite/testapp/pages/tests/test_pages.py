@@ -1,19 +1,24 @@
 from django_compose.base.components import (
     Component,
+    Children,
+)
+from django_compose.base.components.html_components import (
     Div,
     Button,
     Label,
     A,
     H1,
     Input,
-    Children,
 )
 from django_compose.base.context import Context
 from django_compose.base.attributes import id, style, classes, disabled
 from django_compose.base import Page, Router
 from django_compose.base.modifiers.debug_modifiers import (
+    DummyAllChildrenModifier,
+    DummyDirectBuiltChildrenModifier,
+    DummyDirectChildrenModifier,
+    DummyNoneModifier,
     PrintComponentModifier,
-    PrintContextModifier,
 )
 
 
@@ -45,7 +50,6 @@ class IndexLink(Component):
 
 
 index_page = Page(
-    PrintContextModifier(),
     name="index",
     route_pattern="",
     body=[
@@ -84,6 +88,10 @@ class CustomContent(Component):
 
 test_page = Page(
     PrintComponentModifier(),
+    DummyNoneModifier(),
+    DummyAllChildrenModifier(),
+    DummyDirectChildrenModifier(),
+    DummyDirectBuiltChildrenModifier(),
     name="test",
     body=[
         H1["Title"],

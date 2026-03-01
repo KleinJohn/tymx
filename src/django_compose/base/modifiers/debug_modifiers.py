@@ -36,7 +36,9 @@ class PrintContextModifier(Modifier):
 class PrintComponentModifier(Modifier):
     consumer_policy = ConsumerPolicy.NONE
 
-    def __init__(self, pretty: bool = True, verbose: bool = True, **print_kwargs: Any) -> None:
+    def __init__(
+        self, pretty: bool = True, verbose: bool = True, **print_kwargs: Any
+    ) -> None:
         super().__init__()
         self.pretty = pretty
         self.verbose = verbose
@@ -45,3 +47,43 @@ class PrintComponentModifier(Modifier):
     def apply_to_child(self, context: Context, component: Component) -> Component:
         print(component.__str__(self.pretty, self.verbose, **self.print_kwargs))
         return super().apply_to_child(context, component)
+
+
+class DummyAllChildrenModifier(Modifier):
+    consumer_policy = ConsumerPolicy.ALL_CHILDREN
+
+    def apply_before_build(self, context: Context, component: Component) -> None:
+        return None
+
+    def apply_to_child(self, context: Context, component: Component) -> Component:
+        return component
+
+
+class DummyNoneModifier(Modifier):
+    consumer_policy = ConsumerPolicy.NONE
+
+    def apply_before_build(self, context: Context, component: Component) -> None:
+        return None
+
+    def apply_to_child(self, context: Context, component: Component) -> Component:
+        return component
+
+
+class DummyDirectChildrenModifier(Modifier):
+    consumer_policy = ConsumerPolicy.DIRECT_CHILDREN
+
+    def apply_before_build(self, context: Context, component: Component) -> None:
+        return None
+
+    def apply_to_child(self, context: Context, component: Component) -> Component:
+        return component
+
+
+class DummyDirectBuiltChildrenModifier(Modifier):
+    consumer_policy = ConsumerPolicy.DIRECT_BUILT_CHILDREN
+
+    def apply_before_build(self, context: Context, component: Component) -> None:
+        return None
+
+    def apply_to_child(self, context: Context, component: Component) -> Component:
+        return component
