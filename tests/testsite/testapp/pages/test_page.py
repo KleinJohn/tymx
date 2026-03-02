@@ -2,23 +2,51 @@ from django_compose.base.components import Component, Children
 from django_compose.base.components.html_components import A, H1, Button, Div, Input
 from django_compose.base.attributes import disabled, id, style, classes
 from django_compose.base.app import Page
-from django_compose.base.context import Context
+from django_compose.base.context import Context, ContextData, DataDict
+
+
+class TimeData(ContextData):
+    time: str | None
+    in_hours: int | None = None
 
 
 class CustomButton(Component):
 
     def build(self, context: Context, children: Children) -> Children:
+        time_data = context.get(TimeData) or TimeData()
         return Div[
             "Custom Button Start",
+            " ".join(
+                [
+                    "time in button:",
+                    str(time_data.time),
+                    "in hours:",
+                    str(time_data.in_hours),
+                ]
+            ),
             Button[children],
             "End of Custom Button",
         ]
 
 
 class CustomDiv(Component):
+    def provide(self) -> DataDict:
+        data = super().provide()
+        data[TimeData] = TimeData("1:00")
+        return data
+
     def build(self, context: Context, children: Children) -> Children:
+        time_data = context.get(TimeData) or TimeData()
         return Div[
-            ["Custom Div Start"],
+            "Custom Div Start",
+            " ".join(
+                [
+                    "time in div:",
+                    str(time_data.time),
+                    "in hours:",
+                    str(time_data.in_hours),
+                ]
+            ),
             CustomButton(disabled)[children],
             "Custom Div End",
         ]
@@ -32,6 +60,7 @@ class IndexLink(Component):
 index_page = Page(
     name="index",
     route_pattern="",
+    data=[TimeData(time="12:00", in_hours=12)],
     body=lambda context, children: [
         H1((id("header1"), style(color="blue", font_size="12px")))[
             CustomDiv("button", "is-active")["press"],

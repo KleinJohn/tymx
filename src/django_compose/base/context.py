@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field, fields, replace
 from enum import Enum, auto
-from typing import TYPE_CHECKING, TypeAlias
 
-from typing_extensions import Any, TypeVar
+from typing_extensions import Any, TypeVar, TYPE_CHECKING, Self, TypeAlias
 
 if TYPE_CHECKING:
     from django_compose.base import Page, Router
@@ -68,7 +68,7 @@ class Consumable:
             case ConsumerPolicy.DIRECT_BUILT_CHILDREN:
                 # we can't use current_depth here because there might be unbuilt components in
                 # between, so we need to check all components between
-                frames = context_snapshot.context._data_stack
+                frames = context_snapshot.context._context_frames
                 component = context_snapshot.context.current_component
                 return all(
                     not frame.component.is_built
@@ -143,11 +143,13 @@ class Context:
         self,
         router: Router,
         page: Page | None = None,
-        data_stack: list[ContextFrame] | None = None,
+        context_frames: list[ContextFrame] | None = None,
     ) -> None:
         self.router = router
         self.page = page
-        self._data_stack: list[ContextFrame] = data_stack if data_stack is not None else []
+        self._context_frames: list[ContextFrame] = (
+            context_frames if context_frames is not None else []
+        )
         self.current_component: BaseComponent | None = None
 
     def copy(self) -> Context:
@@ -156,26 +158,28 @@ class Context:
     def copy_with(self, **kwargs: Any) -> Context:
         router = kwargs.get("router", self.router)
         page = kwargs.get("page", self.page)
-        data_stack: list[ContextFrame] | None = kwargs.get("data_stack", self._data_stack)
-        if data_stack is not None:
-            data_stack = [*data_stack]
-        return Context(router=router, page=page, data_stack=data_stack)
+        context_frames: list[ContextFrame] | None = kwargs.get(
+            "context_frames", self._context_frames
+        )
+        if context_frames is not None:
+            context_frames = [*context_frames]
+        return Context(router=router, page=page, context_frames=context_frames)
 
     def push_data(self, data: DataDict) -> None:
         assert self.current_component is not None
-        self._data_stack.append(ContextFrame(self.current_component, data))
+        self._context_frames.append(ContextFrame(self.current_component, data))
 
     def pop_frame(self) -> None:
-        if not self._data_stack:
+        if not self._context_frames:
             raise IndexError("No provider to pop from the context.")
-        self._data_stack.pop()
+        self._context_frames.pop()
 
     def get(self, key: type[T_Consumable]) -> T_Consumable | None:
         assert self.current_component is not None
         if key.consumer_policy.is_built_only and not self.current_component.is_built:
             return None
         temp: T_Consumable | None = None
-        depth = len(self._data_stack)
+        depth = len(self._context_frames)
         for level in reversed(range(depth)):
             frame = self.get_frame(level)
             consumable = frame.get(key)
@@ -193,16 +197,40 @@ class Context:
         return temp
 
     def get_frame(self, level: int) -> ContextFrame:
-        return self._data_stack[level]
+        return self._context_frames[level]
 
     def __len__(self) -> int:
-        return len(self._data_stack)
+        return len(self._context_frames)
 
     def __str__(self) -> str:
-        return str([[f.__name__ for f in s.data] for s in self._data_stack])
+        return str([[f.__name__ for f in s.data] for s in self._context_frames])
 
     @property
     def current_url(self) -> str:
         if not self.page:
             raise ValueError("No page found in context.")
         return self.router.routes[self.page.name].url
+
+
+@dataclass
+class ContextData(Consumable):
+    consumer_policy = ConsumerPolicy.ALL_CHILDREN
+    overwrite_with_none: bool = field(default=False, kw_only=True)
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        if "__dataclass_fields__" not in cls.__dict__:
+            dataclass(cls)
+
+    def __init__(
+        self, *args: Any, overwrite_with_none: bool = False, **kwargs: Any
+    ) -> None:
+        super().__init__(*args, **kwargs)
+
+    def merge(self, other: Self) -> Self:
+        updates = {
+            f.name: getattr(other, f.name)
+            for f in fields(self)
+            if getattr(other, f.name) is not None or other.overwrite_with_none
+        }
+        return replace(self, **updates)

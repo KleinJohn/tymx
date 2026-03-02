@@ -11,7 +11,7 @@ from django_compose.base.components.base_components import (
     ModifierLike,
     VoidComponentMixin,
 )
-from django_compose.base.context import Context
+from django_compose.base.context import Context, ContextData, DataDict
 from django_compose.base.router import Router
 from django_compose.base.theme import Theme
 from django_compose.base.views.view_base import ComposePageView
@@ -38,6 +38,7 @@ class Page(VoidComponentMixin, Component):
         body: Children = None,
         view: type[ComposePageView] | None = None,
         route_pattern: str | None = None,
+        data: list[ContextData] | None = None,
         htpy_kwargs: dict[str, str] | None = None,
     ):
         super().__init__(
@@ -53,9 +54,17 @@ class Page(VoidComponentMixin, Component):
         self.view = view or ComposePageView
         self.route_pattern = f"{self.name}/" if route_pattern is None else route_pattern
         self.render_time_modifiers: list[PageRenderModifier] = []
+        self.data = data or []
 
     @override
-    def full_build(self, context: Context) -> ComponentLike:
+    def provide(self) -> DataDict:
+        data = super().provide()
+        for d in self.data:
+            data[d.__class__] = d
+        return data
+
+    @override
+    def full_build(self, context: Context) -> DocumentLevelComponent:
         if self.theme is not None:
             context = context.copy_with(theme=self.theme)
         context = context.copy_with(page=self)

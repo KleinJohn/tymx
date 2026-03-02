@@ -33,7 +33,12 @@ T = TypeVar("T", bound="BaseComponent")
 GenericComponentLike: TypeAlias = None | T | list[T]
 BuildFunctionType: TypeAlias = Callable[[Context, "Children"], "Children"]
 GenericComponentChildren: TypeAlias = (
-    None | str | T | type[T] | BuildFunctionType | Sequence["GenericComponentChildren[T]"]
+    None
+    | str
+    | T
+    | type[T]
+    | BuildFunctionType
+    | Sequence["GenericComponentChildren[T]"]
 )
 
 ComponentLike: TypeAlias = GenericComponentLike["BaseComponent"]
@@ -101,20 +106,20 @@ class BaseComponent(ABC):
     def render(self) -> htpy.Node:
         raise NotImplementedError()
 
-    def provide_data(self) -> DataDict:
+    def provide(self) -> DataDict:
         data: DataDict = {}
         if self._attributes and not self.is_built:
             data[Attributes] = self._attributes
         return data
 
-    def consume_data(self) -> None:
+    def consume(self) -> None:
         inherited_attributes = self.context.get(Attributes) or Attributes()
         self.attributes = inherited_attributes | self._attributes
 
     def full_build(self, context: Context) -> ComponentLike:
         """The component should return to its original state after building."""
         self._prepare_build(context)
-        self.consume_data()
+        self.consume()
         self._before_build()
         children = self._handle_build()
         self._after_build(children)
@@ -150,7 +155,7 @@ class BaseComponent(ABC):
         return None
 
     def _before_build_children(self, children: list[BaseComponent]) -> None:
-        self.context.push_data(self.provide_data())
+        self.context.push_data(self.provide())
 
     def _after_build_children(self, children: list[BaseComponent]) -> None:
         self.context.pop_frame()
@@ -222,7 +227,9 @@ class BaseComponent(ABC):
         level: int = 0,
         tab_length: int = 4,
     ) -> str:
-        pre_str = (" " * level * tab_length + ("- " if self._children else "")) * int(pretty)
+        pre_str = (" " * level * tab_length + ("- " if self._children else "")) * int(
+            pretty
+        )
         v_str = str(self) if verbose else self.__class__.__name__
         if pretty:
             child_str = "".join(
@@ -253,7 +260,7 @@ class BaseComponent(ABC):
             case Callable():
                 return [BuildFunctionComponent(build_function=children)]
             case _:
-                raise ValueError("Invalid child type.")
+                raise ValueError("Invalid child type: " + str(type(children)))
 
 
 class Component(BaseComponent):
@@ -298,15 +305,15 @@ class Component(BaseComponent):
         )
 
     @override
-    def provide_data(self) -> DataDict:
-        data = super().provide_data()
+    def provide(self) -> DataDict:
+        data = super().provide()
         if self._modifiers and not self.is_built:
             data[Modifiers] = self._modifiers
         return data
 
     @override
-    def consume_data(self) -> None:
-        super().consume_data()
+    def consume(self) -> None:
+        super().consume()
         inherited_modifiers = self.context.get(Modifiers) or Modifiers()
         self.modifiers = inherited_modifiers | self._modifiers
 
@@ -389,12 +396,22 @@ class VoidComponentMixin:
 
 class SingleChildComponentMixin:
     def __getitem__(self, children: Children, **kwargs: Any) -> BaseComponent:
-        if isinstance(children, Sequence) and not isinstance(children, str) and len(children) != 1:
-            raise ValueError(f"{self.__class__.__name__} only accepts exactly one child.")
+        if (
+            isinstance(children, Sequence)
+            and not isinstance(children, str)
+            and len(children) != 1
+        ):
+            raise ValueError(
+                f"{self.__class__.__name__} only accepts exactly one child."
+            )
         return super().__getitem__(children, **kwargs)
 
     def __class_getitem__(cls, children: Children, **kwargs: Any) -> Self:
-        if isinstance(children, Sequence) and not isinstance(children, str) and len(children) != 1:
+        if (
+            isinstance(children, Sequence)
+            and not isinstance(children, str)
+            and len(children) != 1
+        ):
             raise ValueError(f"{cls.__name__} only accepts exactly one child.")
         return super().__getitem__(children, **kwargs)
 
@@ -405,7 +422,9 @@ class Renderable(ABC):
 
 
 class BuildsItselfMixin:
-    def build(self: BaseComponent, context: Context, children: Children) -> BaseComponent:
+    def build(
+        self: BaseComponent, context: Context, children: Children
+    ) -> BaseComponent:
         return self[children]
 
 
@@ -434,7 +453,9 @@ class BuildFunctionComponent(Component):
 
     @override
     def __getitem__(self, children: Children, **kwargs: Any) -> Self:
-        return super().__getitem__(children, build_function=self.build_function, **kwargs)
+        return super().__getitem__(
+            children, build_function=self.build_function, **kwargs
+        )
 
 
 @final
