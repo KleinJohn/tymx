@@ -1,12 +1,19 @@
 from django_compose.base.components import Component, Children
-from django_compose.base.components.html_components import A, H1, Button, Div, Input
+from django_compose.base.components.html_components import (
+    A,
+    H1,
+    Button,
+    Div,
+    Input,
+    Template,
+)
 from django_compose.base.attributes import disabled, id, style, classes
 from django_compose.base.app import Page
 from django_compose.base.context import Context, ContextData, DataDict
 
 
 class TimeData(ContextData):
-    time: str | None
+    time: str | None = None
     in_hours: int | None = None
 
 
@@ -49,11 +56,13 @@ class CustomDiv(Component):
             ),
             CustomButton(disabled)[children],
             "Custom Div End",
+            Template[Div["This is a template"]],
         ]
 
 
 class IndexLink(Component):
     def build(self, context: Context, children: Children) -> Children:
+        time_data = context.get(TimeData) or TimeData()
         return A(context.router.navigate("index"))[children]
 
 

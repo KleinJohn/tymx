@@ -27,7 +27,9 @@ class Route:
 class Router:
     def __init__(self, app_name: str, *, pages: Iterable[Page], **view_kwargs: Any):
         self.app_name = app_name
-        self.routes: dict[str, Route] = {page.name: Route(self.app_name, page) for page in pages}
+        self.routes: dict[str, Route] = {
+            page.name: Route(self.app_name, page) for page in pages
+        }
         self._view_kwargs = view_kwargs
         self._iter = iter(self.routes.values())
 
