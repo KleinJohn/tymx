@@ -14,10 +14,12 @@ from django_compose.base.context import Context
 from django_compose.base.attributes import id, style, classes, disabled
 from django_compose.base import Page, Router
 from django_compose.base.modifiers.debug_modifiers import (
-    DummyAllChildrenModifier,
-    DummyDirectBuiltChildrenModifier,
-    DummyDirectChildrenModifier,
-    DummyNoneModifier,
+    PrintAllBuiltChildrenModifier,
+    PrintAllChildrenModifier,
+    PrintComponentsModifier,
+    PrintContextModifier,
+    PrintDirectBuiltChildrenModifier,
+    PrintDirectChildrenModifier,
     PrintComponentModifier,
 )
 
@@ -73,7 +75,7 @@ service_page = Page(
 
 def custom_label(context: Context, children: Children) -> Children:
     return [
-        Div["Here: "],
+        Div("custom-div")[Div("custom-div-inner")["Here: "]],
         Label[children],
     ]
 
@@ -82,16 +84,11 @@ class CustomContent(Component):
     def build(self, context: Context, children: Children) -> Children:
         return [
             custom_label,
-            Button(id("button"))["press"],
+            Button(id("button"))[children],
         ]
 
 
 test_page = Page(
-    PrintComponentModifier(),
-    DummyNoneModifier(),
-    DummyAllChildrenModifier(),
-    DummyDirectChildrenModifier(),
-    DummyDirectBuiltChildrenModifier(),
     name="test",
     body=[
         H1["Title"],
@@ -102,4 +99,4 @@ test_page = Page(
 if __name__ == "__main__":
     context = Context(router=Router("test", pages=[test_page]))
     built_test_page = test_page.full_build(context)
-    # print(built_test_page.__str__(pretty=True, verbose=True))
+    print(built_test_page.to_string(pretty=True, verbose=True))

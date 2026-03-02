@@ -1,8 +1,8 @@
 from django_compose.base.components import Component, Children
 from django_compose.base.components.html_components import A, H1, Button, Div, Input
 from django_compose.base.attributes import disabled, id, style, classes
-from django_compose.base.modifiers.compose_modifiers import DebugModifier
-from django_compose.base.app import Context, Page
+from django_compose.base.app import Page
+from django_compose.base.context import Context
 
 
 class CustomButton(Component):
@@ -45,7 +45,7 @@ index_page = Page(
 service_page = Page(
     name="service",
     body=[
-        H1("title", style("font-size:3em"), DebugModifier())["Service Page"],
+        H1("title", style("font-size:3em"))["Service Page"],
         IndexLink["Go to Index Page"],
     ],
 )

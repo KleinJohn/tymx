@@ -1,12 +1,12 @@
 from .base_components import (
     AttributeLike,
     BaseComponent,
+    BuildFunctionComponent,
     BuildFunctionType,
     BuildsItselfMixin,
     Children,
     Component,
     ComponentLike,
-    ContextBuilder,
     GenericComponentChildren,
     GenericComponentLike,
     ModifierLike,
@@ -31,7 +31,7 @@ __all__ = [
     "SingleChildComponentMixin",
     "Renderable",
     "BuildsItselfMixin",
-    "ContextBuilder",
+    "BuildFunctionComponent",
     "Text",
     "PageLink",
 ]

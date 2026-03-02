@@ -33,12 +33,7 @@ T = TypeVar("T", bound="BaseComponent")
 GenericComponentLike: TypeAlias = None | T | list[T]
 BuildFunctionType: TypeAlias = Callable[[Context, "Children"], "Children"]
 GenericComponentChildren: TypeAlias = (
-    None
-    | str
-    | T
-    | type[T]
-    | BuildFunctionType
-    | Sequence["GenericComponentChildren[T]"]
+    None | str | T | type[T] | BuildFunctionType | Sequence["GenericComponentChildren[T]"]
 )
 
 ComponentLike: TypeAlias = GenericComponentLike["BaseComponent"]
@@ -196,8 +191,15 @@ class BaseComponent(ABC):
                         f"Invalid attribute type: {type(attribute)} on {self.__class__.__name__}."
                     )
 
-    def _verbose_str(self) -> Iterable[str]:
+    def _verbose_string_parts(self) -> Iterable[str]:
         return (str(self.attributes),)
+
+    def __str__(self) -> str:
+        v_content = " | ".join(filter(bool, self._verbose_string_parts()))
+        if v_content:
+            return f"{self.__class__.__name__}({v_content})"
+        else:
+            return self.__class__.__name__
 
     def __getitem__(self, children: Children, **kwargs: Any) -> Self:
         copy = self.__class__(
@@ -213,31 +215,25 @@ class BaseComponent(ABC):
     def __class_getitem__(cls, children: Children, **kwargs: Any) -> Self:
         return cls(children=children, **kwargs)
 
-    def __str__(
+    def to_string(
         self,
         pretty: bool = False,
         verbose: bool = False,
         level: int = 0,
         tab_length: int = 4,
     ) -> str:
-        own_str = (" " * level * tab_length + ("- " if self._children else "")) * int(
-            pretty
-        ) + self.__class__.__name__
-        v_str = ""
-        if verbose:
-            v_content = " | ".join(filter(bool, self._verbose_str()))
-            if v_content:
-                v_str = f"({v_content})"
+        pre_str = (" " * level * tab_length + ("- " if self._children else "")) * int(pretty)
+        v_str = str(self) if verbose else self.__class__.__name__
         if pretty:
             child_str = "".join(
-                "\n" + c.__str__(pretty, verbose, level + 1) for c in self._children
+                "\n" + c.to_string(pretty, verbose, level + 1) for c in self._children
             )
         else:
             if self._children:
-                child_str = f"[{', '.join(c.__str__(pretty, verbose, level + 1) for c in self._children)}]"
+                child_str = f"[{', '.join(c.to_string(pretty, verbose, level + 1) for c in self._children)}]"
             else:
                 child_str = ""
-        return f"{own_str}{v_str}{child_str}"
+        return f"{pre_str}{v_str}{child_str}"
 
     def _children_to_list(self, children: Children) -> list[BaseComponent]:
         if not children:
@@ -255,9 +251,7 @@ class BaseComponent(ABC):
                     lst.extend(self._children_to_list(child))
                 return lst
             case Callable():
-                return [
-                    ContextBuilder(build_function=children, children=self._children)
-                ]
+                return [BuildFunctionComponent(build_function=children)]
             case _:
                 raise ValueError("Invalid child type.")
 
@@ -341,8 +335,11 @@ class Component(BaseComponent):
             children[i] = component
 
     @override
-    def _verbose_str(self) -> Iterable[str]:
-        return (str(self.attributes), str(self.modifiers))
+    def _verbose_string_parts(self) -> Iterable[str]:
+        return (
+            str(self.attributes),
+            str(self.modifiers),
+        )
 
     @override
     def __getitem__(self, children: Children, **kwargs: Any) -> Self:
@@ -382,34 +379,24 @@ class VoidComponentMixin:
     def __getitem__(self, children: Children, **kwargs: Any) -> Self:
         if children:
             raise ValueError(f"{self.__class__.__name__} does not accept any children.")
-        return super().__getitem__(children, **kwargs)  # type: ignore
+        return super().__getitem__(children, **kwargs)
 
     def __class_getitem__(cls, children: Children, **kwargs: Any) -> Self:
         if children:
             raise ValueError(f"{cls.__name__} does not accept any children.")
-        return super().__getitem__(children, **kwargs)  # type: ignore
+        return super().__getitem__(children, **kwargs)
 
 
 class SingleChildComponentMixin:
     def __getitem__(self, children: Children, **kwargs: Any) -> BaseComponent:
-        if (
-            isinstance(children, Sequence)
-            and not isinstance(children, str)
-            and len(children) != 1
-        ):
-            raise ValueError(
-                f"{self.__class__.__name__} only accepts exactly one child."
-            )
-        return super().__getitem__(children, **kwargs)  # type: ignore
+        if isinstance(children, Sequence) and not isinstance(children, str) and len(children) != 1:
+            raise ValueError(f"{self.__class__.__name__} only accepts exactly one child.")
+        return super().__getitem__(children, **kwargs)
 
     def __class_getitem__(cls, children: Children, **kwargs: Any) -> Self:
-        if (
-            isinstance(children, Sequence)
-            and not isinstance(children, str)
-            and len(children) != 1
-        ):
+        if isinstance(children, Sequence) and not isinstance(children, str) and len(children) != 1:
             raise ValueError(f"{cls.__name__} only accepts exactly one child.")
-        return super().__getitem__(children, **kwargs)  # type: ignore
+        return super().__getitem__(children, **kwargs)
 
 
 class Renderable(ABC):
@@ -418,13 +405,11 @@ class Renderable(ABC):
 
 
 class BuildsItselfMixin:
-    def build(
-        self: BaseComponent, context: Context, children: Children
-    ) -> BaseComponent:
+    def build(self: BaseComponent, context: Context, children: Children) -> BaseComponent:
         return self[children]
 
 
-class ContextBuilder(Component):
+class BuildFunctionComponent(Component):
     """Calls the given build_function during the build process to generate children."""
 
     def __init__(
@@ -449,9 +434,7 @@ class ContextBuilder(Component):
 
     @override
     def __getitem__(self, children: Children, **kwargs: Any) -> Self:
-        return super().__getitem__(
-            children, build_function=self.build_function, **kwargs
-        )
+        return super().__getitem__(children, build_function=self.build_function, **kwargs)
 
 
 @final
@@ -469,17 +452,5 @@ class Text(VoidComponentMixin, BuildsItselfMixin, Component):
         return super().__getitem__(children, text=self.text, **kwargs)
 
     @override
-    def _verbose_str(self) -> Iterable[str]:
+    def _verbose_string_parts(self) -> Iterable[str]:
         return (f"text='{self.text}'", str(self.attributes), str(self.modifiers))
-
-    @override
-    def __str__(
-        self,
-        pretty: bool = False,
-        verbose: bool = False,
-        level: int = 0,
-        tab_length: int = 4,
-    ) -> str:
-        if pretty or verbose:
-            return super().__str__(pretty, verbose, level, tab_length)
-        return " " * level * tab_length * int(pretty) + f'"{self.text}"'

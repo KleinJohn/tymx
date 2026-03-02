@@ -6,7 +6,7 @@ from django_compose.base.attributes import href
 from django_compose.base.modifiers import PageRenderModifier
 
 if TYPE_CHECKING:
-    from django_compose.base.components.base_components import Component
+    from django_compose.base.components import Component
     from django_compose.base.context import Context
     from django_compose.base.router import Route
 

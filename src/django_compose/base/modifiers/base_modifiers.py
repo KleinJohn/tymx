@@ -118,9 +118,7 @@ class Modifiers(BaseModifier):
         if overwrite or type(modifier) not in self.data:
             self.data[type(modifier)] = modifier
 
-    def update(
-        self, modifiers: Modifiers | Sequence[Modifier], overwrite: bool = True
-    ) -> None:
+    def update(self, modifiers: Modifiers | Sequence[Modifier], overwrite: bool = True) -> None:
         if modifiers is None:
             return
         for modifier in modifiers:
@@ -191,7 +189,6 @@ class Modifiers(BaseModifier):
 @final
 class Attributes(BaseModifier):
     consumer_policy = ConsumerPolicy.DIRECT_BUILT_CHILDREN
-    consume_first_matching = False
 
     def __init__(self, *attributes: Attribute) -> None:
         self._data: OrderedDict[str, Attribute] = OrderedDict()
@@ -209,9 +206,7 @@ class Attributes(BaseModifier):
         else:
             self._data[attribute.name] = attribute | self._data[attribute.name]
 
-    def update(
-        self, attributes: Attributes | Sequence[Attribute], overwrite: bool = True
-    ) -> None:
+    def update(self, attributes: Attributes | Sequence[Attribute], overwrite: bool = True) -> None:
         for attr in attributes:
             self.add(attr, overwrite=overwrite)
 

@@ -33,57 +33,56 @@ class PrintContextModifier(Modifier):
         )
 
 
-class PrintComponentModifier(Modifier):
+class PrintComponentsModifier(Modifier):
+    """Prints the component and all its children with additional options for formatting."""
+
     consumer_policy = ConsumerPolicy.NONE
 
-    def __init__(
-        self, pretty: bool = True, verbose: bool = True, **print_kwargs: Any
-    ) -> None:
+    def __init__(self, pretty: bool = True, verbose: bool = True, **print_kwargs: Any) -> None:
         super().__init__()
         self.pretty = pretty
         self.verbose = verbose
         self.print_kwargs = print_kwargs
 
     def apply_to_child(self, context: Context, component: Component) -> Component:
-        print(component.__str__(self.pretty, self.verbose, **self.print_kwargs))
+        print(component.to_string(self.pretty, self.verbose, **self.print_kwargs))
         return super().apply_to_child(context, component)
 
 
-class DummyAllChildrenModifier(Modifier):
-    consumer_policy = ConsumerPolicy.ALL_CHILDREN
+class PrintComponentModifier(Modifier):
+    """Prints the applied component itself."""
 
-    def apply_before_build(self, context: Context, component: Component) -> None:
-        return None
-
-    def apply_to_child(self, context: Context, component: Component) -> Component:
-        return component
-
-
-class DummyNoneModifier(Modifier):
     consumer_policy = ConsumerPolicy.NONE
 
+    def __init__(self, verbose: bool = False) -> None:
+        super().__init__()
+        self.verbose = verbose
+
     def apply_before_build(self, context: Context, component: Component) -> None:
-        return None
+        if self.verbose:
+            print(f"Applying to component: {component}")
+        else:
+            print(component)
 
     def apply_to_child(self, context: Context, component: Component) -> Component:
-        return component
+        if self.verbose:
+            print(f"{self.consumer_policy}: {component}")
+        else:
+            print(component)
+        return super().apply_to_child(context, component)
 
 
-class DummyDirectChildrenModifier(Modifier):
+class PrintAllChildrenModifier(PrintComponentModifier):
+    consumer_policy = ConsumerPolicy.ALL_CHILDREN
+
+
+class PrintDirectChildrenModifier(PrintComponentModifier):
     consumer_policy = ConsumerPolicy.DIRECT_CHILDREN
 
-    def apply_before_build(self, context: Context, component: Component) -> None:
-        return None
 
-    def apply_to_child(self, context: Context, component: Component) -> Component:
-        return component
-
-
-class DummyDirectBuiltChildrenModifier(Modifier):
+class PrintDirectBuiltChildrenModifier(PrintComponentModifier):
     consumer_policy = ConsumerPolicy.DIRECT_BUILT_CHILDREN
 
-    def apply_before_build(self, context: Context, component: Component) -> None:
-        return None
 
-    def apply_to_child(self, context: Context, component: Component) -> Component:
-        return component
+class PrintAllBuiltChildrenModifier(PrintComponentModifier):
+    consumer_policy = ConsumerPolicy.ALL_BUILT_CHILDREN

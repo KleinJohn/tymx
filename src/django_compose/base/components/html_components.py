@@ -1,5 +1,3 @@
-from typing_extensions import Any, Self
-
 import htpy
 from typing_extensions import Protocol, final, override
 
@@ -46,9 +44,7 @@ class HtmlComponent(RendersHtmlMixin, BaseHtmlComponent):
 
 
 # HtmlVoidComponents do not have children and do not implement RendersHtmlMixin
-class HtmlVoidComponent(
-    VoidComponentMixin, BuildsItselfMixin, Renderable, BaseHtmlComponent
-):
+class HtmlVoidComponent(VoidComponentMixin, BuildsItselfMixin, Renderable, BaseHtmlComponent):
     element: htpy.VoidElement
 
     @override

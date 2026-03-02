@@ -1,5 +1,5 @@
 from collections.abc import Iterable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import htpy
 from typing_extensions import override
@@ -59,7 +59,8 @@ class Page(VoidComponentMixin, Component):
         if self.theme is not None:
             context = context.copy_with(theme=self.theme)
         context = context.copy_with(page=self)
-        return super().full_build(context)
+        self._build_result = cast("DocumentLevelComponent", super().full_build(context))
+        return self._build_result
 
     @override
     def build(self, context: Context, children: Children) -> Children:

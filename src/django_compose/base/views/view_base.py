@@ -14,7 +14,6 @@ class ComposePageView(View):
     page: Page | None = None
 
     def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
-        print(self.page)
         if not self.page:
             return HttpResponseNotFound("Page is not built.")
         return HttpResponse(self.page.render())
