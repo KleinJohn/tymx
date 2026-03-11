@@ -57,11 +57,9 @@ class Page(VoidComponentMixin, Component):
         self.data = data or []
 
     @override
-    def provide(self) -> DataDict:
-        data = super().provide()
+    def provide(self, data: DataDict) -> None:
         for d in self.data:
             data[d.__class__] = d
-        return data
 
     @override
     def full_build(self, context: Context) -> DocumentLevelComponent:

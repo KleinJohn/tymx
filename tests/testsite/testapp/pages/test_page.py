@@ -37,15 +37,13 @@ class CustomButton(Component):
 
 
 class CustomDiv(Component):
-    def provide(self) -> DataDict:
-        data = super().provide()
-        data[TimeData] = TimeData("1:00")
-        return data
+    def provide(self, data: DataDict) -> None:
+        data.add(TimeData("1:00"))
 
     def build(self, context: Context, children: Children) -> Children:
         time_data = context.get(TimeData) or TimeData()
         return Div[
-            "Custom Div Start",
+            "Custom Div Start ",
             " ".join(
                 [
                     "time in div:",

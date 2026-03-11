@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Sequence
 from typing import TYPE_CHECKING, TypeAlias
 
+from htpy import data
 from typing_extensions import (
     Any,
     Self,
@@ -106,11 +107,9 @@ class BaseComponent(ABC):
     def render(self) -> htpy.Node:
         raise NotImplementedError()
 
-    def provide(self) -> DataDict:
-        data: DataDict = {}
+    def provide(self, data: DataDict) -> None:
         if self._attributes and not self.is_built:
             data[Attributes] = self._attributes
-        return data
 
     def consume(self) -> None:
         inherited_attributes = self.context.get(Attributes) or Attributes()
@@ -155,7 +154,7 @@ class BaseComponent(ABC):
         return None
 
     def _before_build_children(self, children: list[BaseComponent]) -> None:
-        self.context.push_data(self.provide())
+        self.context.push_data(self._handle_provide(DataDict()))
 
     def _after_build_children(self, children: list[BaseComponent]) -> None:
         self.context.pop_frame()
@@ -167,6 +166,10 @@ class BaseComponent(ABC):
     def _finish_build(self) -> None:
         self._build_data = ContextFrame(self)
         self._build_context = None
+
+    def _handle_provide(self, data: DataDict) -> DataDict:
+        self.provide(data)
+        return data
 
     def _handle_init_string(self, s: str) -> None:
         self._attributes.add(classes(s))
@@ -305,17 +308,21 @@ class Component(BaseComponent):
         )
 
     @override
-    def provide(self) -> DataDict:
-        data = super().provide()
+    def provide(self, data: DataDict) -> None:
         if self._modifiers and not self.is_built:
             data[Modifiers] = self._modifiers
-        return data
 
     @override
     def consume(self) -> None:
         super().consume()
         inherited_modifiers = self.context.get(Modifiers) or Modifiers()
         self.modifiers = inherited_modifiers | self._modifiers
+
+    @override
+    def _handle_provide(self, data: DataDict) -> DataDict:
+        data = super()._handle_provide(data)
+        self.__class__.provide(self, data)
+        return data
 
     @override
     def _before_build(self) -> None:

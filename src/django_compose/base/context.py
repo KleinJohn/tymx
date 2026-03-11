@@ -11,7 +11,23 @@ if TYPE_CHECKING:
 
 
 T_Consumable = TypeVar("T_Consumable", bound="Consumable")
-DataDict: TypeAlias = dict[type[T_Consumable], T_Consumable]
+
+
+class DataDict(dict[type[T_Consumable], T_Consumable]):
+    def get(self, key: type[T_Consumable]) -> T_Consumable | None:
+        return super().get(key)
+
+    def __getitem__(self, key: type[T_Consumable]) -> T_Consumable:
+        value = self.get(key)
+        if value is None:
+            raise KeyError(f"Key {key} not found in data dict.")
+        return value
+
+    def __setitem__(self, key: type[T_Consumable], value: T_Consumable) -> None:
+        super().__setitem__(key, value)
+    
+    def add(self, item: T_Consumable) -> None:
+        self[item.__class__] = item
 
 
 class ConsumerPolicy(Enum):
