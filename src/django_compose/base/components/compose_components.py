@@ -17,5 +17,4 @@ class PageLink(TemplateComponent):
 
     @override
     def build(self, context: Context, children: Children) -> Children:
-        print(f"Building PageLink to {context.router.navigate(self.page_name)}")
         return A(href(context.router.navigate(self.page_name)))[children]

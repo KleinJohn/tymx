@@ -31,13 +31,13 @@ if TYPE_CHECKING:
 
 T = TypeVar("T", bound="BaseComponent")
 GenericComponentLike: TypeAlias = None | T | list[T]
-BuildFunctionType: TypeAlias = Callable[[Context, "Children"], "Children"]
+TemplateFunctionType: TypeAlias = Callable[[Context], "Children"]
 GenericComponentChildren: TypeAlias = (
     None
     | str
     | T
     | type[T]
-    | BuildFunctionType
+    | TemplateFunctionType
     | Sequence["GenericComponentChildren[T]"]
 )
 
@@ -440,7 +440,7 @@ class TemplateComponent(Component):
     def __init__(
         self,
         *modifiers: ModifierLike,
-        template_function: BuildFunctionType | None = None,
+        template_function: TemplateFunctionType | None = None,
         component_theme: ComponentTheme | None = None,
         children: Children = None,
         htpy_kwargs: dict[str, str] | None = None,
@@ -494,7 +494,7 @@ class TemplateComponent(Component):
     def build(self, context: Context, children: Children) -> Children:
         if self.template_function is None:
             raise ValueError("TemplateComponent requires a template_function to build.")
-        return self.template_function(context, children)
+        return self.template_function(context)
     
     @override
     def __getitem__(self, children: Children, **kwargs: Any) -> Self:

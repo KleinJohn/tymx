@@ -2,7 +2,7 @@ from .base_components import (
     AttributeLike,
     BaseComponent,
     TemplateComponent,
-    BuildFunctionType,
+    TemplateFunctionType,
     BuildsItselfMixin,
     Children,
     Component,
@@ -19,7 +19,7 @@ from .compose_components import PageLink
 
 __all__ = [
     "GenericComponentLike",
-    "BuildFunctionType",
+    "TemplateFunctionType",
     "GenericComponentChildren",
     "ComponentLike",
     "Children",

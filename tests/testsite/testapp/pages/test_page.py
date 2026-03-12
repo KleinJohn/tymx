@@ -1,5 +1,4 @@
 from django_compose.base.components import Component, Children
-from django_compose.base.components.base_components import TemplateComponent
 from django_compose.base.components.compose_components import PageLink
 from django_compose.base.components.html_components import (
     A,
@@ -43,7 +42,7 @@ class CustomDiv(Component):
 
     def build(self, context: Context, children: Children) -> Children:
         time_data = context.get(TimeData) or TimeData()
-        return Div[
+        return lambda context: Div[
             "Custom Div Start",
             Div[
                 "time in div: ",
