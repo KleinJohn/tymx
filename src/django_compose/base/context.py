@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, fields, replace
 from enum import Enum, auto
 
-from typing_extensions import Any, TypeVar, TYPE_CHECKING, Self, TypeAlias
+from typing_extensions import Any, TypeVar, TYPE_CHECKING, Self, override, overload
 
 if TYPE_CHECKING:
     from django_compose.base import Page, Router
@@ -14,14 +14,21 @@ T_Consumable = TypeVar("T_Consumable", bound="Consumable")
 
 
 class DataDict(dict[type[T_Consumable], T_Consumable]):
-    def get(self, key: type[T_Consumable]) -> T_Consumable | None:
-        return super().get(key)
+    @overload   # type: ignore
+    def get(self, key: type[T_Consumable]) -> T_Consumable | None: ...
+    @overload
+    def get(self, key: type[T_Consumable], default: T_Consumable) -> T_Consumable: ...
+    @override
+    def get(self, key: type[T_Consumable], default: T_Consumable | None = None, /) -> T_Consumable | None:
+        return super().get(key, default)
 
+    @override
     def __getitem__(self, key: type[T_Consumable]) -> T_Consumable:
         value = self.get(key)
         if value is None:
             raise KeyError(f"Key {key} not found in data dict.")
         return value
+
 
     def __setitem__(self, key: type[T_Consumable], value: T_Consumable) -> None:
         super().__setitem__(key, value)

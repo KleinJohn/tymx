@@ -1,11 +1,11 @@
 from django_compose.base.components import Component, Children
+from django_compose.base.components.base_components import TemplateComponent
 from django_compose.base.components.html_components import (
     A,
     H1,
     Button,
     Div,
     Input,
-    Template,
 )
 from django_compose.base.attributes import disabled, id, style, classes
 from django_compose.base.app import Page
@@ -43,18 +43,15 @@ class CustomDiv(Component):
     def build(self, context: Context, children: Children) -> Children:
         time_data = context.get(TimeData) or TimeData()
         return Div[
-            "Custom Div Start ",
-            " ".join(
-                [
-                    "time in div:",
-                    str(time_data.time),
-                    "in hours:",
-                    str(time_data.in_hours),
-                ]
-            ),
+            "Custom Div Start",
+            Div[
+                "time in div: ",
+                str(time_data.time),
+                " in hours: ",
+                str(time_data.in_hours),
+            ],
             CustomButton(disabled)[children],
             "Custom Div End",
-            Template[Div["This is a template"]],
         ]
 
 
@@ -68,13 +65,13 @@ index_page = Page(
     name="index",
     route_pattern="",
     data=[TimeData(time="12:00", in_hours=12)],
-    body=lambda context, children: [
+    body=[
         H1((id("header1"), style(color="blue", font_size="12px")))[
             CustomDiv("button", "is-active")["press"],
         ],
         "An Input:",
         Input(classes("input-field"), style(margin="5px"), disabled),
-        A(context.router.navigate("service"))["Go to service page"],
+        # lambda context: A(context.router.navigate("service"))["Go to service page"],
     ],
 )
 

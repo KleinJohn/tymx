@@ -32,13 +32,13 @@ if TYPE_CHECKING:
 
 T = TypeVar("T", bound="BaseComponent")
 GenericComponentLike: TypeAlias = None | T | list[T]
-BuildFunctionType: TypeAlias = Callable[[Context, "Children"], "Children"]
+TemplateFunctionType: TypeAlias = Callable[[Context], "Children"]
 GenericComponentChildren: TypeAlias = (
     None
     | str
     | T
     | type[T]
-    | BuildFunctionType
+    | TemplateFunctionType
     | Sequence["GenericComponentChildren[T]"]
 )
 
@@ -261,7 +261,7 @@ class BaseComponent(ABC):
                     lst.extend(self._children_to_list(child))
                 return lst
             case Callable():
-                return [BuildFunctionComponent(build_function=children)]
+                return [TemplateComponent(template_function=children)]
             case _:
                 raise ValueError("Invalid child type: " + str(type(children)))
 
@@ -435,13 +435,13 @@ class BuildsItselfMixin:
         return self[children]
 
 
-class BuildFunctionComponent(Component):
-    """Calls the given build_function during the build process to generate children."""
+class TemplateComponent(VoidComponentMixin, Component):
+    """Builds the given template_function during the render process."""
 
     def __init__(
         self,
         *modifiers: ModifierLike,
-        build_function: BuildFunctionType,
+        template_function: TemplateFunctionType,
         component_theme: ComponentTheme | None = None,
         children: Children = None,
         htpy_kwargs: dict[str, str] | None = None,
@@ -452,17 +452,48 @@ class BuildFunctionComponent(Component):
             children=children,
             htpy_kwargs=htpy_kwargs,
         )
-        self.build_function = build_function
+        self.template_function = template_function
+
+    @override
+    def full_build(self, context: Context) -> ComponentLike:
+        """The component should return to its original state after building."""
+
+        self._prepare_build(context)
+        self.consume()
+        self._before_build()
+        return self
+
+    @override
+    def _handle_build(self) -> list[BaseComponent]:
+        children = self._children
+        if not self.is_built:
+            self._building = True
+            children = self._children_to_list(self.build(self.context, self._children))
+            self._building = False
+
+        self._before_build_children(children)
+        children = self._build_children(children)
+        self._after_build_children(children)
+
+        if self.is_built:
+            self._children = children
+            children = [self]
+        return children
+    
+    @override
+    def _prepare_build(self, context: Context) -> None:
+        self._build_data = ContextFrame(self)
+        self._build_context = context.copy()
+
+    @override
+    def render(self) -> htpy.Node:
+        children = self._handle_build()
+        self._after_build(children)
+        return [child.render() for child in children]
 
     @override
     def build(self, context: Context, children: Children) -> Children:
-        return self.build_function(context, children)
-
-    @override
-    def __getitem__(self, children: Children, **kwargs: Any) -> Self:
-        return super().__getitem__(
-            children, build_function=self.build_function, **kwargs
-        )
+        return self.template_function(context)
 
 
 @final
