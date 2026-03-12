@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING
 from django.urls import URLPattern, path, reverse_lazy
 from typing_extensions import Any
 
-from django_compose.base.modifiers.compose_modifiers import NavigationModifier
-
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
@@ -40,11 +38,11 @@ class Router:
     def __next__(self) -> Route:
         return next(self._iter)
 
-    def navigate(self, page_name: str) -> NavigationModifier:
+    def navigate(self, page_name: str) -> str:
         route = self.routes.get(page_name)
         if route is None:
             raise ValueError(f"Route '{page_name}' not found in router.")
-        return NavigationModifier(route)
+        return route.url
 
     def get_urlpatterns(self) -> list[URLPattern]:
         urlpatterns: list[URLPattern] = []

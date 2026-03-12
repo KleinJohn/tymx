@@ -91,16 +91,6 @@ Make sure you call super().apply() in overrides."""
     def apply_when_notified(self, context: Context, component: Component) -> None: ...
 
 
-class PageRenderModifier(DeferredModifier):
-    @override
-    def apply_to_child(self, context: Context, component: Component) -> Component:
-        component = super().apply_to_child(context, component)
-        if not context.page:
-            raise ValueError("No page found in context.")
-        context.page.render_time_modifiers.append(self)
-        return component
-
-
 @final
 class Modifiers(BaseModifier):
     consumer_policy = ConsumerPolicy.ALL_CHILDREN

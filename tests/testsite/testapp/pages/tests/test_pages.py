@@ -9,7 +9,6 @@ from django_compose.base.components.html_components import (
     A,
     H1,
     Input,
-    Template,
 )
 from django_compose.base.context import Context
 from django_compose.base.attributes import id, style, classes, disabled
@@ -76,7 +75,7 @@ service_page = Page(
 
 def custom_label(context: Context, children: Children) -> Children:
     return [
-        Template[Div("custom-div")[Div("custom-div-inner")["Here: "]],],
+        Div("custom-div")[Div("custom-div-inner")["Here: "]],
         Label[children],
     ]
 
@@ -96,6 +95,7 @@ test_page = Page(
         CustomContent("custom-content")["Label"],
     ],
 )
+
 
 if __name__ == "__main__":
     context = Context(router=Router("test", pages=[test_page]))

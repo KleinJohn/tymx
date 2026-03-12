@@ -1,5 +1,6 @@
 from django_compose.base.components import Component, Children
 from django_compose.base.components.base_components import TemplateComponent
+from django_compose.base.components.compose_components import PageLink
 from django_compose.base.components.html_components import (
     A,
     H1,
@@ -55,12 +56,6 @@ class CustomDiv(Component):
         ]
 
 
-class IndexLink(Component):
-    def build(self, context: Context, children: Children) -> Children:
-        time_data = context.get(TimeData) or TimeData()
-        return A(context.router.navigate("index"))[children]
-
-
 index_page = Page(
     name="index",
     route_pattern="",
@@ -71,7 +66,7 @@ index_page = Page(
         ],
         "An Input:",
         Input(classes("input-field"), style(margin="5px"), disabled),
-        # lambda context: A(context.router.navigate("service"))["Go to service page"],
+        PageLink(to="service")["Go to Service Page"],
     ],
 )
 
@@ -79,6 +74,6 @@ service_page = Page(
     name="service",
     body=[
         H1("title", style("font-size:3em"))["Service Page"],
-        IndexLink["Go to Index Page"],
+        PageLink(to="index")["Go to Index Page"],
     ],
 )

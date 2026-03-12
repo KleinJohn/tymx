@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Sequence
 from typing import TYPE_CHECKING, TypeAlias
 
-from htpy import data
 from typing_extensions import (
     Any,
     Self,
@@ -32,13 +31,13 @@ if TYPE_CHECKING:
 
 T = TypeVar("T", bound="BaseComponent")
 GenericComponentLike: TypeAlias = None | T | list[T]
-TemplateFunctionType: TypeAlias = Callable[[Context], "Children"]
+BuildFunctionType: TypeAlias = Callable[[Context, "Children"], "Children"]
 GenericComponentChildren: TypeAlias = (
     None
     | str
     | T
     | type[T]
-    | TemplateFunctionType
+    | BuildFunctionType
     | Sequence["GenericComponentChildren[T]"]
 )
 
@@ -435,13 +434,13 @@ class BuildsItselfMixin:
         return self[children]
 
 
-class TemplateComponent(VoidComponentMixin, Component):
+class TemplateComponent(Component):
     """Builds the given template_function during the render process."""
 
     def __init__(
         self,
         *modifiers: ModifierLike,
-        template_function: TemplateFunctionType,
+        template_function: BuildFunctionType | None = None,
         component_theme: ComponentTheme | None = None,
         children: Children = None,
         htpy_kwargs: dict[str, str] | None = None,
@@ -493,7 +492,13 @@ class TemplateComponent(VoidComponentMixin, Component):
 
     @override
     def build(self, context: Context, children: Children) -> Children:
-        return self.template_function(context)
+        if self.template_function is None:
+            raise ValueError("TemplateComponent requires a template_function to build.")
+        return self.template_function(context, children)
+    
+    @override
+    def __getitem__(self, children: Children, **kwargs: Any) -> Self:
+        return super().__getitem__(children, template_function=self.template_function, **kwargs)
 
 
 @final
