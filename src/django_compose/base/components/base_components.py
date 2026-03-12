@@ -167,7 +167,7 @@ class BaseComponent(ABC):
         self._build_context = None
 
     def _handle_provide(self, data: DataDict) -> DataDict:
-        self.provide(data)
+        BaseComponent.provide(self, data)
         return data
 
     def _handle_init_string(self, s: str) -> None:
