@@ -69,7 +69,9 @@ class BaseComponent(ABC):
         self._build_data: ContextFrame = ContextFrame(self)
         self._build_context: Context | None = None
         self._is_built = False  # use to prevent recursion in build()
-        self.kwargs = kwargs
+        self.kwargs: dict[str, Any] = dict(kwargs)
+        self.props: dict[str, Any] = {}
+        self._extract_attributes_from_kwargs(**self.kwargs)
 
     @property
     def attributes(self) -> Attributes:
@@ -105,6 +107,14 @@ class BaseComponent(ABC):
     @abstractmethod
     def render(self) -> htpy.Node:
         raise NotImplementedError()
+
+    def use_props(self, **props: Any) -> None:
+        """Declare that the component uses the given props in its build method.
+        
+        This is used to make sure that props are properly cloned when using the
+        component multiple times by __getitem__.
+        """
+        self.props.update(props)
 
     def provide(self, data: DataDict) -> None:
         if self._attributes and not self.is_built:
@@ -166,6 +176,15 @@ class BaseComponent(ABC):
         self._build_data = ContextFrame(self)
         self._build_context = None
 
+    def _extract_attributes_from_kwargs(self, **kwargs: Any) -> None:
+        """Hook for component-specific keyword handling.
+
+        Override this in custom components and pop from kwargs to initialize 
+        component-specific properties. Feed the remaining kwargs back to 
+        super().__init__() to initialize html attributes.
+        """
+        return None
+
     def _handle_provide(self, data: DataDict) -> DataDict:
         BaseComponent.provide(self, data)
         return data
@@ -208,11 +227,14 @@ class BaseComponent(ABC):
         else:
             return self.__class__.__name__
 
-    def __getitem__(self, children: Children, **kwargs: Any) -> Self:
+    def __getitem__(self, children: Children, **kwargs: Any) -> Self: 
+        # Note: This method is overwritten in Component without super call
         copy = self.__class__(
             *self._attributes if not self._building else [],
             children=children,
             htpy_kwargs=self._htpy_kwargs,
+            **self.props,
+            **self.kwargs,
             **kwargs,
         )
         # break potential build recursion:
@@ -272,10 +294,12 @@ class Component(BaseComponent):
         component_theme: ComponentTheme | None = None,
         children: Children = None,
         htpy_kwargs: dict[str, str] | None = None,
+        **kwargs: Any,
     ) -> None:
         super().__init__(
             children=children,
             htpy_kwargs=htpy_kwargs,
+            **kwargs,
         )
         self._component_theme = component_theme
         self._modifiers = Modifiers()
@@ -362,6 +386,8 @@ class Component(BaseComponent):
             children=children,
             component_theme=self._component_theme,
             htpy_kwargs=self._htpy_kwargs,
+            **self.props,
+            **self.kwargs,
             **kwargs,
         )
         copy._is_built = self._building
@@ -444,12 +470,14 @@ class TemplateComponent(Component):
         component_theme: ComponentTheme | None = None,
         children: Children = None,
         htpy_kwargs: dict[str, str] | None = None,
+        **kwargs: Any,
     ) -> None:
         super().__init__(
             *modifiers,
             component_theme=component_theme,
             children=children,
             htpy_kwargs=htpy_kwargs,
+            **kwargs,
         )
         self.template_function = template_function
 
