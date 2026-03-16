@@ -167,6 +167,12 @@ class ComposedAttribute(SimpleAttribute):
         self.policy = compose_policy
         self.composed_values = composed_values
 
+    def _decompose_values(self, values: list[str]) -> list[str]:
+        decomposed_values: list[str] = []
+        for val in values:
+            decomposed_values.extend(self.policy.decomposer(val))
+        return decomposed_values
+
     def __call__(
         self,
         value: str | dict[str, Any] | None = None,
@@ -188,13 +194,8 @@ class ComposedAttribute(SimpleAttribute):
         else:
             values = (value, *values)
 
-        decomposed_values: list[str | None] = []
-        for val in values:
-            if val is not None:
-                decomposed_values.extend(self.policy.decomposer(val))
-            else:
-                decomposed_values.append(val)
-        values = tuple(decomposed_values)
+        decomposed = self._decompose_values([val for val in values if val is not None])
+        values = tuple(dict.fromkeys(decomposed, None).keys())
 
         kwarg_values: tuple[str, ...] = (
             tuple(self.policy.kwarg_composer(key, val) for key, val in kwargs.items())

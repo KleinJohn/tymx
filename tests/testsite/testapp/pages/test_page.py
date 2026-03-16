@@ -61,7 +61,7 @@ index_page = Page(
     data=[TimeData(time="12:00", in_hours=12)],
     body=[
         H1((id("header1"), style(color="blue", font_size="12px")))[
-            CustomDiv("button", "is-active")["press"],
+            CustomDiv("button is-active button")["press"],
         ],
         "An Input:",
         Input(classes("input-field"), style(margin="5px"), disabled),
