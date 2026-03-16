@@ -52,7 +52,7 @@ class KwargsHandlingTests(unittest.TestCase):
 
         context = Context(router=Router("test", pages=[Page(name="index")]))
         built = clone.full_build(context)
-        
+
         self.assertIsNotNone(built)
         assert built is not None
         built_node = built[0] if isinstance(built, list) else built

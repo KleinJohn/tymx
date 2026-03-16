@@ -243,3 +243,6 @@ class Attributes(BaseModifier):
     def __ior__(self, other: Attributes) -> Attributes:
         self.update(other)
         return self
+    
+    def __getitem__(self, key: str) -> Attribute:
+        return self._data[key]

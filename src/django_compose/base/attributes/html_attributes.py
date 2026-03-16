@@ -7,13 +7,13 @@ from .base_attributes import (
 
 style_composer = ComposePolicy(
     lambda values: ";".join(values) + (";" if values else ""),
-    lambda values: filter(lambda v: not v, values.split(";")),
+    lambda values: [v.strip() for v in values.split(";") if v.strip()],
     lambda k, v: f"{k}:{v}",
 )
 
 whitespace_composer = ComposePolicy(
     lambda values: " ".join(values),
-    lambda values: values.split(" "),
+    lambda values: values.split(),
 )
 
 

@@ -12,7 +12,7 @@ from typing_extensions import (
     override,
 )
 
-from django_compose.base.attributes import Attribute, classes
+from django_compose.base.attributes import Attribute, classes, ALL_ATTRIBUTES
 from django_compose.base.context import Context, ContextFrame, DataDict
 from django_compose.base.modifiers.base_modifiers import (
     Attributes,
@@ -177,13 +177,10 @@ class BaseComponent(ABC):
         self._build_context = None
 
     def _extract_attributes_from_kwargs(self, **kwargs: Any) -> None:
-        """Hook for component-specific keyword handling.
+        for attr, value in kwargs.items():
+            if attr in ALL_ATTRIBUTES:
+                self._attributes.add(ALL_ATTRIBUTES[attr](value))
 
-        Override this in custom components and pop from kwargs to initialize 
-        component-specific properties. Feed the remaining kwargs back to 
-        super().__init__() to initialize html attributes.
-        """
-        return None
 
     def _handle_provide(self, data: DataDict) -> DataDict:
         BaseComponent.provide(self, data)

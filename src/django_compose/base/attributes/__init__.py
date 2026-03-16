@@ -113,7 +113,6 @@ from .html_attributes import (
     start,
     step,
     style,
-    style_composer,
     summary,
     tabindex,
     target,
@@ -122,10 +121,53 @@ from .html_attributes import (
     type_,
     usemap,
     value,
-    whitespace_composer,
     width,
     wrap,
 )
+
+
+from .htmx_attributes import (
+    JsonAttribute,
+    hx_get,
+    hx_post,
+    hx_on,
+    hx_push_url,
+    hx_select,
+    hx_select_oob,
+    hx_swap,
+    hx_swap_oob,
+    hx_target,
+    hx_trigger,
+    hx_vals,
+    hx_boost,
+    hx_confirm,
+    hx_delete,
+    hx_disable,
+    hx_disabled_elt,
+    hx_disinherit,
+    hx_encoding,
+    hx_ext,
+    hx_headers,
+    hx_history,
+    hx_history_elt,
+    hx_include,
+    hx_indicator,
+    hx_inherit,
+    hx_params,
+    hx_patch,
+    hx_preserve,
+    hx_prompt,
+    hx_put,
+    hx_replace_url,
+    hx_request,
+    hx_sync,
+    hx_validate,
+)
+
+
+
+
+
 
 __all__ = [
     "Attribute",
@@ -133,8 +175,7 @@ __all__ = [
     "BooleanAttribute",
     "ComposePolicy",
     "ComposedAttribute",
-    "style_composer",
-    "whitespace_composer",
+    "JsonAttribute",
     "id",
     "classes",
     "style",
@@ -252,4 +293,46 @@ __all__ = [
     "value",
     "width",
     "wrap",
+    "hx_get",
+    "hx_post",
+    "hx_on",
+    "hx_push_url",
+    "hx_select",
+    "hx_select_oob",
+    "hx_swap",
+    "hx_swap_oob",
+    "hx_target",
+    "hx_trigger",
+    "hx_vals",
+    "hx_boost",
+    "hx_confirm",
+    "hx_delete",
+    "hx_disable",
+    "hx_disabled_elt",
+    "hx_disinherit",
+    "hx_encoding",
+    "hx_ext",
+    "hx_headers",
+    "hx_history",
+    "hx_history_elt",
+    "hx_include",
+    "hx_indicator",
+    "hx_inherit",
+    "hx_params",
+    "hx_patch",
+    "hx_preserve",
+    "hx_prompt",
+    "hx_put",
+    "hx_replace_url",
+    "hx_request",
+    "hx_sync",
+    "hx_validate",
 ]
+
+ALL_ATTRIBUTES: dict[str, Attribute] = {
+    name: v
+    for name in __all__
+    if isinstance(v := globals()[name], Attribute)
+}
+
+__all__ += ["ALL_ATTRIBUTES"]
