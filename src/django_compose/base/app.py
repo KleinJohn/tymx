@@ -23,9 +23,6 @@ from .components.html_components import (
     Html,
 )
 
-if TYPE_CHECKING:
-    from django_compose.base.modifiers import PageRenderModifier
-
 
 class Page(VoidComponentMixin, Component):
     def __init__(
@@ -53,7 +50,6 @@ class Page(VoidComponentMixin, Component):
         self._build_result: DocumentLevelComponent | None = None
         self.view = view or ComposePageView
         self.route_pattern = f"{self.name}/" if route_pattern is None else route_pattern
-        self.render_time_modifiers: list[PageRenderModifier] = []
         self.data = data or []
 
     @override
@@ -77,8 +73,6 @@ class Page(VoidComponentMixin, Component):
     def render(self) -> htpy.Renderable:
         if self._build_result is None:
             raise ValueError("Page must be built before rendering.")
-        for modifier in self.render_time_modifiers:
-            modifier.notify()
         return self._build_result.render()
 
 
