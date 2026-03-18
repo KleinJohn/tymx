@@ -59,6 +59,7 @@ index_page = Page(
     name="index",
     route_pattern="",
     data=[TimeData(time="12:00", in_hours=12)],
+    head=[],
     body=[
         H1((id("header1"), style(color="blue", font_size="12px")))[
             CustomDiv("button is-active button")["press"],
@@ -71,6 +72,7 @@ index_page = Page(
 
 service_page = Page(
     name="service",
+    head=[],
     body=[
         H1("title", style("font-size:3em"))["Service Page"],
         PageLink(to="index")["Go to Index Page"],

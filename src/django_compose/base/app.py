@@ -29,10 +29,10 @@ class Page(VoidComponentMixin, Component):
         self,
         *modifiers: ModifierLike,
         name: str,
+        head: Children,
+        body: Children,
         children: Children = None,
         theme: Theme | None = None,
-        head: Children = None,
-        body: Children = None,
         view: type[ComposePageView] | None = None,
         route_pattern: str | None = None,
         data: list[ContextData] | None = None,
@@ -40,8 +40,17 @@ class Page(VoidComponentMixin, Component):
     ):
         super().__init__(
             *modifiers,
-            children=Html[Head[head], Body[body]],
+            children=children,
             htpy_kwargs=htpy_kwargs,
+        )
+        self.use_props(
+            name=name, 
+            head=head, 
+            body=body, 
+            theme=theme, 
+            view=view, 
+            route_pattern=route_pattern, 
+            data=data
         )
         self.name = name
         self.head = head
@@ -67,7 +76,7 @@ class Page(VoidComponentMixin, Component):
 
     @override
     def build(self, context: Context, children: Children) -> Children:
-        return children
+        return Html[Head[self.head], Body[self.body]]
 
     @override
     def render(self) -> htpy.Renderable:
