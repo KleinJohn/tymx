@@ -14,4 +14,4 @@ class PageLink(TemplateComponent):
 
     @override
     def build(self, context: Context, children: Children) -> Children:
-        return A(href(context.router.navigate(self.to)))[children]
+        return A(href(context.router.get_url(self.to)))[children]

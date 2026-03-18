@@ -38,7 +38,7 @@ class Router:
     def __next__(self) -> Route:
         return next(self._iter)
 
-    def navigate(self, page_name: str) -> str:
+    def get_url(self, page_name: str) -> str:
         route = self.routes.get(page_name)
         if route is None:
             raise ValueError(f"Route '{page_name}' not found in router.")

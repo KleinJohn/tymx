@@ -1,5 +1,5 @@
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, cast
+from typing import cast
 
 import htpy
 from typing_extensions import override
@@ -7,7 +7,6 @@ from typing_extensions import override
 from django_compose.base.components.base_components import (
     Children,
     Component,
-    ComponentLike,
     ModifierLike,
     VoidComponentMixin,
 )
