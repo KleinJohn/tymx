@@ -74,7 +74,7 @@ service_page = Page(
     name="service",
     head=[],
     body=[
-        H1("title", style("font-size:3em"))["Service Page"],
+        H1("title", style="font-size:3em;font-size:3em")["Service Page"],
         PageLink(to="index")["Go to Index Page"],
     ],
 )

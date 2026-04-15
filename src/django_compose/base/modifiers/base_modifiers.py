@@ -108,7 +108,9 @@ class Modifiers(BaseModifier):
         if overwrite or type(modifier) not in self.data:
             self.data[type(modifier)] = modifier
 
-    def update(self, modifiers: Modifiers | Sequence[Modifier], overwrite: bool = True) -> None:
+    def update(
+        self, modifiers: Modifiers | Sequence[Modifier], overwrite: bool = True
+    ) -> None:
         if modifiers is None:
             return
         for modifier in modifiers:
@@ -196,7 +198,9 @@ class Attributes(BaseModifier):
         else:
             self._data[attribute.name] = attribute | self._data[attribute.name]
 
-    def update(self, attributes: Attributes | Sequence[Attribute], overwrite: bool = True) -> None:
+    def update(
+        self, attributes: Attributes | Sequence[Attribute], overwrite: bool = True
+    ) -> None:
         for attr in attributes:
             self.add(attr, overwrite=overwrite)
 
@@ -243,6 +247,18 @@ class Attributes(BaseModifier):
     def __ior__(self, other: Attributes) -> Attributes:
         self.update(other)
         return self
-    
+
     def __getitem__(self, key: str) -> Attribute:
         return self._data[key]
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Attributes):
+            # compare regardless of order
+            return dict(self._data) == dict(other._data)
+        if isinstance(other, Attribute):
+            return (
+                len(self) == 1
+                and other.name in self._data
+                and other == self._data[other.name]
+            )
+        return NotImplemented

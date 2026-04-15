@@ -14,12 +14,14 @@ T_Consumable = TypeVar("T_Consumable", bound="Consumable")
 
 
 class DataDict(dict[type[T_Consumable], T_Consumable]):
-    @overload   # type: ignore
+    @overload  # type: ignore
     def get(self, key: type[T_Consumable]) -> T_Consumable | None: ...
     @overload
     def get(self, key: type[T_Consumable], default: T_Consumable) -> T_Consumable: ...
     @override
-    def get(self, key: type[T_Consumable], default: T_Consumable | None = None, /) -> T_Consumable | None:
+    def get(
+        self, key: type[T_Consumable], default: T_Consumable | None = None, /
+    ) -> T_Consumable | None:
         return super().get(key, default)
 
     @override
@@ -29,15 +31,32 @@ class DataDict(dict[type[T_Consumable], T_Consumable]):
             raise KeyError(f"Key {key} not found in data dict.")
         return value
 
-
     def __setitem__(self, key: type[T_Consumable], value: T_Consumable) -> None:
         super().__setitem__(key, value)
-    
+
     def add(self, item: T_Consumable) -> None:
         self[item.__class__] = item
 
 
 class ConsumerPolicy(Enum):
+    """
+    Defines who can consume a Consumable.
+
+    This enum specifies the scope and applicability of consumables within a component hierarchy.
+
+    Attributes:
+        NONE: Applies only to the unbuilt component itself.
+        ALL_CHILDREN: Applies to all children including unbuilt ones.
+        DIRECT_CHILDREN: Applies only to direct children, including unbuilt ones.
+        ALL_BUILT_CHILDREN: Applies to all built children (html components).
+        DIRECT_BUILT_CHILDREN: Applies only to the first layer of built children under the applying component.
+        CUSTOM: Calls the custom_policy method to determine applicability.
+
+    Properties:
+        is_direct: Returns True if the policy applies only to direct children (DIRECT_CHILDREN or DIRECT_BUILT_CHILDREN).
+        is_built_only: Returns True if the policy applies only to built children (ALL_BUILT_CHILDREN or DIRECT_BUILT_CHILDREN).
+    """
+
     """Defines who can consume a Consumable."""
 
     NONE = auto()
@@ -76,6 +95,10 @@ class ConsumerPolicy(Enum):
 class Consumable:
     consumer_policy = ConsumerPolicy.NONE
     consume_first_matching = False
+
+    @classmethod
+    def of(cls: type[T_Consumable], context: Context) -> T_Consumable | None:
+        return context.get(cls)
 
     def policy_applies(self, context_snapshot: ContextTraversalSnapshot) -> bool:
         match self.consumer_policy:

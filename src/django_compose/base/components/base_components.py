@@ -19,11 +19,10 @@ from django_compose.base.modifiers.base_modifiers import (
     Modifier,
     Modifiers,
 )
+from django_compose.base.theme import Theme
 
 if TYPE_CHECKING:
     import htpy
-
-    from django_compose.base.theme import ComponentTheme
 
 
 # TYPE DEFINITIONS:
@@ -44,14 +43,21 @@ GenericComponentChildren: TypeAlias = (
 ComponentLike: TypeAlias = GenericComponentLike["BaseComponent"]
 Children: TypeAlias = GenericComponentChildren["BaseComponent"]
 
-AttributeLike: TypeAlias = str | Attribute | Attributes | Iterable["AttributeLike"]
+AttributeLike: TypeAlias = (
+    None | str | Attribute | Attributes | Iterable["AttributeLike"]
+)
 ModifierLike: TypeAlias = (
-    str | Attribute | Attributes | Modifier | Modifiers | Iterable["ModifierLike"]
+    None
+    | str
+    | Attribute
+    | Attributes
+    | Modifier
+    | Modifiers
+    | Iterable["ModifierLike"]
 )
 
 
 class BaseComponent(ABC):
-    # inherit_properties: set[type] = {Attributes}
 
     # All Components that allow zero children have to provide an empty constructor.
     def __init__(
@@ -110,7 +116,7 @@ class BaseComponent(ABC):
 
     def use_props(self, **props: Any) -> None:
         """Declare that the component uses the given props in its build method.
-        
+
         This is used to make sure that props are properly cloned when using the
         component multiple times by __getitem__.
         """
@@ -181,7 +187,6 @@ class BaseComponent(ABC):
             if attr in ALL_ATTRIBUTES:
                 self._attributes.add(ALL_ATTRIBUTES[attr](value))
 
-
     def _handle_provide(self, data: DataDict) -> DataDict:
         BaseComponent.provide(self, data)
         return data
@@ -201,6 +206,8 @@ class BaseComponent(ABC):
     def _init_attributes(self, attr_like: Iterable[AttributeLike]) -> None:
         for attribute in attr_like:
             match attribute:
+                case None:
+                    continue
                 case str():
                     self._handle_init_string(attribute)
                 case Attribute():
@@ -224,7 +231,7 @@ class BaseComponent(ABC):
         else:
             return self.__class__.__name__
 
-    def __getitem__(self, children: Children, **kwargs: Any) -> Self: 
+    def __getitem__(self, children: Children, **kwargs: Any) -> Self:
         # Note: This method is overwritten in Component without super call
         copy = self.__class__(
             *self._attributes if not self._building else [],
@@ -240,6 +247,20 @@ class BaseComponent(ABC):
 
     def __class_getitem__(cls, children: Children, **kwargs: Any) -> Self:
         return cls(children=children, **kwargs)
+
+    def __bool__(self) -> bool:
+        return True
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, BaseComponent):
+            return NotImplemented
+
+        return (
+            self.__class__ == other.__class__
+            and self.attributes == other.attributes
+            and self.props == other.props
+            and self._children == other._children
+        )
 
     def to_string(
         self,
@@ -285,11 +306,13 @@ class BaseComponent(ABC):
 
 
 class Component(BaseComponent):
+    """Extends BaseComponent with support for modifiers and themes."""
+
     def __init__(
         self,
         *modifiers: ModifierLike,
-        component_theme: ComponentTheme | None = None,
         children: Children = None,
+        theme: Theme | None = None,
         htpy_kwargs: dict[str, str] | None = None,
         **kwargs: Any,
     ) -> None:
@@ -298,9 +321,9 @@ class Component(BaseComponent):
             htpy_kwargs=htpy_kwargs,
             **kwargs,
         )
-        self._component_theme = component_theme
         self._modifiers = Modifiers()
         self._init_modifiers(modifiers)
+        self._theme = theme
 
     @property
     def modifiers(self) -> Modifiers:
@@ -313,6 +336,15 @@ class Component(BaseComponent):
         if self.is_built:
             self._modifiers = value
         self._build_data[Modifiers] = value
+
+    @property
+    def theme(self) -> Theme:
+        assert self._theme is not None, "Theme is not set on this component."
+        return self._theme
+
+    @theme.setter
+    def theme(self, value: Theme) -> None:
+        self._theme = value
 
     @abstractmethod
     def build(self, context: Context, children: Children) -> Children:
@@ -331,12 +363,15 @@ class Component(BaseComponent):
     def provide(self, data: DataDict) -> None:
         if self._modifiers and not self.is_built:
             data[Modifiers] = self._modifiers
+        if self._theme and not self.is_built:
+            data[Theme] = self._theme
 
     @override
     def consume(self) -> None:
         super().consume()
         inherited_modifiers = self.context.get(Modifiers) or Modifiers()
         self.modifiers = inherited_modifiers | self._modifiers
+        self._theme = self._theme or self.context.get(Theme)
 
     @override
     def _handle_provide(self, data: DataDict) -> DataDict:
@@ -357,13 +392,9 @@ class Component(BaseComponent):
         super()._after_build(children)
 
         # or in future: context.get(Theme).get_component_theme(self)
-        theme = self._component_theme
         for i, component in enumerate(children):
             if not isinstance(component, Component):
                 continue
-            if theme:
-                component = theme.modify_build(self.context, component)
-                component.attributes = theme.modify_attributes(component.attributes)
             for modifier in self.modifiers:
                 component = modifier.apply_to_child(self.context, component)
             children[i] = component
@@ -381,7 +412,7 @@ class Component(BaseComponent):
             *self._attributes if not self._building else [],
             *self._modifiers if not self._building else [],
             children=children,
-            component_theme=self._component_theme,
+            theme=self._theme if not self._building else None,
             htpy_kwargs=self._htpy_kwargs,
             **self.props,
             **self.kwargs,
@@ -393,6 +424,8 @@ class Component(BaseComponent):
     def _init_modifiers(self, mod_like: Iterable[ModifierLike]) -> None:
         for modifier in mod_like:
             match modifier:
+                case None:
+                    continue
                 case str():
                     self._handle_init_string(modifier)
                 case Attribute():
@@ -464,15 +497,15 @@ class TemplateComponent(Component):
         self,
         *modifiers: ModifierLike,
         template_function: TemplateFunctionType | None = None,
-        component_theme: ComponentTheme | None = None,
         children: Children = None,
+        theme: Theme | None = None,
         htpy_kwargs: dict[str, str] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(
             *modifiers,
-            component_theme=component_theme,
             children=children,
+            theme=theme,
             htpy_kwargs=htpy_kwargs,
             **kwargs,
         )
@@ -503,7 +536,7 @@ class TemplateComponent(Component):
             self._children = children
             children = [self]
         return children
-    
+
     @override
     def _prepare_build(self, context: Context) -> None:
         self._build_data = ContextFrame(self)
@@ -520,10 +553,40 @@ class TemplateComponent(Component):
         if self.template_function is None:
             raise ValueError("TemplateComponent requires a template_function to build.")
         return self.template_function(context)
-    
+
     @override
     def __getitem__(self, children: Children, **kwargs: Any) -> Self:
-        return super().__getitem__(children, template_function=self.template_function, **kwargs)
+        return super().__getitem__(
+            children, template_function=self.template_function, **kwargs
+        )
+
+
+class ThemedComponent(Component):
+    """A component that maps its children through a function during the build process."""
+
+    def __init__(self, *modifiers: ModifierLike, **kwargs: Any) -> None:
+        super().__init__(*modifiers, **kwargs)
+        self._smods = modifiers  # stored args for from_theme
+        self._skwargs = kwargs  # stored kwargs for from_theme
+
+    @abstractmethod
+    def from_theme(
+        self, theme: Theme, *smods: ModifierLike, **skwargs: Any
+    ) -> Component: ...
+
+    @override
+    def full_build(self, context: Context) -> ComponentLike:
+        theme = self._theme or Theme.of(context)
+        if theme is None:
+            raise ValueError("Theme is required to build ThemedComponent.")
+        component = self.from_theme(theme, *self._smods, **self._skwargs)
+        return component.full_build(context)
+
+    @override
+    def build(self, context: Context, children: Children) -> Children:
+        raise NotImplementedError(
+            "MappedComponent should not implement build, full_build is overridden."
+        )
 
 
 @final

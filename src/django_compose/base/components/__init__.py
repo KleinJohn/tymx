@@ -14,6 +14,7 @@ from .base_components import (
     SingleChildComponentMixin,
     Text,
     VoidComponentMixin,
+    ThemedComponent,
 )
 from .compose_components import PageLink
 
@@ -34,4 +35,5 @@ __all__ = [
     "TemplateComponent",
     "Text",
     "PageLink",
+    "ThemedComponent",
 ]

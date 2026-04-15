@@ -5,7 +5,9 @@ from collections.abc import Callable, Iterable
 from typing_extensions import Any, Self
 
 
-def _add_init_kwargs(init_kwargs: dict[str, Any] | None, **kwargs: Any) -> dict[str, Any]:
+def _add_init_kwargs(
+    init_kwargs: dict[str, Any] | None, **kwargs: Any
+) -> dict[str, Any]:
     if init_kwargs is None:
         init_kwargs = {}
     init_kwargs.update(kwargs)
@@ -60,9 +62,14 @@ class Attribute(ABC):
 
     def __or__(self, other: Self) -> Self:
         return self.merge(other)
-    
+
     def __contains__(self, item: Any) -> bool:
         return item == self.value
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Attribute):
+            return NotImplemented
+        return self.name == other.name and self.value == other.value
 
     @abstractmethod
     def __str__(self) -> str:
@@ -122,7 +129,9 @@ class BooleanAttribute(Attribute):
             value = self.use_true_false[0] if value else self.use_true_false[1]
         return super().__call__(
             value,
-            init_kwargs=_add_init_kwargs(init_kwargs, use_true_false=self.use_true_false),
+            init_kwargs=_add_init_kwargs(
+                init_kwargs, use_true_false=self.use_true_false
+            ),
         )
 
     def __str__(self) -> str:
@@ -184,7 +193,9 @@ class ComposedAttribute(SimpleAttribute):
     ) -> Self:
         """The flag add_after determines whether to include kwargs before or after values."""
         if kwargs and not self.policy.kwarg_composer:
-            raise ValueError("kwarg_composer must be provided to use keyword arguments.")
+            raise ValueError(
+                "kwarg_composer must be provided to use keyword arguments."
+            )
         kwargs = _clean_kwargs(kwargs, underscores_to_hyphens=clean_underscores)
         # The items in value of type dict are not being cleaned.
         if isinstance(value, dict):
@@ -202,7 +213,7 @@ class ComposedAttribute(SimpleAttribute):
             if self.policy.kwarg_composer
             else ()
         )
-        
+
         joined_values = values + kwarg_values if add_after else kwarg_values + values
         composed_values = tuple(value for value in joined_values if value is not None)
         return super().__call__(
@@ -219,14 +230,18 @@ class ComposedAttribute(SimpleAttribute):
             raise ValueError(
                 f"Cannot merge attributes with different names: {self.name} and {other.name}"
             )
-        self_values: tuple[str, ...] = self.composed_values if self.composed_values else ()
-        other_values: tuple[str, ...] = other.composed_values if other.composed_values else ()
+        self_values: tuple[str, ...] = (
+            self.composed_values if self.composed_values else ()
+        )
+        other_values: tuple[str, ...] = (
+            other.composed_values if other.composed_values else ()
+        )
         total_values = self_values + other_values
         if self.policy.remove_duplicates:
             # Remove duplicates while preserving order
             total_values = tuple(dict.fromkeys(total_values, None).keys())
         return self(*total_values)
-    
+
     def __contains__(self, item: Any) -> bool:
         if not isinstance(item, str) or self.composed_values is None:
             return False
