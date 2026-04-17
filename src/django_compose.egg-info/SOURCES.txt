@@ -20,9 +20,13 @@ src/django_compose/base/components/__init__.py
 src/django_compose/base/components/base_components.py
 src/django_compose/base/components/compose_components.py
 src/django_compose/base/components/html_components.py
+src/django_compose/base/components/interaction_components.py
 src/django_compose/base/modifiers/__init__.py
 src/django_compose/base/modifiers/base_modifiers.py
 src/django_compose/base/modifiers/debug_modifiers.py
 src/django_compose/base/views/__init__.py
 src/django_compose/base/views/view_base.py
 src/django_compose/bulma/__init__.py
+src/django_compose/bulma/components/__init__.py
+src/django_compose/bulma/components/helpers.py
+src/django_compose/bulma/components/interaction_components.py

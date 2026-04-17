@@ -72,6 +72,7 @@ class BulmaButton(Component):
         color_scheme: BulmaButtonColorScheme | str | None = None,
         size: BulmaButtonSize | str | None = None,
         style: BulmaButtonStyle | str | None = None,
+        state: BulmaButtonState | str | None = None,
         responsive: bool = False,
         fullwidth: bool = False,
         loading: bool = False,
@@ -88,6 +89,7 @@ class BulmaButton(Component):
             color_scheme=color_scheme,
             size=size,
             style=style,
+            state=state,
             responsive=responsive,
             fullwidth=fullwidth,
             loading=loading,
@@ -103,6 +105,7 @@ class BulmaButton(Component):
         )
         self.size = BulmaButtonSize(size) if size else None
         self.style = BulmaButtonStyle(style) if style else None
+        self.state = BulmaButtonState(state) if state else None
         self.responsive = responsive
         self.fullwidth = fullwidth
         self.loading = loading
@@ -125,6 +128,8 @@ class BulmaButton(Component):
             attrs.append(classes(self.size.value))
         if self.style:
             attrs.append(classes(self.style.value))
+        if self.state:
+            attrs.append(classes(self.state.value))
         if self.responsive:
             attrs.append(classes("is-responsive"))
         if self.fullwidth:
