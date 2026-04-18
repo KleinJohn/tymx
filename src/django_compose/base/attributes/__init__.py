@@ -22,6 +22,7 @@ from .html_attributes import (
     charset,
     checked,
     cite,
+    class_,
     classes,
     colorspace,
     cols,
@@ -165,10 +166,6 @@ from .htmx_attributes import (
 )
 
 
-
-
-
-
 __all__ = [
     "Attribute",
     "SimpleAttribute",
@@ -178,6 +175,7 @@ __all__ = [
     "JsonAttribute",
     "id",
     "classes",
+    "class_",
     "style",
     "accept",
     "accept_charset",
@@ -330,9 +328,7 @@ __all__ = [
 ]
 
 ALL_ATTRIBUTES: dict[str, Attribute] = {
-    name: v
-    for name in __all__
-    if isinstance(v := globals()[name], Attribute)
+    name: v for name in __all__ if isinstance(v := globals()[name], Attribute)
 }
 
 __all__ += ["ALL_ATTRIBUTES"]

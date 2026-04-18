@@ -18,8 +18,10 @@ whitespace_composer = ComposePolicy(
 
 
 id = SimpleAttribute("id")
-classes = ComposedAttribute("class", compose_policy=whitespace_composer)
+class_ = ComposedAttribute("class", compose_policy=whitespace_composer)
 style = ComposedAttribute("style", compose_policy=style_composer)
+
+classes = class_  # alias for class_
 
 accept = SimpleAttribute("accept")
 accept_charset = SimpleAttribute("accept-charset")

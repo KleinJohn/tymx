@@ -12,6 +12,7 @@ Requires-Python: >=3.10
 Description-Content-Type: text/markdown
 Requires-Dist: django>=5.2.11
 Requires-Dist: htpy>=25.12.0
+Requires-Dist: pydantic>=2.13.2
 Requires-Dist: typing-extensions>=4.15.0
 
 # About Components

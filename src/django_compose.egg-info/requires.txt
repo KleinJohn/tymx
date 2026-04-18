@@ -1,3 +1,4 @@
 django>=5.2.11
 htpy>=25.12.0
+pydantic>=2.13.2
 typing-extensions>=4.15.0

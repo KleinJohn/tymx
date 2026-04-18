@@ -8,9 +8,12 @@ from typing_extensions import (
     Any,
     Self,
     TypeVar,
+    Optional,
     final,
     override,
 )
+
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from django_compose.base.attributes import Attribute, classes, ALL_ATTRIBUTES
 from django_compose.base.context import Context, ContextFrame, DataDict
@@ -43,88 +46,111 @@ GenericComponentChildren: TypeAlias = (
 ComponentLike: TypeAlias = GenericComponentLike["BaseComponent"]
 Children: TypeAlias = GenericComponentChildren["BaseComponent"]
 
-AttributeLike: TypeAlias = (
-    None | str | Attribute | Attributes | Iterable["AttributeLike"]
-)
+AttributeLike: TypeAlias = None | str | Attribute | Attributes | list["AttributeLike"]
 ModifierLike: TypeAlias = (
-    None
-    | str
-    | Attribute
-    | Attributes
-    | Modifier
-    | Modifiers
-    | Iterable["ModifierLike"]
+    None | str | Attribute | Attributes | Modifier | Modifiers | list["ModifierLike"]
 )
 
 
-class BaseComponent(ABC):
+class BuildData(BaseModel):
+    component: BaseComponent
+    context: Context
+    frame: ContextFrame = None  # type: ignore
+    is_building: bool = False
+
+    @field_validator("frame", mode="before")
+    @classmethod
+    def validate_frame(
+        cls, frame: Optional[ContextFrame], info: ValidationInfo
+    ) -> ContextFrame:
+        if frame is not None:
+            return frame
+        if info.data.get("component") is not None:
+            return ContextFrame(info.data["component"])
+        raise ValueError("Either frame or component must be provided to BuildData.")
+
+
+class BaseComponent(BaseModel, ABC):
+    model_config = ConfigDict(extra="allow", frozen=True)
+
+    attributes: Attributes = Field(kw_only=False)
+    children: list[BaseComponent]
+    htpy_kwargs: dict[str, str]
 
     # All Components that allow zero children have to provide an empty constructor.
     def __init__(
         self,
-        *attributes: AttributeLike,
+        attributes: AttributeLike,
+        *,
         children: Children = None,
-        htpy_kwargs: dict[str, str] | None = None,
+        htpy_kwargs: Optional[dict[str, str]] = None,
         **kwargs: Any,
     ) -> None:
-        self._attributes = Attributes()
-        self._init_attributes(attributes)
-        self._children: list[BaseComponent] = self._children_to_list(children)
-        self._htpy_kwargs = htpy_kwargs if htpy_kwargs is not None else {}
-        self._building = False
-        self._build_data: ContextFrame = ContextFrame(self)
-        self._build_context: Context | None = None
-        self._is_built = False  # use to prevent recursion in build()
-        self.kwargs: dict[str, Any] = dict(kwargs)
-        self.props: dict[str, Any] = {}
-        self._extract_attributes_from_kwargs(**self.kwargs)
+        super().__init__(
+            attributes=attributes, children=children, htpy_kwargs=htpy_kwargs, **kwargs
+        )
+        # self._attributes = Attributes()
+        # self._init_attributes(attributes)
+        # self._children: list[BaseComponent] = self._children_to_list(children)
+        # self._htpy_kwargs = htpy_kwargs if htpy_kwargs is not None else {}
+        # self._building = False
+        # self._build_data: ContextFrame = ContextFrame(self)
+        # self._build_context: Context | None = None
+        # self._is_built = False  # use to prevent recursion in build()
+        # self.kwargs: dict[str, Any] = dict(kwargs)
+        # self.props: dict[str, Any] = {}
+        # self._extract_attributes_from_kwargs(**self.kwargs)
 
-    @property
-    def attributes(self) -> Attributes:
-        if self.is_built:
-            return self._attributes
-        return self._build_data.get(Attributes) or Attributes()
+    @override
+    def model_post_init(self, context: Any) -> None:
+        super().model_post_init(context)
+        if self.model_extra:
+            self._extract_additional_attributes(**self.model_extra)
 
-    @attributes.setter
-    def attributes(self, value: Attributes) -> None:
-        if self.is_built:
-            self._attributes = value
-        self._build_data[Attributes] = value
+    # @property
+    # def attributes(self) -> Attributes:
+    #     if self.is_built:
+    #         return self._attributes
+    #     return self._build_data.get(Attributes) or Attributes()
 
-    @property
-    def context(self) -> Context:
-        if self._build_context is None:
-            raise ValueError("Component is not being built, no context available.")
-        self._build_context.current_component = self
-        return self._build_context
+    # @attributes.setter
+    # def attributes(self, value: Attributes) -> None:
+    #     if self.is_built:
+    #         self._attributes = value
+    #     self._build_data[Attributes] = value
 
-    @context.setter
-    def context(self, value: Context | None) -> None:
-        self._build_context = value
+    # @property
+    # def context(self) -> Context:
+    #     if self._build_context is None:
+    #         raise ValueError("Component is not being built, no context available.")
+    #     self._build_context.current_component = self
+    #     return self._build_context
 
-    @property
-    def is_built(self) -> bool:
-        return self._is_built
+    # @context.setter
+    # def context(self, value: Context | None) -> None:
+    #     self._build_context = value
+
+    # @property
+    # def is_built(self) -> bool:
+    #     return self._is_built
 
     @abstractmethod
-    def build(self, context: Context, children: Children) -> Children:
-        raise NotImplementedError()
+    def build(self, context: Context, children: Children) -> Children: ...
 
     @abstractmethod
-    def render(self) -> htpy.Node:
-        raise NotImplementedError()
+    def render(self) -> htpy.Node: ...
 
-    def use_props(self, **props: Any) -> None:
-        """Declare that the component uses the given props in its build method.
+    # def use_props(self, **props: Any) -> None:
+    #     """Declare that the component uses the given props in its build method.
 
-        This is used to make sure that props are properly cloned when using the
-        component multiple times by __getitem__.
-        """
-        self.props.update(props)
+    #     This is used to make sure that props are properly cloned when using the
+    #     component multiple times by __getitem__.
+    #     """
+    #     self.props.update(props)
 
     def provide(self, data: DataDict) -> None:
-        if self._attributes and not self.is_built:
-            data[Attributes] = self._attributes
+        if self.attributes:  # and not built
+            data[Attributes] = self.attributes
 
     def consume(self) -> None:
         inherited_attributes = self.context.get(Attributes) or Attributes()
@@ -132,7 +158,7 @@ class BaseComponent(ABC):
 
     def full_build(self, context: Context) -> ComponentLike:
         """The component should return to its original state after building."""
-        self._prepare_build(context)
+        build_data = self._prepare_build(context)
         self.consume()
         self._before_build()
         children = self._handle_build()
@@ -174,25 +200,21 @@ class BaseComponent(ABC):
     def _after_build_children(self, children: list[BaseComponent]) -> None:
         self.context.pop_frame()
 
-    def _prepare_build(self, context: Context) -> None:
-        self._build_data = ContextFrame(self)
-        self._build_context = context
+    def _prepare_build(self, context: Context) -> BuildData:
+        return BuildData(component=self, context=context)
 
     def _finish_build(self) -> None:
         self._build_data = ContextFrame(self)
         self._build_context = None
 
-    def _extract_attributes_from_kwargs(self, **kwargs: Any) -> None:
-        for attr, value in kwargs.items():
+    def _extract_additional_attributes(self, extra_dict: dict[str, Any]) -> None:
+        for attr, value in extra_dict.items():
             if attr in ALL_ATTRIBUTES:
-                self._attributes.add(ALL_ATTRIBUTES[attr](value))
+                self.attributes.add(ALL_ATTRIBUTES[attr](value))
 
     def _handle_provide(self, data: DataDict) -> DataDict:
         BaseComponent.provide(self, data)
         return data
-
-    def _handle_init_string(self, s: str) -> None:
-        self._attributes.add(classes(s))
 
     def _unwrap_component_list(self, components: list[BaseComponent]) -> ComponentLike:
         match len(components):
@@ -203,23 +225,36 @@ class BaseComponent(ABC):
             case _:
                 return components
 
-    def _init_attributes(self, attr_like: Iterable[AttributeLike]) -> None:
-        for attribute in attr_like:
-            match attribute:
-                case None:
-                    continue
-                case str():
-                    self._handle_init_string(attribute)
-                case Attribute():
-                    self._attributes.add(attribute)
-                case Attributes():
-                    self._attributes.update(attribute)
-                case Iterable():
-                    self._init_attributes(attribute)
-                case _:
-                    raise ValueError(
-                        f"Invalid attribute type: {type(attribute)} on {self.__class__.__name__}."
-                    )
+    @field_validator("attributes", mode="before")
+    @classmethod
+    def _init_attributes(cls, attr_like: list[AttributeLike]) -> Attributes:
+        def _init_attributes_recursive(
+            al: list[AttributeLike], attrs: Attributes
+        ) -> None:
+            for attribute in attr_like:
+                match attribute:
+                    case None:
+                        continue
+                    case str():
+                        cls._handle_init_string(attribute, attrs)
+                    case Attribute():
+                        attrs.add(attribute)
+                    case Attributes():
+                        attrs.update(attribute)
+                    case list():
+                        _init_attributes_recursive(attribute, attrs)
+                    case _:
+                        raise ValueError(
+                            f"Invalid attribute type: {type(attribute)} on {self.__class__.__name__}."
+                        )
+
+        attrs = Attributes()
+        _init_attributes_recursive(attr_like, attrs)
+        return attrs
+
+    @classmethod
+    def _handle_init_string(self, s: str, attrs: Attributes) -> None:
+        attrs.add(classes(s))
 
     def _verbose_string_parts(self) -> Iterable[str]:
         return (str(self.attributes),)
