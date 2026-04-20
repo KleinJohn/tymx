@@ -1,13 +1,19 @@
 from typing_extensions import Any, override
 
-from django_compose.base.components.base_components import Children, ModifierLike, TemplateComponent
+from django_compose.base.components.base_components import (
+    Children,
+    ModifiersOrAttributes,
+    TemplateComponent,
+)
 from django_compose.base.components.html_components import A
 from django_compose.base.context import Context
 from django_compose.base.attributes import href
 
 
 class PageLink(TemplateComponent):
-    def __init__(self, *modifiers: ModifierLike, to: str, **kwargs: Any) -> None:
+    def __init__(
+        self, *modifiers: ModifiersOrAttributes, to: str, **kwargs: Any
+    ) -> None:
         super().__init__(*modifiers, **kwargs)
         self.use_props(to=to)
         self.to = to

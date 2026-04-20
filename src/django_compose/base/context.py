@@ -1,9 +1,17 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, fields, replace
 from enum import Enum, auto
 
-from typing_extensions import Any, TypeVar, TYPE_CHECKING, Self, override, overload
+from pydantic import BaseModel, ConfigDict, Field
+from typing_extensions import (
+    Any,
+    TypeVar,
+    TYPE_CHECKING,
+    Self,
+    override,
+    overload,
+    ClassVar,
+)
 
 if TYPE_CHECKING:
     from django_compose.base import Page, Router
@@ -92,9 +100,9 @@ class ConsumerPolicy(Enum):
         }
 
 
-class Consumable:
-    consumer_policy = ConsumerPolicy.NONE
-    consume_first_matching = False
+class Consumable(BaseModel):
+    consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.NONE
+    consume_first_matching: ClassVar[bool] = False
 
     @classmethod
     def of(cls: type[T_Consumable], context: Context) -> T_Consumable | None:
@@ -126,7 +134,7 @@ class Consumable:
     def custom_policy(self, context_snapshot: ContextTraversalSnapshot) -> bool:
         raise NotImplementedError()
 
-    def merge(self: T_Consumable, other: T_Consumable) -> T_Consumable:
+    def merge(self, other: T_Consumable) -> T_Consumable:
         """Overwrites by default."""
         return other
 
@@ -145,10 +153,11 @@ class Consumable:
         return self.merge(other)
 
 
-class ContextFrame:
-    def __init__(self, component: BaseComponent, data: DataDict | None = None) -> None:
-        self.component = component
-        self.data = data if data is not None else {}
+class ContextFrame(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    component: BaseComponent = Field(kw_only=False)
+    data: DataDict = Field(default_factory=DataDict, kw_only=False)
 
     def get(self, key: type[T_Consumable]) -> T_Consumable | None:
         return self.data.get(key)
@@ -166,20 +175,15 @@ class ContextFrame:
         return key in self.data
 
 
-class ContextTraversalSnapshot:
+class ContextTraversalSnapshot(BaseModel):
     """A snapshot of a traversal through the context's data stack"""
 
-    def __init__(
-        self,
-        context: Context,
-        max_depth: int,
-        current_depth: int,
-        frame: ContextFrame,
-    ) -> None:
-        self.context = context
-        self.max_depth = max_depth
-        self.current_depth = current_depth
-        self.frame = frame
+    model_config = ConfigDict(frozen=True)
+
+    context: Context
+    max_depth: int
+    current_depth: int
+    frame: ContextFrame
 
 
 class Context:
@@ -258,22 +262,14 @@ class Context:
         return self.router.routes[self.page.name].url
 
 
-@dataclass
 class ContextData(Consumable):
-    consumer_policy = ConsumerPolicy.ALL_CHILDREN
-    overwrite_with_none: bool = field(default=False, kw_only=True)
+    model_config = ConfigDict(frozen=True)
 
-    def __init_subclass__(cls, **kwargs: Any) -> None:
-        super().__init_subclass__(**kwargs)
-        if "__dataclass_fields__" not in cls.__dict__:
-            dataclass(cls)
+    consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.ALL_CHILDREN
+    overwrite_with_none: ClassVar[bool] = False
 
-    def __init__(
-        self, *args: Any, overwrite_with_none: bool = False, **kwargs: Any
-    ) -> None:
-        super().__init__(*args, **kwargs)
-
-    def merge(self, other: Self) -> Self:
+    @override
+    def merge(self, other: ContextData) -> ContextData:
         updates = {
             f.name: getattr(other, f.name)
             for f in fields(self)

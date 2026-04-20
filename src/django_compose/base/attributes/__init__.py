@@ -4,6 +4,8 @@ from .base_attributes import (
     ComposedAttribute,
     ComposePolicy,
     SimpleAttribute,
+    Attributes,
+    FrozenAttributes,
 )
 from .html_attributes import (
     accept,
@@ -173,6 +175,8 @@ __all__ = [
     "ComposePolicy",
     "ComposedAttribute",
     "JsonAttribute",
+    "Attributes",
+    "FrozenAttributes",
     "id",
     "classes",
     "class_",

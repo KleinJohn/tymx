@@ -9,9 +9,11 @@ src/django_compose.egg-info/requires.txt
 src/django_compose.egg-info/top_level.txt
 src/django_compose/base/__init__.py
 src/django_compose/base/app.py
+src/django_compose/base/config.py
 src/django_compose/base/context.py
 src/django_compose/base/router.py
 src/django_compose/base/theme.py
+src/django_compose/base/types.py
 src/django_compose/base/attributes/__init__.py
 src/django_compose/base/attributes/base_attributes.py
 src/django_compose/base/attributes/html_attributes.py

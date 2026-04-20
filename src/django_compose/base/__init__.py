@@ -10,6 +10,7 @@ from .context import (
 from .attributes import Attribute
 from .modifiers import Modifier, Attributes
 from .theme import Theme, ThemeType
+from .config import default_attribute
 
 __all__ = [
     "Page",
@@ -25,4 +26,5 @@ __all__ = [
     "Attributes",
     "Attribute",
     "Modifier",
+    "default_attribute",
 ]

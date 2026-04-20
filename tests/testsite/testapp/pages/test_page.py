@@ -79,11 +79,31 @@
 #     ],
 # )
 
-from typing import Optional, Annotated
-from pydantic import BaseModel, ConfigDict, Field, field_validator, BeforeValidator
+from typing import Annotated, Union, cast
+from pydantic import BaseModel, Field, field_validator, BeforeValidator
 
 
-def convert_none_to_empty_string(v: Optional[str]) -> str:
-    if v is None:
-        return ""
+def transform_logic(v: Union[int, str]) -> int:
+    if isinstance(v, str):
+        return int(v)  # Your custom transformation logic
     return v
+
+
+class MyModel(BaseModel):
+    # 1. The type hint Union[int, str] tells the editor both are okay.
+    # 2. BeforeValidator ensures it's an int before Pydantic finishes.
+    _count: Annotated[int | str, BeforeValidator(transform_logic)] = Field(
+        alias="count"
+    )
+
+    @property
+    def count(self) -> int:
+        return cast(int, self._count)
+
+
+# --- Usage ---
+m1 = MyModel(count=10)  # Editor is happy (int)
+m2 = MyModel(count="20")  # Editor is happy (str)
+
+print(type(m1.count))  # <class 'int'>
+print(type(m2.count))  # <class 'int'>

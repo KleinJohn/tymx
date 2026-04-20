@@ -14,10 +14,10 @@ if TYPE_CHECKING:
 
 
 class DebugModifier(Modifier):
-    def apply_before_build(self, context: Context, component: Component) -> None:
+    def apply(self, context: Context, component: Component) -> None:
         print(f"Before building: {component}")
 
-    def apply_to_child(self, context: Context, component: Component) -> Component:
+    def transform(self, context: Context, component: Component) -> Component:
         print(f"After building: {component}")
         return component
 
@@ -25,8 +25,8 @@ class DebugModifier(Modifier):
 class PrintContextModifier(Modifier):
     consumer_policy = ConsumerPolicy.ALL_CHILDREN
 
-    def apply_before_build(self, context: Context, component: Component) -> None:
-        super().apply_before_build(context, component)
+    def apply(self, context: Context, component: Component) -> None:
+        super().apply(context, component)
         print(
             f"{component.__class__.__name__:<20}\t",
             str(context),
@@ -38,15 +38,17 @@ class PrintComponentsModifier(Modifier):
 
     consumer_policy = ConsumerPolicy.NONE
 
-    def __init__(self, pretty: bool = True, verbose: bool = True, **print_kwargs: Any) -> None:
+    def __init__(
+        self, pretty: bool = True, verbose: bool = True, **print_kwargs: Any
+    ) -> None:
         super().__init__()
         self.pretty = pretty
         self.verbose = verbose
         self.print_kwargs = print_kwargs
 
-    def apply_to_child(self, context: Context, component: Component) -> Component:
+    def transform(self, context: Context, component: Component) -> Component:
         print(component.to_string(self.pretty, self.verbose, **self.print_kwargs))
-        return super().apply_to_child(context, component)
+        return super().transform(context, component)
 
 
 class PrintComponentModifier(Modifier):
@@ -58,18 +60,18 @@ class PrintComponentModifier(Modifier):
         super().__init__()
         self.verbose = verbose
 
-    def apply_before_build(self, context: Context, component: Component) -> None:
+    def apply(self, context: Context, component: Component) -> None:
         if self.verbose:
             print(f"Applying to component: {component}")
         else:
             print(component)
 
-    def apply_to_child(self, context: Context, component: Component) -> Component:
+    def transform(self, context: Context, component: Component) -> Component:
         if self.verbose:
             print(f"{self.consumer_policy}: {component}")
         else:
             print(component)
-        return super().apply_to_child(context, component)
+        return super().transform(context, component)
 
 
 class PrintAllChildrenModifier(PrintComponentModifier):

@@ -1,15 +1,21 @@
 from __future__ import annotations
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from collections import OrderedDict
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated, cast
 
+from pydantic import BeforeValidator, ConfigDict, Field
 from typing_extensions import (
-    Any,
     Self,
-    TypeVar,
-    final,
+    ClassVar,
     override,
+)
+
+from django_compose.base.components.base_components import BaseComponent
+from django_compose.base.types import (
+    ModifierDict,
+    ModifierLike,
+    T_Modifier,
 )
 
 from django_compose.base.context import (
@@ -21,31 +27,24 @@ from django_compose.base.context import (
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
 
-    from django_compose.base.attributes import Attribute
-    from django_compose.base.components import Component
-    from django_compose.base.context import Context
+    from django_compose.base.components import BuildData
 
 
-T_Modifier = TypeVar("T_Modifier", bound="Modifier")
-ModifierDict = OrderedDict[type[T_Modifier], T_Modifier]
-
-
-class BaseModifier(Consumable):
+class BaseModifier(Consumable, ABC):
     @abstractmethod
-    def apply_before_build(self, context: Context, component: Component) -> None: ...
-
+    def apply(self, build: BuildData) -> None: ...
     @abstractmethod
-    def apply_to_child(self, context: Context, component: Component) -> Component: ...
+    def transform(self, result: list[BaseComponent]) -> None: ...
 
     def __str__(self) -> str:
         return self.__class__.__name__
 
 
 class Modifier(BaseModifier):
-    consumer_policy = ConsumerPolicy.ALL_CHILDREN
+    consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.ALL_CHILDREN
 
     @override
-    def apply_before_build(self, context: Context, component: Component) -> None:
+    def apply(self, build: BuildData) -> None:
         """Injects behavior into the given component before the build process.
 
         It is safe to modify the component in place and return the same instance.
@@ -54,79 +53,74 @@ class Modifier(BaseModifier):
         pass
 
     @override
-    def apply_to_child(self, context: Context, component: Component) -> Component:
+    def transform(self, result: list[BaseComponent]) -> None:
         """Injects behavior into the given component after the build process.
 
         It is safe to modify the component in place and return the same instance.
         It is also possible to return a new instance of the component if needed.
         """
-        return component
+        pass
 
 
-class DeferredModifier(Modifier):
-    """Since the referenced component is being saved, make sure to instantiate
-    a new DeferredModifier for each use."""
+def _convert_to_modifier_dict(modifiers: ModifierLike) -> ModifierDict:
+    def match_modifiers_recursive(
+        modifier: ModifierLike, mod_dict: ModifierDict
+    ) -> None:
+        match modifier:
+            case None:
+                return
+            case Modifier():
+                mod_dict[type(modifier)] = modifier
+            case Modifiers():
+                mod_dict.update(modifier._data)
+            case Sequence():
+                for item in modifier:
+                    match_modifiers_recursive(item, mod_dict)
+            case _:
+                raise ValueError("Invalid modifier type.")
 
-    def __init__(self) -> None:
-        self._deferred_context: Context | None = None
-        self._deferred_component: Component | None = None
-
-    @override
-    def apply_to_child(self, context: Context, component: Component) -> Component:
-        component = super().apply_to_child(context, component)
-        self._deferred_context = context.copy()
-        self._deferred_component = component
-        return component
-
-    def notify(self) -> None:
-        if self._deferred_context is not None and self._deferred_component is not None:
-            self.apply_when_notified(self._deferred_context, self._deferred_component)
-        else:
-            raise RuntimeError(
-                """DeferredModifier.notify() called without prior apply().
-Make sure you call super().apply() in overrides."""
-            )
-
-    @abstractmethod
-    def apply_when_notified(self, context: Context, component: Component) -> None: ...
+    mod_dict: ModifierDict = OrderedDict()
+    match_modifiers_recursive(modifiers, mod_dict)
+    return mod_dict
 
 
-@final
 class Modifiers(BaseModifier):
-    consumer_policy = ConsumerPolicy.ALL_CHILDREN
-    consume_first_matching = False
+    consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.ALL_CHILDREN
+    consume_first_matching: ClassVar[bool] = False
 
-    def __init__(self, *modifiers: T_Modifier) -> None:
-        self.data: ModifierDict = OrderedDict()
-        for modifier in modifiers:
-            self.add(modifier)
+    _ut_data: Annotated[ModifierLike, BeforeValidator(_convert_to_modifier_dict)] = (
+        Field(alias="modifiers", init=True, default=None, kw_only=False)
+    )
+
+    @property
+    def _data(self) -> ModifierDict:
+        return cast(ModifierDict, self._ut_data)
 
     def values(self) -> ModifierDict:
-        return OrderedDict((m.key, m) for m in self.data.values())
+        return OrderedDict(self._data)
 
-    def add(self, modifier: T_Modifier, overwrite: bool = True) -> None:
-        if overwrite or type(modifier) not in self.data:
-            self.data[type(modifier)] = modifier
+    def add(self, modifier: Modifier, overwrite: bool = True) -> None:
+        if overwrite or type(modifier) not in self._data:
+            self._data[type(modifier)] = modifier
 
-    def update(
-        self, modifiers: Modifiers | Sequence[Modifier], overwrite: bool = True
-    ) -> None:
-        if modifiers is None:
-            return
-        for modifier in modifiers:
-            self.add(modifier, overwrite=overwrite)
+    def update(self, modifiers: ModifierLike, overwrite: bool = True) -> None:
+        mod_dict = _convert_to_modifier_dict(modifiers)
+        for mod in mod_dict.values():
+            self.add(mod, overwrite=overwrite)
 
     @override
     def merge(self, other: Modifiers) -> Modifiers:
-        merged = self.copy()
-        merged.update(other, overwrite=True)
-        return merged
+        """Merges with other by overwriting with other's modifiers."""
+        if not isinstance(other, Modifiers):
+            raise TypeError("Modifiers can only be merged with other Modifiers.")
+        return self.__class__([self, other])
 
     @override
     def merge_if_policy_applies(
         self: Modifiers,
         other: Modifiers | None,
         context_snapshot: ContextTraversalSnapshot,
+        overwrite: bool = True,
     ) -> Modifiers:
         if other is None:
             return Modifiers(
@@ -140,35 +134,35 @@ class Modifiers(BaseModifier):
         return merged
 
     @override
-    def apply_before_build(self, context: Context, component: Component) -> None:
-        component._modifiers.update(self)
+    def apply(self, build: BuildData) -> None:
+        pass
 
     @override
-    def apply_to_child(self, context: Context, component: Component) -> Component:
-        return component
+    def transform(self, build: BuildData) -> None:
+        pass
 
-    def copy(self) -> Modifiers:
-        return Modifiers(*self.data.values())
+    def copy(self) -> Self:
+        return self.__class__(self)
 
     def __call__(self) -> Self:
         return self
 
     def __len__(self) -> int:
-        return len(self.data)
+        return len(self._data)
 
     def __iter__(self) -> Iterator[Modifier]:
-        return iter(self.data.values())
+        return iter(self._data.values())
 
     def __contains__(self, item: type[T_Modifier] | T_Modifier) -> bool:
         if isinstance(item, type):
-            return item in self.data
-        return type(item) in self.data
+            return item in self._data
+        return type(item) in self._data
 
     def __str__(self) -> str:
-        return ", ".join(str(attr) for attr in self.data.values())
+        return ", ".join(str(attr) for attr in self._data.values())
 
     def __bool__(self) -> bool:
-        return bool(self.data)
+        return bool(self._data)
 
     def __or__(self, other: Modifiers) -> Modifiers:
         return self.merge(other)
@@ -178,87 +172,11 @@ class Modifiers(BaseModifier):
         return self
 
 
-@final
-class Attributes(BaseModifier):
-    consumer_policy = ConsumerPolicy.DIRECT_BUILT_CHILDREN
+class FrozenModifiers(Modifiers):
+    model_config = ConfigDict(frozen=True)
 
-    def __init__(self, *attributes: Attribute) -> None:
-        self._data: OrderedDict[str, Attribute] = OrderedDict()
-        for attr in attributes:
-            self.add(attr)
+    def add(self, modifier: Modifier, overwrite: bool = True) -> None:
+        raise TypeError("FrozenModifiers cannot be modified.")
 
-    def values(self) -> dict[str, Any]:
-        return {attr.name: attr.value for attr in self._data.values()}
-
-    def add(self, attribute: Attribute, overwrite: bool = True) -> None:
-        if attribute.name not in self:
-            self._data[attribute.name] = attribute
-        elif overwrite:
-            self._data[attribute.name] = self._data[attribute.name] | attribute
-        else:
-            self._data[attribute.name] = attribute | self._data[attribute.name]
-
-    def update(
-        self, attributes: Attributes | Sequence[Attribute], overwrite: bool = True
-    ) -> None:
-        for attr in attributes:
-            self.add(attr, overwrite=overwrite)
-
-    @override
-    def merge(self, other: Attributes) -> Attributes:
-        merged = self.copy()
-        merged.update(other, overwrite=True)
-        return merged
-
-    @override
-    def apply_before_build(self, context: Context, component: Component) -> None:
-        component.attributes.update(self)
-
-    @override
-    def apply_to_child(self, context: Context, component: Component) -> Component:
-        return component
-
-    def copy(self) -> Attributes:
-        return Attributes(*self._data.values())
-
-    def __call__(self) -> Self:
-        return self
-
-    def __len__(self) -> int:
-        return len(self._data)
-
-    def __iter__(self) -> Iterator[Attribute]:
-        return iter(self._data.values())
-
-    def __contains__(self, item: str | Attribute) -> bool:
-        if isinstance(item, str):
-            return item in self._data
-        return item.name in self._data
-
-    def __str__(self) -> str:
-        return " ".join(str(attr) for attr in self._data.values())
-
-    def __bool__(self) -> bool:
-        return bool(self._data)
-
-    def __or__(self, other: Attributes) -> Attributes:
-        return self.merge(other)
-
-    def __ior__(self, other: Attributes) -> Attributes:
-        self.update(other)
-        return self
-
-    def __getitem__(self, key: str) -> Attribute:
-        return self._data[key]
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, Attributes):
-            # compare regardless of order
-            return dict(self._data) == dict(other._data)
-        if isinstance(other, Attribute):
-            return (
-                len(self) == 1
-                and other.name in self._data
-                and other == self._data[other.name]
-            )
-        return NotImplemented
+    def update(self, modifiers: ModifierLike, overwrite: bool = True) -> None:
+        raise TypeError("FrozenModifiers cannot be modified.")

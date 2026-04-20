@@ -1,31 +1,35 @@
 from .base_components import (
-    AttributeLike,
+    BuildData,
     BaseComponent,
     TemplateComponent,
-    TemplateFunctionType,
     BuildsItselfMixin,
-    Children,
     Component,
-    ComponentLike,
-    GenericComponentChildren,
-    GenericComponentLike,
-    ModifierLike,
     Renderable,
     SingleChildComponentMixin,
     Text,
     VoidComponentMixin,
     ThemedComponent,
 )
+from django_compose.base.types import (
+    AttributeLike,
+    Children,
+    ComponentLike,
+    GenericComponentChildren,
+    GenericComponentLike,
+    ModifiersOrAttributes,
+    TemplateFunctionType,
+)
 from .compose_components import PageLink
 
 __all__ = [
+    "BuildData",
     "GenericComponentLike",
     "TemplateFunctionType",
     "GenericComponentChildren",
     "ComponentLike",
     "Children",
     "AttributeLike",
-    "ModifierLike",
+    "ModifiersOrAttributes",
     "BaseComponent",
     "Component",
     "VoidComponentMixin",

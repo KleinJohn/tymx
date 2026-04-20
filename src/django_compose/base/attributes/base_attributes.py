@@ -1,8 +1,24 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from collections.abc import Callable, Iterable
+from typing import cast
 
-from typing_extensions import Any, Self
+from pydantic import BeforeValidator, ConfigDict, Field
+from typing_extensions import (
+    Annotated,
+    Any,
+    Self,
+    Sequence,
+    override,
+    ClassVar,
+    Iterator,
+)
+
+from django_compose.base.config import attribute_string_handler
+from django_compose.base.context import Consumable, ConsumerPolicy
+from django_compose.base.types import AttributeLike
 
 
 def _add_init_kwargs(
@@ -246,3 +262,119 @@ class ComposedAttribute(SimpleAttribute):
         if not isinstance(item, str) or self.composed_values is None:
             return False
         return item in self.composed_values
+
+
+def _convert_to_attributes_dict(
+    attr_like: AttributeLike,
+) -> OrderedDict[str, Attribute]:
+    def _match_attributes_recursive(
+        attribute: AttributeLike, attr_dict: OrderedDict[str, Attribute]
+    ) -> None:
+        match attribute:
+            case None:
+                return
+            case str():
+                attr_dict[attribute] = attribute_string_handler(attribute)
+            case Attribute():
+                attr_dict[attribute.name] = attribute
+            case Attributes():
+                for a in attribute:
+                    attr_dict[a.name] = a
+            case Sequence():
+                for item in attribute:
+                    _match_attributes_recursive(item, attr_dict)
+            case _:
+                raise ValueError(f"Invalid attribute type: {type(attribute)}.")
+
+    attr_dict: OrderedDict[str, Attribute] = OrderedDict()
+    _match_attributes_recursive(attr_like, attr_dict)
+    return attr_dict
+
+
+class Attributes(Consumable):
+    consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.DIRECT_BUILT_CHILDREN
+
+    _ut_data: Annotated[AttributeLike, BeforeValidator(_convert_to_attributes_dict)] = (
+        Field(alias="modifiers", init=True, default=None, kw_only=False)
+    )
+
+    @property
+    def _data(self) -> OrderedDict[str, Attribute]:
+        return cast(OrderedDict[str, Attribute], self._ut_data)
+
+    def values(self) -> dict[str, Any]:
+        return {attr.name: attr.value for attr in self._data.values()}
+
+    def add(self, attribute: Attribute, overwrite: bool = True) -> None:
+        if attribute.name not in self:
+            self._data[attribute.name] = attribute
+        elif overwrite:
+            self._data[attribute.name] = self._data[attribute.name] | attribute
+        else:
+            self._data[attribute.name] = attribute | self._data[attribute.name]
+
+    def update(self, attributes: AttributeLike, overwrite: bool = True) -> None:
+        attr_dict = _convert_to_attributes_dict(attributes)
+        for attr in attr_dict.values():
+            self.add(attr, overwrite=overwrite)
+
+    @override
+    def merge(self, other: Attributes) -> Self:
+        return self.__class__([self, other])
+
+    def copy(self) -> Self:
+        return self.__class__(self)
+
+    def __call__(self) -> Self:
+        return self
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __iter__(self) -> Iterator[Attribute]:
+        return iter(self._data.values())
+
+    def __contains__(self, item: str | Attribute) -> bool:
+        if isinstance(item, str):
+            return item in self._data
+        return item.name in self._data
+
+    def __str__(self) -> str:
+        return " ".join(str(attr) for attr in self._data.values())
+
+    def __bool__(self) -> bool:
+        return bool(self._data)
+
+    def __or__(self, other: Attributes) -> Self:
+        return self.merge(other)
+
+    def __ior__(self, other: Attributes) -> Self:
+        self.update(other)
+        return self
+
+    def __getitem__(self, key: str) -> Attribute:
+        return self._data[key]
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Attributes):
+            # compare regardless of order
+            return dict(self._data) == dict(other._data)
+        if isinstance(other, Attribute):
+            return (
+                len(self) == 1
+                and other.name in self._data
+                and other == self._data[other.name]
+            )
+        return NotImplemented
+
+
+class FrozenAttributes(Attributes):
+    model_config = ConfigDict(frozen=True)
+
+    @override
+    def add(self, attribute: Attribute, overwrite: bool = True) -> None:
+        raise TypeError("FrozenAttributes cannot be modified.")
+
+    @override
+    def update(self, attributes: AttributeLike, overwrite: bool = True) -> None:
+        raise TypeError("FrozenAttributes cannot be modified.")

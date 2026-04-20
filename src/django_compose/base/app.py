@@ -7,7 +7,7 @@ from typing_extensions import override
 from django_compose.base.components.base_components import (
     Children,
     Component,
-    ModifierLike,
+    ModifiersOrAttributes,
     VoidComponentMixin,
 )
 from django_compose.base.context import Context, ContextData, DataDict
@@ -29,7 +29,7 @@ default_theme = Theme(ThemeType.HTML)
 class Page(VoidComponentMixin, Component):
     def __init__(
         self,
-        *modifiers: ModifierLike,
+        *modifiers: ModifiersOrAttributes,
         name: str,
         head: Children,
         body: Children,

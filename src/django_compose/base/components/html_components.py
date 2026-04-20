@@ -1,11 +1,12 @@
+from typing import ClassVar
+
 import htpy
 from typing_extensions import Protocol, final, override
 
-from django_compose.base.modifiers.base_modifiers import Attributes
+from django_compose.base.attributes import Attributes
 
 from .base_components import (
     BaseComponent,
-    BuildsItselfMixin,
     Component,
     Renderable,
     VoidComponentMixin,
@@ -21,7 +22,7 @@ class IsHtml(Protocol):
     def render(self) -> htpy.Renderable: ...
 
 
-class RendersHtmlMixin(BuildsItselfMixin, Renderable):
+class RendersHtmlMixin(Renderable):
     @override
     def render(self: IsHtml) -> htpy.Renderable:
         return self.element(**self.attributes.values(), **self._htpy_kwargs)[
@@ -29,23 +30,13 @@ class RendersHtmlMixin(BuildsItselfMixin, Renderable):
         ]
 
 
-class BaseHtmlComponent(Component):
-    element: htpy.BaseElement
-
-
-class DocumentLevelComponent(RendersHtmlMixin, BaseHtmlComponent):
-    """Reserved for document-level components like Html, Head, Body."""
-
-    element: htpy.Element
-
-
-class HtmlComponent(RendersHtmlMixin, BaseHtmlComponent):
-    element: htpy.Element
+class HtmlComponent(RendersHtmlMixin, Component):
+    element: ClassVar[htpy.Element]
 
 
 # HtmlVoidComponents do not have children and do not implement RendersHtmlMixin
-class HtmlVoidComponent(VoidComponentMixin, BuildsItselfMixin, Renderable, BaseHtmlComponent):
-    element: htpy.VoidElement
+class HtmlVoidComponent(VoidComponentMixin, HtmlComponent):
+    element: ClassVar[htpy.VoidElement]
 
     @override
     def render(self: IsHtml) -> htpy.Renderable:
@@ -53,17 +44,17 @@ class HtmlVoidComponent(VoidComponentMixin, BuildsItselfMixin, Renderable, BaseH
 
 
 @final
-class Html(DocumentLevelComponent):
+class Html(HtmlComponent):
     element = htpy.html
 
 
 @final
-class Body(DocumentLevelComponent):
+class Body(HtmlComponent):
     element = htpy.body
 
 
 @final
-class Head(DocumentLevelComponent):
+class Head(HtmlComponent):
     element = htpy.head
 
 

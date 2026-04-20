@@ -3,7 +3,7 @@ from enum import Enum
 from typing_extensions import Any
 
 from django_compose.base.attributes import Attribute, classes, disabled, type_
-from django_compose.base.components import ModifierLike, Children
+from django_compose.base.components import ModifiersOrAttributes, Children
 from django_compose.base.components.base_components import Component
 from django_compose.base.context import Context
 import django_compose.base.components.html_components as html
@@ -66,7 +66,7 @@ class BulmaButton(Component):
 
     def __init__(
         self,
-        *modifiers: ModifierLike,
+        *modifiers: ModifiersOrAttributes,
         button_type: BulmaButtonType | str = BulmaButtonType.BUTTON,
         color: BulmaButtonColor | str | None = None,
         color_scheme: BulmaButtonColorScheme | str | None = None,
@@ -172,7 +172,7 @@ class BulmaButton(Component):
 class BulmaButtons(Component):
     def __init__(
         self,
-        *modifiers: ModifierLike,
+        *modifiers: ModifiersOrAttributes,
         addons: bool = False,
         centered: BulmaButtonAlignment | str | None = None,
         **kwargs: Any,

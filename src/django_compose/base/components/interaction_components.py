@@ -3,7 +3,7 @@ from enum import Enum
 from typing_extensions import Any
 
 from django_compose.base.components import ThemedComponent, Component
-from django_compose.base.components.base_components import ModifierLike
+from django_compose.base.components.base_components import ModifiersOrAttributes
 from django_compose.base.theme import Theme, ThemeType
 
 import django_compose.base.components.html_components as html
@@ -25,7 +25,7 @@ class Button(ThemedComponent):
 
     def __init__(
         self,
-        *modifiers: ModifierLike,
+        *modifiers: ModifiersOrAttributes,
         style: ButtonStyle | str = ButtonStyle.REGULAR,
         **kwargs: Any,
     ) -> None:
@@ -34,7 +34,7 @@ class Button(ThemedComponent):
         self.style = str(style)
 
     def from_theme(
-        self, theme: Theme, *smods: ModifierLike, **skwargs: Any
+        self, theme: Theme, *smods: ModifiersOrAttributes, **skwargs: Any
     ) -> Component:
         match theme.framework:
             case ThemeType.HTML:
