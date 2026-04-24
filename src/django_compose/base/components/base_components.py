@@ -32,7 +32,7 @@ from django_compose.base.types import (
 from django_compose.base.config import attribute_string_handler
 
 
-from django_compose.base.helpers import BaseModel
+from django_compose.base.helpers import BaseModel, class_or_instance_method
 
 from attrs import field, evolve
 
@@ -187,7 +187,9 @@ class Builder(BaseModel, frozen=True):
     data: BuildData = field(kw_only=False)
 
     @abstractmethod
-    def build(self) -> None: ...
+    def build(self) -> list[BaseComponent]:
+        """The result will be written into Builder.data.result and returned for convenience."""
+        ...
 
 
 class DefaultBuilder(Builder, frozen=True):
@@ -209,14 +211,14 @@ class DefaultBuilder(Builder, frozen=True):
     data: BuildData
 
     @override
-    def build(self) -> None:
-        """The result will be written into Builder.data.result"""
+    def build(self) -> list[BaseComponent]:
         self._before_build_children()
         children = self._build_children()
         self._after_build_children()
         self._before_build()
         self._handle_build(children)
         self._after_build()
+        return self.data.result
 
     def _before_build_children(self) -> None:
         provide_data: DataDict = DataDict()
@@ -276,9 +278,17 @@ class BaseComponent(BaseModel, auto_frozen=True):
     @abstractmethod
     def render(self) -> htpy.Node: ...
 
-    def with_attributes(self, **attributes: Any) -> Self:
-        new_attrs = self.attributes.merge(_extract_additional_attributes(attributes))
-        return evolve(self, modifiers=[new_attrs, self.modifiers])
+    @class_or_instance_method
+    def with_attributes(self_or_cls, **attributes: Any) -> Self:
+        if isinstance(self_or_cls, type):
+            cls = cast(type[Self], self_or_cls)
+            return cls(_extract_additional_attributes(attributes))
+        else:
+            self = cast(Self, self_or_cls)
+            new_attrs = self.attributes.merge(
+                _extract_additional_attributes(attributes)
+            )
+            return evolve(self, modifiers=[new_attrs, self.modifiers])
 
     def provide(self, data: DataDict) -> None:
         if self.attributes:  # and not built
@@ -297,17 +307,19 @@ class BaseComponent(BaseModel, auto_frozen=True):
         if self.is_built:
             return [self]
         build_data = BuildData.from_component(self, context)
-        self.builder(data=build_data).build()
-        return build_data.result
+        return self.builder(data=build_data).build()
 
     def copy_with_children(self, children: Children, **update_kwargs: Any) -> Self:
         return evolve(
             self, children=_convert_children_to_tuple(children), **update_kwargs
         )
 
-    def build_self(self, children: Children) -> BaseComponent:
+    def build_self(self, build: BuildData, children: Children) -> BaseComponent:
         """Returns a copy of this component with given children and is_built=True flag."""
-        return self.copy_with_children(children, is_built=True)
+        print("build_self called on", self.__class__.__name__)
+        return self.copy_with_children(
+            children, modifiers=[build.attributes, build.modifiers], is_built=True
+        )
 
     def to_string(
         self,
@@ -407,7 +419,7 @@ class Renderable(ABC):
 
     def build(self, build: BuildData, children: Children) -> BaseComponent:
         component = cast(BaseComponent, self)
-        return component.build_self(children)
+        return component.build_self(build, children)
 
 
 class TemplateComponent(Component):

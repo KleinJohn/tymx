@@ -22,7 +22,10 @@ from django_compose.base.attributes import (
 from django_compose.base.modifiers import Modifier, Modifiers
 from django_compose.base.app import Page
 from django_compose.base.context import Context
-from django_compose.base.modifiers.debug_modifiers import PrintComponentsModifier
+from django_compose.base.modifiers.debug_modifiers import (
+    PrintComponentsModifier,
+    PrintContextModifier,
+)
 from django_compose.base.router import Router
 from django_compose.base.types import Children
 
@@ -57,13 +60,13 @@ component = CustomDiv(
     [
         classes("custom-div"),
         id("custom-div-id"),
-        PrintComponentsModifier(),
     ]
-).with_attributes(style="color: red;")[CustomButton["Click Me!"]]
+).with_attributes(
+    style="color: red;"
+)[CustomButton["Click Me!"]]
 built_component = wrap_components(component.full_build(context))
-print(built_component.attributes)
+print("attributes:", built_component.attributes)
 # print(built_component.to_string(verbose=True, pretty=True))
-
 
 # router = Router("testapp", pages=[])
 # context = Context(router, Page())

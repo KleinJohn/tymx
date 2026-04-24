@@ -4,7 +4,7 @@ from collections.abc import Iterable
 
 from typing_extensions import override
 
-from django_compose.base.components.base_components import (
+from django_compose.base.components import (
     BuildData,
     Component,
     VoidComponentMixin,
