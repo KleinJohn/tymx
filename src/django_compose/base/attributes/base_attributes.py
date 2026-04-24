@@ -14,7 +14,7 @@ from typing import (
 
 from attrs import evolve, field
 
-from django_compose.base.context import Consumable, ConsumerPolicy
+from django_compose.base.context import ConsumerPolicy, Consumable
 from django_compose.base.helpers import BaseModel
 from django_compose.base.types import AttributeLike
 
@@ -264,10 +264,10 @@ class Attributes(Consumable, frozen=False):  # type: ignore
         """Merges with other by overwriting with other's attributes."""
         if not isinstance(other, Attributes):
             raise TypeError("Can only merge with another Attributes instance.")
-        return evolve(self, _attributes=_convert_to_attributes_dict([self, other]))
+        return evolve(self, attributes=[self, other])
 
     def copy(self) -> Self:
-        return evolve(self, _attributes=self._attributes.copy())
+        return evolve(self, attributes=self._attributes.values())
 
     def __call__(self) -> Self:
         return self

@@ -376,20 +376,20 @@ class Component(BaseComponent):
 
 class VoidComponentMixin:
     def __attrs_post_init__(self) -> None:
-        component = cast(BaseComponent, self)
+        component = cast(Component, self)
         if component.children:
             raise ValueError(f"{component.__class__.__name__} cannot have children.")
-        super(BaseComponent, component).__attrs_post_init__()
+        super().__attrs_post_init__()  # type: ignore
 
 
 class SingleChildComponentMixin:
     def __attrs_post_init__(self) -> None:
-        component = cast(BaseComponent, self)
+        component = cast(Component, self)
         if len(component.children) != 1:
             raise ValueError(
                 f"{component.__class__.__name__} only accepts exactly one child."
             )
-        super(BaseComponent, component).__attrs_post_init__()
+        super().__attrs_post_init__()  # type: ignore
 
 
 class Renderable(ABC):
@@ -517,6 +517,3 @@ class Text(VoidComponentMixin, Renderable, Component):
     @override
     def _verbose_string_parts(self) -> Iterable[str]:
         return (f"text='{self.text}'", str(self.attributes), str(self.modifiers))
-
-
-# Text.model_rebuild() not needed with attrs

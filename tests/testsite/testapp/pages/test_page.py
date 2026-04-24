@@ -1,9 +1,6 @@
 from attrs import fields
 
-from django_compose.base.attributes.base_attributes import FrozenAttributes
-from django_compose.base.components import Component, BaseComponent
-from django_compose.base.components.base_components import BuildData
-from django_compose.base.components.compose_components import PageLink
+from django_compose.base.components.base_components import BuildData, Component
 from django_compose.base.components.html_components import (
     A,
     H1,
@@ -16,12 +13,10 @@ from django_compose.base.attributes import (
     id,
     style,
     classes,
-    Attribute,
-    Attributes,
 )
 from django_compose.base.modifiers import Modifier, Modifiers
 from django_compose.base.app import Page
-from django_compose.base.context import Context, ContextData, DataDict
+from django_compose.base.context import Context
 from django_compose.base.router import Router
 from django_compose.base.types import Children
 
@@ -31,23 +26,14 @@ from django_compose.base.types import Children
 #     in_hours: int | None = None
 
 
-# class CustomButton(Component):
+class CustomButton(Component):
 
-#     def build(self, context: Context, children: Children) -> Children:
-#         time_data = context.get(TimeData) or TimeData()
-#         return Div[
-#             "Custom Button Start",
-#             " ".join(
-#                 [
-#                     "time in button:",
-#                     str(time_data.time),
-#                     "in hours:",
-#                     str(time_data.in_hours),
-#                 ]
-#             ),
-#             Button[children],
-#             "End of Custom Button",
-#         ]
+    def build(self, build: BuildData, children: Children) -> Children:
+        return Div[
+            "Custom Button Start",
+            Button[children],
+            "End of Custom Button",
+        ]
 
 
 class CustomDiv(Component):
@@ -55,14 +41,17 @@ class CustomDiv(Component):
     def build(self, build: BuildData, children: Children) -> Children:
         return Div[
             "Custom Div Start",
-            Button["A Button in Custom Div"],
+            children,
             "Custom Div End",
         ]
 
 
-component = CustomDiv([classes("custom-div"), id("custom-div-id")])[CustomDiv]
-print(component.to_string(verbose=True))
-# CustomDiv.model_rebuild()
+context = Context(Router("testapp", pages=[]), Page())
+component = CustomDiv([classes("custom-div"), id("custom-div-id")])[
+    CustomButton["Click Me!"]
+]
+built_components = component.full_build(context)
+print(built_components[0].to_string(verbose=True, pretty=True))
 
 
 # router = Router("testapp", pages=[])

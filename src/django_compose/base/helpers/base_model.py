@@ -121,7 +121,3 @@ class BaseModel(metaclass=ModelABCMeta):
             return f"{self.__class__.__qualname__}({', '.join(field_reprs)})"
         finally:
             already_repring.remove(object_id)
-
-
-def convert_to_int(value: str | int) -> int:
-    return int(value)

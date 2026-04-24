@@ -11,14 +11,12 @@ from typing import (
     ClassVar,
 )
 
-from attrs import asdict, field, fields
+from attrs import field, fields
 
 from django_compose.base.helpers import BaseModel
 
 if TYPE_CHECKING:
-    from django_compose.base.app import Page
     from django_compose.base.components.base_components import BaseComponent
-    from django_compose.base.router import Router
 
 
 T_Consumable = TypeVar("T_Consumable", bound="Consumable")
@@ -26,6 +24,7 @@ _T = TypeVar("_T")
 
 
 class DataDict(dict[type[T_Consumable], T_Consumable]):
+
     @override
     def __getitem__(self, key: type[T_Consumable]) -> T_Consumable:
         value = self.get(key)

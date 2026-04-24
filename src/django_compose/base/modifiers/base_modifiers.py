@@ -105,7 +105,7 @@ class Modifiers(BaseModifier, frozen=False):
         """Merges with other by overwriting with other's modifiers."""
         if not isinstance(other, Modifiers):
             raise TypeError("Can only merge with another Modifiers instance.")
-        return evolve(self, _modifiers=_convert_to_modifier_dict([self, other]))
+        return evolve(self, modifiers=[self, other])
 
     @override
     def merge_if_policy_applies(
@@ -137,7 +137,7 @@ class Modifiers(BaseModifier, frozen=False):
 
     def copy(self) -> Self:
         """Creates a copy of this Modifiers (deep copy)"""
-        return evolve(self, _modifiers=self._modifiers.copy())
+        return evolve(self, modifiers=self._modifiers)
 
     def __call__(self) -> Self:
         return self
