@@ -115,9 +115,7 @@ class BaseModel(metaclass=ModelABCMeta):
                     continue
                 value = getattr(self, attr_field.name)
                 value_repr = (
-                    attr_field.repr(value)
-                    if callable(attr_field.repr)
-                    else builtins.repr(value)
+                    attr_field.repr(value) if callable(attr_field.repr) else repr(value)
                 )
                 field_reprs.append(f"{attr_field.name}={value_repr}")
             return f"{self.__class__.__qualname__}({', '.join(field_reprs)})"

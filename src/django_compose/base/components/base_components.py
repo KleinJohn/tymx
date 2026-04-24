@@ -292,7 +292,9 @@ class BaseComponent(BaseModel, auto_frozen=True):
         return build_data.result
 
     def copy_with_children(self, children: Children, **update_kwargs: Any) -> Self:
-        return evolve(self, children=children, **update_kwargs)
+        return evolve(
+            self, children=_convert_children_to_tuple(children), **update_kwargs
+        )
 
     def build_self(self, children: Children) -> BaseComponent:
         """Returns a copy of this component with given children and is_built=True flag."""
@@ -333,11 +335,11 @@ class BaseComponent(BaseModel, auto_frozen=True):
         else:
             return self.__class__.__name__
 
-    def __getitem__(self, children: Children) -> Self:
+    def __getitem__(self, *children: Children) -> Self:
         return self.copy_with_children(children)
 
-    def __class_getitem__(cls: type[Self], children: Children) -> Self:
-        return cls(children=_convert_children_to_list(children))
+    def __class_getitem__(cls: type[Self], *children: Children) -> Self:
+        return cls(children=_convert_children_to_tuple(children))
 
     def __bool__(self) -> bool:
         return True

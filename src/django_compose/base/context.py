@@ -8,7 +8,6 @@ from typing import (
     TypeVar,
     TYPE_CHECKING,
     override,
-    overload,
     ClassVar,
 )
 
@@ -23,19 +22,10 @@ if TYPE_CHECKING:
 
 
 T_Consumable = TypeVar("T_Consumable", bound="Consumable")
+_T = TypeVar("_T")
 
 
 class DataDict(dict[type[T_Consumable], T_Consumable]):
-    @overload
-    def get(self, key: type[T_Consumable]) -> T_Consumable | None: ...
-    @overload
-    def get(self, key: type[T_Consumable], default: T_Consumable) -> T_Consumable: ...
-    @override
-    def get(
-        self, key: type[T_Consumable], default: T_Consumable | None = None
-    ) -> T_Consumable | None:
-        return super().get(key, default)
-
     @override
     def __getitem__(self, key: type[T_Consumable]) -> T_Consumable:
         value = self.get(key)
@@ -256,7 +246,7 @@ class ContextData(Consumable, frozen=True):
     overwrite_with_none: ClassVar[bool] = False
 
     @override
-    def merge(self, other: Self) -> Self:
+    def merge(self, other: Consumable) -> Self:
         """Overwrites all common fields by the fields of other."""
         merged = {f.name: getattr(self, f.name) for f in fields(self)}
         other_data = {f.name: getattr(other, f.name) for f in fields(other)}

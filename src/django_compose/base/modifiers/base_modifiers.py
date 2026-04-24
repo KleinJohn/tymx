@@ -64,7 +64,7 @@ def _convert_to_modifier_dict(modifiers: ModifierLike) -> ModifierDict:
             case Modifier():
                 mod_dict[type(modifier)] = modifier
             case Modifiers():
-                mod_dict.update(modifier._data)
+                mod_dict.update(modifier._modifiers)
             case Sequence():
                 for item in modifier:
                     match_modifiers_recursive(item, mod_dict)
@@ -81,20 +81,19 @@ class Modifiers(BaseModifier, frozen=False):
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.ALL_CHILDREN
     consume_first_matching: ClassVar[bool] = False
 
-    _data: ModifierDict = field(
+    _modifiers: ModifierDict = field(
         alias="modifiers",
         converter=_convert_to_modifier_dict,
         kw_only=False,
         default=None,
-        repr=False,
     )
 
     def values(self) -> ModifierDict:
-        return OrderedDict(self._data)
+        return OrderedDict(self._modifiers)
 
     def add(self, modifier: Modifier, overwrite: bool = True) -> None:
-        if overwrite or type(modifier) not in self._data:
-            self._data[type(modifier)] = modifier
+        if overwrite or type(modifier) not in self._modifiers:
+            self._modifiers[type(modifier)] = modifier
 
     def update(self, modifiers: ModifierLike, overwrite: bool = True) -> None:
         mod_dict = _convert_to_modifier_dict(modifiers)
@@ -106,7 +105,7 @@ class Modifiers(BaseModifier, frozen=False):
         """Merges with other by overwriting with other's modifiers."""
         if not isinstance(other, Modifiers):
             raise TypeError("Can only merge with another Modifiers instance.")
-        return evolve(self, _data=_convert_to_modifier_dict([self, other]))
+        return evolve(self, _modifiers=_convert_to_modifier_dict([self, other]))
 
     @override
     def merge_if_policy_applies(
@@ -138,27 +137,27 @@ class Modifiers(BaseModifier, frozen=False):
 
     def copy(self) -> Self:
         """Creates a copy of this Modifiers (deep copy)"""
-        return evolve(self, _data=self._data.copy())
+        return evolve(self, _modifiers=self._modifiers.copy())
 
     def __call__(self) -> Self:
         return self
 
     def __len__(self) -> int:
-        return len(self._data)
+        return len(self._modifiers)
 
     def __iter__(self) -> Iterator[Modifier]:
-        return iter(self._data.values())
+        return iter(self._modifiers.values())
 
     def __contains__(self, item: type[Modifier] | Modifier) -> bool:
         if isinstance(item, type):
-            return item in self._data
-        return type(item) in self._data
+            return item in self._modifiers
+        return type(item) in self._modifiers
 
     def __str__(self) -> str:
-        return ", ".join(str(attr) for attr in self._data.values())
+        return ", ".join(str(attr) for attr in self._modifiers.values())
 
     def __bool__(self) -> bool:
-        return bool(self._data)
+        return bool(self._modifiers)
 
     def __or__(self, other: Modifiers) -> Modifiers:
         return self.merge(other)

@@ -1,5 +1,4 @@
 from attrs import fields
-import attrs
 
 from django_compose.base.attributes.base_attributes import FrozenAttributes
 from django_compose.base.components import Component, BaseComponent
@@ -61,10 +60,8 @@ class CustomDiv(Component):
         ]
 
 
-component = CustomDiv[CustomDiv]
-component.children = None
-print(repr(component))
-print([f.name for f in fields(component)])
+component = CustomDiv([classes("custom-div"), id("custom-div-id")])[CustomDiv]
+print(component.to_string(verbose=True))
 # CustomDiv.model_rebuild()
 
 

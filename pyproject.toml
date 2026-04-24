@@ -21,6 +21,7 @@ dependencies = [
     "attrs>=26.1.0",
     "django>=5.2.11",
     "htpy>=25.12.0",
+    "types-setuptools>=82.0.0.20260408",
     "typing-extensions>=4.15.0",
 ]
 
@@ -60,7 +61,7 @@ ignore = [
 
 [tool.mypy]
 python_version = "3.12"
-disable_error_code = ["type-arg", "name-defined", "misc", "valid-type", "import-untyped", "no-any-return", "arg-type"]
+disable_error_code = ["misc", "arg-type", "type-arg", "call-arg", "no-any-return"]
 strict = true
 warn_return_any = true
 warn_unused_configs = true

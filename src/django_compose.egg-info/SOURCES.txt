@@ -23,6 +23,7 @@ src/django_compose/base/components/base_components.py
 src/django_compose/base/components/compose_components.py
 src/django_compose/base/components/html_components.py
 src/django_compose/base/components/interaction_components.py
+src/django_compose/base/helpers/__init__.py
 src/django_compose/base/helpers/model_base.py
 src/django_compose/base/modifiers/__init__.py
 src/django_compose/base/modifiers/base_modifiers.py

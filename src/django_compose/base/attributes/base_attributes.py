@@ -232,24 +232,27 @@ class Attributes(Consumable, frozen=False):  # type: ignore
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.DIRECT_BUILT_CHILDREN
     consume_first_matching: ClassVar[bool] = True
 
-    _data: OrderedDict[str, Attribute] = field(
+    _attributes: OrderedDict[str, Attribute] = field(
         alias="attributes",
         converter=_convert_to_attributes_dict,
         kw_only=False,
         default=None,
-        repr=False,
     )
 
     def values(self) -> dict[str, Any]:
-        return {attr.name: attr.value for attr in self._data.values()}
+        return {attr.name: attr.value for attr in self._attributes.values()}
 
     def add(self, attribute: Attribute, overwrite: bool = True) -> None:
         if attribute.name not in self:
-            self._data[attribute.name] = attribute
+            self._attributes[attribute.name] = attribute
         elif overwrite:
-            self._data[attribute.name] = self._data[attribute.name] | attribute
+            self._attributes[attribute.name] = (
+                self._attributes[attribute.name] | attribute
+            )
         else:
-            self._data[attribute.name] = attribute | self._data[attribute.name]
+            self._attributes[attribute.name] = (
+                attribute | self._attributes[attribute.name]
+            )
 
     def update(self, attributes: AttributeLike, overwrite: bool = True) -> None:
         attr_dict = _convert_to_attributes_dict(attributes)
@@ -261,30 +264,30 @@ class Attributes(Consumable, frozen=False):  # type: ignore
         """Merges with other by overwriting with other's attributes."""
         if not isinstance(other, Attributes):
             raise TypeError("Can only merge with another Attributes instance.")
-        return evolve(self, _data=_convert_to_attributes_dict([self, other]))
+        return evolve(self, _attributes=_convert_to_attributes_dict([self, other]))
 
     def copy(self) -> Self:
-        return evolve(self, _data=self._data.copy())
+        return evolve(self, _attributes=self._attributes.copy())
 
     def __call__(self) -> Self:
         return self
 
     def __len__(self) -> int:
-        return len(self._data)
+        return len(self._attributes)
 
     def __iter__(self) -> Iterator[Attribute]:
-        return iter(self._data.values())
+        return iter(self._attributes.values())
 
     def __contains__(self, item: str | Attribute) -> bool:
         if isinstance(item, str):
-            return item in self._data
-        return item.name in self._data
+            return item in self._attributes
+        return item.name in self._attributes
 
     def __str__(self) -> str:
-        return " ".join(str(attr) for attr in self._data.values())
+        return " ".join(str(attr) for attr in self._attributes.values())
 
     def __bool__(self) -> bool:
-        return bool(self._data)
+        return bool(self._attributes)
 
     def __or__(self, other: Attributes) -> Self:
         return self.merge(other)
@@ -294,17 +297,17 @@ class Attributes(Consumable, frozen=False):  # type: ignore
         return self
 
     def __getitem__(self, key: str) -> Attribute:
-        return self._data[key]
+        return self._attributes[key]
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Attributes):
             # compare regardless of order
-            return dict(self._data) == dict(other._data)
+            return dict(self._attributes) == dict(other._attributes)
         if isinstance(other, Attribute):
             return (
                 len(self) == 1
-                and other.name in self._data
-                and other == self._data[other.name]
+                and other.name in self._attributes
+                and other == self._attributes[other.name]
             )
         return NotImplemented
 

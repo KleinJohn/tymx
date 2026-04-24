@@ -13,6 +13,7 @@ Description-Content-Type: text/markdown
 Requires-Dist: attrs>=26.1.0
 Requires-Dist: django>=5.2.11
 Requires-Dist: htpy>=25.12.0
+Requires-Dist: types-setuptools>=82.0.0.20260408
 Requires-Dist: typing-extensions>=4.15.0
 
 # The Process of choosing a dataclass framework
