@@ -1,3 +1,5 @@
+from pydantic import Field
+
 from django_compose.base.context import Consumable, ConsumerPolicy
 from enum import Enum
 
@@ -16,8 +18,4 @@ class Theme(Consumable):
     consumer_policy = ConsumerPolicy.ALL_CHILDREN
     consume_first_matching = True
 
-    def __init__(
-        self,
-        framework: str | ThemeType,
-    ) -> None:
-        self.framework = str(framework)
+    framework: ThemeType = Field(kw_only=False)

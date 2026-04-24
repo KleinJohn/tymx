@@ -6,20 +6,20 @@ from .base_attributes import (
 )
 
 style_composer = ComposePolicy(
-    lambda values: ";".join(values) + (";" if values else ""),
-    lambda values: [v.strip() for v in values.split(";") if v.strip()],
-    lambda k, v: f"{k}:{v}",
+    composer=lambda values: ";".join(values) + (";" if values else ""),
+    decomposer=lambda values: [v.strip() for v in values.split(";") if v.strip()],
+    kwarg_composer=lambda k, v: f"{k}:{v}",
 )
 
 whitespace_composer = ComposePolicy(
-    lambda values: " ".join(values),
-    lambda values: values.split(),
+    composer=lambda values: " ".join(values),
+    decomposer=lambda values: values.split(),
 )
 
 
 id = SimpleAttribute("id")
-class_ = ComposedAttribute("class", compose_policy=whitespace_composer)
-style = ComposedAttribute("style", compose_policy=style_composer)
+class_ = ComposedAttribute("class", policy=whitespace_composer)
+style = ComposedAttribute("style", policy=style_composer)
 
 classes = class_  # alias for class_
 
@@ -100,20 +100,20 @@ novalidate = BooleanAttribute("novalidate")
 open = BooleanAttribute("open")
 optimum = SimpleAttribute("optimum")
 pattern = SimpleAttribute("pattern")
-ping = ComposedAttribute("ping", compose_policy=whitespace_composer)
+ping = ComposedAttribute("ping", policy=whitespace_composer)
 placeholder = SimpleAttribute("placeholder")
 playsinline = BooleanAttribute("playsinline")
 poster = SimpleAttribute("poster")
 preload = SimpleAttribute("preload")
 readonly = BooleanAttribute("readonly")
 referrerpolicy = SimpleAttribute("referrerpolicy")
-rel = ComposedAttribute("rel", compose_policy=whitespace_composer)
+rel = ComposedAttribute("rel", policy=whitespace_composer)
 required = BooleanAttribute("required")
 reversed = BooleanAttribute("reversed")
 role = SimpleAttribute("role")
 rows = SimpleAttribute("rows")
 rowspan = SimpleAttribute("rowspan")
-sandbox = ComposedAttribute("sandbox", compose_policy=whitespace_composer)
+sandbox = ComposedAttribute("sandbox", policy=whitespace_composer)
 scope = SimpleAttribute("scope")
 selected = BooleanAttribute("selected")
 shape = SimpleAttribute("shape")

@@ -2,15 +2,14 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import OrderedDict
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from typing import cast
 
-from pydantic import BeforeValidator, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, SkipValidation
 from typing_extensions import (
     Annotated,
     Any,
     Self,
-    Sequence,
     override,
     ClassVar,
     Iterator,
@@ -43,16 +42,18 @@ def _clean_kwargs(
     return cleaned_kwargs
 
 
-class Attribute(ABC):
+class Attribute(BaseModel, ABC):
     """A modifier which adds attributes to a Component.
 
     A Attribute can hold multiple attribute values, which can be set when the Attribute is called.
     The default value for each attribute is an empty string.
     """
 
-    def __init__(self, name: str, *, value: Any | None = None) -> None:
-        self.name = name
-        self.value = value
+    name: str = Field(kw_only=False)
+    value: Any | None = None
+
+    def __init__(self, name: str, **data: Any) -> None:
+        super().__init__(name=name, **data)
 
     def __call__(
         self, value: Any | None = None, *, init_kwargs: dict[str, Any] | None = None
@@ -101,8 +102,7 @@ class Attribute(ABC):
 
 
 class SimpleAttribute(Attribute):
-    def __init__(self, name: str, *, value: str | None = None) -> None:
-        super().__init__(name, value=value)
+    value: str | None = None
 
     def __call__(
         self,
@@ -124,9 +124,13 @@ class BooleanAttribute(Attribute):
     The attribute is included when the value is True, and omitted when the value is False.
     """
 
+    value: bool | None = None
+    use_true_false: tuple[Any, Any] | None = None
+
     def __init__(
         self,
         name: str,
+        *,
         value: bool | None = None,
         use_true_false: tuple[Any, Any] | None = None,
     ) -> None:
@@ -159,38 +163,20 @@ class BooleanAttribute(Attribute):
         return ""
 
 
-class ComposePolicy:
+class ComposePolicy(BaseModel):
     """Defines how multiple values are composed together."""
 
-    def __init__(
-        self,
-        composer: Callable[[Iterable[str]], str],
-        decomposer: Callable[[str], Iterable[str]],
-        kwarg_composer: Callable[[str, str], str] | None = None,
-        remove_duplicates: bool = True,
-    ) -> None:
-        """If remove_duplicates is None, it defaults to False if kwarg_composer is provided."""
-        self.composer = composer
-        self.decomposer = decomposer
-        self.kwarg_composer = kwarg_composer
-        self.remove_duplicates = remove_duplicates
+    composer: Callable[[Iterable[str]], str]
+    decomposer: Callable[[str], Iterable[str]]
+    kwarg_composer: Callable[[str, str], str] | None = None
+    remove_duplicates: bool = True
 
 
 class ComposedAttribute(SimpleAttribute):
     """Allows multiple values to be composed together."""
 
-    def __init__(
-        self,
-        name: str,
-        *,
-        # do not forget to register these kwargs in __call__ under _add_init_kwargs
-        compose_policy: ComposePolicy,
-        composed_values: tuple[str, ...] | None = None,
-        value: str | None = None,
-    ) -> None:
-        super().__init__(name, value=value)
-        self.policy = compose_policy
-        self.composed_values = composed_values
+    policy: ComposePolicy
+    composed_values: tuple[str, ...] | None = None
 
     def _decompose_values(self, values: list[str]) -> list[str]:
         decomposed_values: list[str] = []
@@ -235,7 +221,7 @@ class ComposedAttribute(SimpleAttribute):
         return super().__call__(
             self.policy.composer(composed_values),
             init_kwargs=_add_init_kwargs(
-                init_kwargs, composed_values=composed_values, compose_policy=self.policy
+                init_kwargs, composed_values=composed_values, policy=self.policy
             ),
         )
 
@@ -292,15 +278,23 @@ def _convert_to_attributes_dict(
 
 
 class Attributes(Consumable):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.DIRECT_BUILT_CHILDREN
 
-    _ut_data: Annotated[AttributeLike, BeforeValidator(_convert_to_attributes_dict)] = (
-        Field(alias="modifiers", init=True, default=None, kw_only=False)
+    internal_data: SkipValidation[AttributeLike] = Field(
+        alias="attributes",
+        init=True,
+        default=None,
+        kw_only=False,
+        exclude=True,
     )
+
+    def __init__(self, *attributes: AttributeLike) -> None:
+        super().__init__(attributes=_convert_to_attributes_dict(attributes))  # type: ignore
 
     @property
     def _data(self) -> OrderedDict[str, Attribute]:
-        return cast(OrderedDict[str, Attribute], self._ut_data)
+        return cast(OrderedDict[str, Attribute], self.internal_data)
 
     def values(self) -> dict[str, Any]:
         return {attr.name: attr.value for attr in self._data.values()}
@@ -378,3 +372,8 @@ class FrozenAttributes(Attributes):
     @override
     def update(self, attributes: AttributeLike, overwrite: bool = True) -> None:
         raise TypeError("FrozenAttributes cannot be modified.")
+
+
+# Resolve forward references for recursive AttributeLike typing.
+Attributes.model_rebuild()
+FrozenAttributes.model_rebuild()

@@ -1,4 +1,6 @@
-# from django_compose.base.components import Component, Children
+# from django_compose.base.attributes.base_attributes import FrozenAttributes
+# from django_compose.base.components import Component, BaseComponent
+# from django_compose.base.components.base_components import BuildData
 # from django_compose.base.components.compose_components import PageLink
 # from django_compose.base.components.html_components import (
 #     A,
@@ -7,9 +9,19 @@
 #     Div,
 #     Input,
 # )
-# from django_compose.base.attributes import disabled, id, style, classes
+# from django_compose.base.attributes import (
+#     disabled,
+#     id,
+#     style,
+#     classes,
+#     Attribute,
+#     Attributes,
+# )
+# from django_compose.base.modifiers import Modifier, Modifiers
 # from django_compose.base.app import Page
 # from django_compose.base.context import Context, ContextData, DataDict
+# from django_compose.base.router import Router
+# from django_compose.base.types import Children
 
 
 # class TimeData(ContextData):
@@ -37,22 +49,26 @@
 
 
 # class CustomDiv(Component):
-#     def provide(self, data: DataDict) -> None:
-#         data.add(TimeData("1:00"))
 
-#     def build(self, context: Context, children: Children) -> Children:
-#         time_data = context.get(TimeData) or TimeData()
-#         return lambda context: Div[
+#     def build(self, build: BuildData, children: Children) -> Children:
+#         return Div[
 #             "Custom Div Start",
-#             Div[
-#                 "time in div: ",
-#                 str(time_data.time),
-#                 " in hours: ",
-#                 str(time_data.in_hours),
-#             ],
-#             CustomButton(disabled)[children],
+#             Button["A Button in Custom Div"],
 #             "Custom Div End",
 #         ]
+
+
+# CustomDiv.model_rebuild()
+
+
+# router = Router("testapp", pages=[])
+# context = Context(router, Page())
+# print("created context")
+# custom_div = CustomDiv()
+# print("created custom div")
+# result = custom_div.full_build(context)
+# print("built custom div")
+# print(result)
 
 
 # index_page = Page(
@@ -78,32 +94,3 @@
 #         PageLink(to="index")["Go to Index Page"],
 #     ],
 # )
-
-from typing import Annotated, Union, cast
-from pydantic import BaseModel, Field, field_validator, BeforeValidator
-
-
-def transform_logic(v: Union[int, str]) -> int:
-    if isinstance(v, str):
-        return int(v)  # Your custom transformation logic
-    return v
-
-
-class MyModel(BaseModel):
-    # 1. The type hint Union[int, str] tells the editor both are okay.
-    # 2. BeforeValidator ensures it's an int before Pydantic finishes.
-    _count: Annotated[int | str, BeforeValidator(transform_logic)] = Field(
-        alias="count"
-    )
-
-    @property
-    def count(self) -> int:
-        return cast(int, self._count)
-
-
-# --- Usage ---
-m1 = MyModel(count=10)  # Editor is happy (int)
-m2 = MyModel(count="20")  # Editor is happy (str)
-
-print(type(m1.count))  # <class 'int'>
-print(type(m2.count))  # <class 'int'>

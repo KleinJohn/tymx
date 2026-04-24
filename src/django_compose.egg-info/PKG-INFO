@@ -8,12 +8,26 @@ Project-URL: Homepage, https://github.com/KleinJohn/django-compose
 Project-URL: Issues, https://github.com/KleinJohn/django-compose/issues
 Classifier: Programming Language :: Python :: 3
 Classifier: Operating System :: OS Independent
-Requires-Python: >=3.10
+Requires-Python: >=3.12
 Description-Content-Type: text/markdown
+Requires-Dist: attrs>=26.1.0
 Requires-Dist: django>=5.2.11
 Requires-Dist: htpy>=25.12.0
-Requires-Dist: pydantic>=2.13.2
 Requires-Dist: typing-extensions>=4.15.0
+
+# The Process of choosing a dataclass framework
+
+### Why pydantic does not work
+There is a lot of friction:
+- pydantic adds a lot of validation overhead
+- No native support for varargs
+- No good way to show a field mapping input type -> output type
+- Need to call model_rebuild on every model and have to import every model to work
+
+### Why attrs does not work
+- Need to add decorator to every subclass
+- No support for varargs
+- Better way of handling mapping input type -> output type
 
 # About Components
 

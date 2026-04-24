@@ -2,33 +2,37 @@ from __future__ import annotations
 
 from enum import Enum, auto
 
-from pydantic import BaseModel, ConfigDict, Field
-from typing_extensions import (
+from typing import (
     Any,
+    Self,
     TypeVar,
     TYPE_CHECKING,
-    Self,
     override,
     overload,
     ClassVar,
 )
 
+from attrs import asdict, field, fields
+
+from django_compose.base.helpers import BaseModel
+
 if TYPE_CHECKING:
-    from django_compose.base import Page, Router
+    from django_compose.base.app import Page
     from django_compose.base.components.base_components import BaseComponent
+    from django_compose.base.router import Router
 
 
 T_Consumable = TypeVar("T_Consumable", bound="Consumable")
 
 
 class DataDict(dict[type[T_Consumable], T_Consumable]):
-    @overload  # type: ignore
+    @overload
     def get(self, key: type[T_Consumable]) -> T_Consumable | None: ...
     @overload
     def get(self, key: type[T_Consumable], default: T_Consumable) -> T_Consumable: ...
     @override
     def get(
-        self, key: type[T_Consumable], default: T_Consumable | None = None, /
+        self, key: type[T_Consumable], default: T_Consumable | None = None
     ) -> T_Consumable | None:
         return super().get(key, default)
 
@@ -100,7 +104,7 @@ class ConsumerPolicy(Enum):
         }
 
 
-class Consumable(BaseModel):
+class Consumable(BaseModel, frozen=True):
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.NONE
     consume_first_matching: ClassVar[bool] = False
 
@@ -134,15 +138,15 @@ class Consumable(BaseModel):
     def custom_policy(self, context_snapshot: ContextTraversalSnapshot) -> bool:
         raise NotImplementedError()
 
-    def merge(self, other: T_Consumable) -> T_Consumable:
+    def merge(self: Self, other: Self) -> Self:
         """Overwrites by default."""
         return other
 
     def merge_if_policy_applies(
-        self: T_Consumable,
-        other: T_Consumable | None,
+        self: Self,
+        other: Self | None,
         context_snapshot: ContextTraversalSnapshot,
-    ) -> T_Consumable:
+    ) -> Self:
         """Only override if you want to check if policy applies to parts of
         a collection of this consumable."""
         # this is not supposed to check whether the policy applies to the
@@ -153,11 +157,10 @@ class Consumable(BaseModel):
         return self.merge(other)
 
 
-class ContextFrame(BaseModel):
-    model_config = ConfigDict(frozen=True)
+class ContextFrame(BaseModel, frozen=True):
 
-    component: BaseComponent = Field(kw_only=False)
-    data: DataDict = Field(default_factory=DataDict, kw_only=False)
+    component: BaseComponent = field(kw_only=False)
+    data: DataDict = field(factory=DataDict, kw_only=False)
 
     def get(self, key: type[T_Consumable]) -> T_Consumable | None:
         return self.data.get(key)
@@ -175,10 +178,8 @@ class ContextFrame(BaseModel):
         return key in self.data
 
 
-class ContextTraversalSnapshot(BaseModel):
+class ContextTraversalSnapshot(BaseModel, frozen=True):
     """A snapshot of a traversal through the context's data stack"""
-
-    model_config = ConfigDict(frozen=True)
 
     context: Context
     max_depth: int
@@ -186,38 +187,21 @@ class ContextTraversalSnapshot(BaseModel):
     frame: ContextFrame
 
 
-class Context:
+class Context(BaseModel, frozen=True):
     """Context for building and rendering components."""
 
-    def __init__(
-        self,
-        router: Router,
-        page: Page | None = None,
-        context_frames: list[ContextFrame] | None = None,
-    ) -> None:
-        self.router = router
-        self.page = page
-        self._context_frames: list[ContextFrame] = (
-            context_frames if context_frames is not None else []
-        )
-        self.current_component: BaseComponent | None = None
+    router: Any = field(kw_only=False)
+    page: Any | None = field(default=None, kw_only=False)
+    _context_frames: list[ContextFrame] = field(factory=list)
 
-    def copy(self) -> Context:
-        return self.copy_with()
+    @property
+    def current_component(self) -> BaseComponent:
+        if not self._context_frames:
+            raise ValueError("No component found in context.")
+        return self._context_frames[-1].component
 
-    def copy_with(self, **kwargs: Any) -> Context:
-        router = kwargs.get("router", self.router)
-        page = kwargs.get("page", self.page)
-        context_frames: list[ContextFrame] | None = kwargs.get(
-            "context_frames", self._context_frames
-        )
-        if context_frames is not None:
-            context_frames = [*context_frames]
-        return Context(router=router, page=page, context_frames=context_frames)
-
-    def push_data(self, data: DataDict) -> None:
-        assert self.current_component is not None
-        self._context_frames.append(ContextFrame(self.current_component, data))
+    def push(self, component: BaseComponent, data: DataDict) -> None:
+        self._context_frames.append(ContextFrame(component=component, data=data))
 
     def pop_frame(self) -> None:
         if not self._context_frames:
@@ -225,7 +209,8 @@ class Context:
         self._context_frames.pop()
 
     def get(self, key: type[T_Consumable]) -> T_Consumable | None:
-        assert self.current_component is not None
+        if not self._context_frames:
+            return None
         if key.consumer_policy.is_built_only and not self.current_component.is_built:
             return None
         temp: T_Consumable | None = None
@@ -255,6 +240,9 @@ class Context:
     def __str__(self) -> str:
         return str([[f.__name__ for f in s.data] for s in self._context_frames])
 
+    def __bool__(self) -> bool:
+        return bool(self._context_frames)
+
     @property
     def current_url(self) -> str:
         if not self.page:
@@ -262,17 +250,16 @@ class Context:
         return self.router.routes[self.page.name].url
 
 
-class ContextData(Consumable):
-    model_config = ConfigDict(frozen=True)
+class ContextData(Consumable, frozen=True):
 
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.ALL_CHILDREN
     overwrite_with_none: ClassVar[bool] = False
 
     @override
-    def merge(self, other: ContextData) -> ContextData:
-        updates = {
-            f.name: getattr(other, f.name)
-            for f in fields(self)
-            if getattr(other, f.name) is not None or other.overwrite_with_none
-        }
-        return replace(self, **updates)
+    def merge(self, other: Self) -> Self:
+        """Overwrites all common fields by the fields of other."""
+        merged = {f.name: getattr(self, f.name) for f in fields(self)}
+        other_data = {f.name: getattr(other, f.name) for f in fields(other)}
+        if not self.overwrite_with_none:
+            other_data = {k: v for k, v in other_data.items() if v is not None}
+        return self.__class__(**{**merged, **other_data})

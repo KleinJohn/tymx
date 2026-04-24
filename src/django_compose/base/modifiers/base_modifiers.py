@@ -2,16 +2,11 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Annotated, cast
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, cast, ClassVar, Self, override
 
-from pydantic import BeforeValidator, ConfigDict, Field
-from typing_extensions import (
-    Self,
-    ClassVar,
-    override,
-)
+from attrs import field
 
-from django_compose.base.components.base_components import BaseComponent
 from django_compose.base.types import (
     ModifierDict,
     ModifierLike,
@@ -25,12 +20,10 @@ from django_compose.base.context import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Sequence
-
-    from django_compose.base.components import BuildData
+    from django_compose.base.components import BuildData, BaseComponent
 
 
-class BaseModifier(Consumable, ABC):
+class BaseModifier(Consumable, frozen=False):  # type: ignore
     @abstractmethod
     def apply(self, build: BuildData) -> None: ...
     @abstractmethod
@@ -84,17 +77,25 @@ def _convert_to_modifier_dict(modifiers: ModifierLike) -> ModifierDict:
     return mod_dict
 
 
-class Modifiers(BaseModifier):
+class Modifiers(BaseModifier, frozen=False):
+
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.ALL_CHILDREN
     consume_first_matching: ClassVar[bool] = False
 
-    _ut_data: Annotated[ModifierLike, BeforeValidator(_convert_to_modifier_dict)] = (
-        Field(alias="modifiers", init=True, default=None, kw_only=False)
+    internal_data: ModifierLike = field(
+        alias="modifiers",
+        init=True,
+        default=None,
+        kw_only=False,
+        exclude=True,
     )
+
+    def __init__(self, *modifiers: ModifierLike) -> None:
+        super().__init__(modifiers=_convert_to_modifier_dict(modifiers))  # type: ignore
 
     @property
     def _data(self) -> ModifierDict:
-        return cast(ModifierDict, self._ut_data)
+        return cast(ModifierDict, self.internal_data)
 
     def values(self) -> ModifierDict:
         return OrderedDict(self._data)
@@ -172,8 +173,7 @@ class Modifiers(BaseModifier):
         return self
 
 
-class FrozenModifiers(Modifiers):
-    model_config = ConfigDict(frozen=True)
+class FrozenModifiers(Modifiers, frozen=True):  # type: ignore
 
     def add(self, modifier: Modifier, overwrite: bool = True) -> None:
         raise TypeError("FrozenModifiers cannot be modified.")

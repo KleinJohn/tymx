@@ -7,10 +7,8 @@ from .context import (
     Consumable,
     ConsumerPolicy,
 )
-from .attributes import Attribute
-from .modifiers import Modifier, Attributes
+from .attributes import Attribute, Attributes
 from .theme import Theme, ThemeType
-from .config import default_attribute
 
 __all__ = [
     "Page",
@@ -25,6 +23,4 @@ __all__ = [
     "ConsumerPolicy",
     "Attributes",
     "Attribute",
-    "Modifier",
-    "default_attribute",
 ]

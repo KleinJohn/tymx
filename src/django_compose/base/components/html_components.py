@@ -1,46 +1,35 @@
-from typing import ClassVar
-
-import htpy
-from typing_extensions import Protocol, final, override
-
-from django_compose.base.attributes import Attributes
+from typing import final, override, ClassVar
 
 from .base_components import (
-    BaseComponent,
     Component,
     Renderable,
     VoidComponentMixin,
 )
 
-
-class IsHtml(Protocol):
-    element: htpy.Element
-    attributes: Attributes
-    _children: list[BaseComponent]
-    _htpy_kwargs: dict[str, str]
-
-    def render(self) -> htpy.Renderable: ...
+import htpy
 
 
-class RendersHtmlMixin(Renderable):
+class HtmlBaseComponent(Renderable, Component):
+    element: ClassVar[htpy.BaseElement]
+
+
+class HtmlComponent(HtmlBaseComponent):
+    element: ClassVar[htpy.Element]
+
     @override
-    def render(self: IsHtml) -> htpy.Renderable:
-        return self.element(**self.attributes.values(), **self._htpy_kwargs)[
-            (child.render() for child in self._children)
+    def render(self) -> htpy.Renderable:
+        return self.element(**self.attributes.values(), **self.htpy_kwargs)[
+            (child.render() for child in self.children)
         ]
 
 
-class HtmlComponent(RendersHtmlMixin, Component):
-    element: ClassVar[htpy.Element]
-
-
 # HtmlVoidComponents do not have children and do not implement RendersHtmlMixin
-class HtmlVoidComponent(VoidComponentMixin, HtmlComponent):
+class HtmlVoidComponent(VoidComponentMixin, HtmlBaseComponent):
     element: ClassVar[htpy.VoidElement]
 
     @override
-    def render(self: IsHtml) -> htpy.Renderable:
-        return self.element(**self.attributes.values(), **self._htpy_kwargs)
+    def render(self) -> htpy.Renderable:
+        return self.element(**self.attributes.values(), **self.htpy_kwargs)
 
 
 @final

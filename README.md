@@ -1,3 +1,17 @@
+# The Process of choosing a dataclass framework
+
+### Why pydantic does not work
+There is a lot of friction:
+- pydantic adds a lot of validation overhead
+- No native support for varargs
+- No good way to show a field mapping input type -> output type
+- Need to call model_rebuild on every model and have to import every model to work
+
+### Why attrs does not work
+- Need to add decorator to every subclass
+- No support for varargs
+- Better way of handling mapping input type -> output type
+
 # About Components
 
 ## About Components
