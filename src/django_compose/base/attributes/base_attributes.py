@@ -3,20 +3,17 @@ from __future__ import annotations
 from abc import abstractmethod
 from collections import OrderedDict
 from collections.abc import Callable, Iterable, Sequence
-from typing import (
-    cast,
-    Any,
-    Self,
-    override,
-    ClassVar,
-    Iterator,
-)
+from typing import Any, Self, override, ClassVar, Iterator, TYPE_CHECKING
 
 from attrs import evolve, field
 
 from django_compose.base.context import ConsumerPolicy, Consumable
+from django_compose.base.modifiers import BaseModifier
 from django_compose.base.helpers import BaseModel
 from django_compose.base.types import AttributeLike
+
+if TYPE_CHECKING:
+    from django_compose.base.components.base_components import BaseComponent, BuildData
 
 
 def _clean_kwargs(
@@ -228,7 +225,7 @@ def _convert_to_attributes_dict(
     return attr_dict
 
 
-class Attributes(Consumable, frozen=False):  # type: ignore
+class Attributes(BaseModifier, frozen=False):  # type: ignore
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.DIRECT_BUILT_CHILDREN
     consume_first_matching: ClassVar[bool] = True
 
@@ -259,15 +256,21 @@ class Attributes(Consumable, frozen=False):  # type: ignore
         for attr in attr_dict.values():
             self.add(attr, overwrite=overwrite)
 
-    @override
-    def merge(self, other: Consumable) -> Self:
-        """Merges with other by overwriting with other's attributes."""
-        if not isinstance(other, Attributes):
-            raise TypeError("Can only merge with another Attributes instance.")
-        return evolve(self, attributes=[self, other])
-
     def copy(self) -> Self:
         return evolve(self, attributes=self._attributes.values())
+
+    @override
+    def merge(self, other: Consumable | AttributeLike) -> Self:
+        """Merges with other by overwriting with other's attributes."""
+        return evolve(self, attributes=[self, other])
+
+    @override
+    def apply(self, build: BuildData) -> None:
+        build.attributes.update(self)
+
+    @override
+    def transform(self, result: list[BaseComponent]) -> None:
+        pass
 
     def __call__(self) -> Self:
         return self

@@ -40,6 +40,11 @@ if TYPE_CHECKING:
     import htpy
 
 
+def wrap_components(components: Children) -> Component:
+    """Wraps the given components in a Fragment for easier handling as a single component."""
+    return Fragment(children=components)
+
+
 def _convert_children_to_list(children: Children) -> list[BaseComponent]:
     def convert_children_recursive(
         children: Children, result: list[BaseComponent]
@@ -270,6 +275,10 @@ class BaseComponent(BaseModel, auto_frozen=True):
 
     @abstractmethod
     def render(self) -> htpy.Node: ...
+
+    def with_attributes(self, **attributes: Any) -> Self:
+        new_attrs = self.attributes.merge(_extract_additional_attributes(attributes))
+        return evolve(self, modifiers=[new_attrs, self.modifiers])
 
     def provide(self, data: DataDict) -> None:
         if self.attributes:  # and not built
@@ -517,3 +526,23 @@ class Text(VoidComponentMixin, Renderable, Component):
     @override
     def _verbose_string_parts(self) -> Iterable[str]:
         return (f"text='{self.text}'", str(self.attributes), str(self.modifiers))
+
+
+class Fragment(Component):
+
+    @override
+    def build(self, build: BuildData, children: Children) -> Children:
+        return children
+
+    @override
+    def to_string(
+        self,
+        pretty: bool = False,
+        verbose: bool = False,
+        level: int = 0,
+        tab_length: int = 4,
+    ) -> str:
+        return "\n".join(
+            child.to_string(pretty, verbose, level, tab_length)
+            for child in self.children
+        )

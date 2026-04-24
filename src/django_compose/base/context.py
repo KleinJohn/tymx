@@ -127,8 +127,10 @@ class Consumable(BaseModel, frozen=True):
     def custom_policy(self, context_snapshot: ContextTraversalSnapshot) -> bool:
         raise NotImplementedError()
 
-    def merge(self: Self, other: Self) -> Self:
+    def merge(self: Self, other: Consumable) -> Self:
         """Overwrites by default."""
+        if not isinstance(other, self.__class__):
+            raise TypeError(f"Cannot merge {self.__class__} with {other.__class__}")
         return other
 
     def merge_if_policy_applies(

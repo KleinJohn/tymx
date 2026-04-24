@@ -1,6 +1,11 @@
-from attrs import fields
+from attrs import evolve, fields
 
-from django_compose.base.components.base_components import BuildData, Component
+from django_compose.base.components.base_components import (
+    BuildData,
+    Component,
+    Fragment,
+    wrap_components,
+)
 from django_compose.base.components.html_components import (
     A,
     H1,
@@ -17,6 +22,7 @@ from django_compose.base.attributes import (
 from django_compose.base.modifiers import Modifier, Modifiers
 from django_compose.base.app import Page
 from django_compose.base.context import Context
+from django_compose.base.modifiers.debug_modifiers import PrintComponentsModifier
 from django_compose.base.router import Router
 from django_compose.base.types import Children
 
@@ -47,11 +53,16 @@ class CustomDiv(Component):
 
 
 context = Context(Router("testapp", pages=[]), Page())
-component = CustomDiv([classes("custom-div"), id("custom-div-id")])[
-    CustomButton["Click Me!"]
-]
-built_components = component.full_build(context)
-print(built_components[0].to_string(verbose=True, pretty=True))
+component = CustomDiv(
+    [
+        classes("custom-div"),
+        id("custom-div-id"),
+        PrintComponentsModifier(),
+    ]
+).with_attributes(style="color: red;")[CustomButton["Click Me!"]]
+built_component = wrap_components(component.full_build(context))
+print(built_component.attributes)
+# print(built_component.to_string(verbose=True, pretty=True))
 
 
 # router = Router("testapp", pages=[])

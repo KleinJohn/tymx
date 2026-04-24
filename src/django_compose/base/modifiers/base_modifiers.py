@@ -22,7 +22,10 @@ if TYPE_CHECKING:
     from django_compose.base.components import BuildData, BaseComponent
 
 
+# We need BaseModifiers so that we can ensure that you can't have Modifiers inside Modifiers
 class BaseModifier(Consumable, frozen=False):  # type: ignore
+    """Defines the interface for applying modifications to components during the build process."""
+
     @abstractmethod
     def apply(self, build: BuildData) -> None: ...
     @abstractmethod
@@ -35,23 +38,13 @@ class BaseModifier(Consumable, frozen=False):  # type: ignore
 class Modifier(BaseModifier):
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.ALL_CHILDREN
 
-    @override
-    def apply(self, build: BuildData) -> None:
-        """Injects behavior into the given component before the build process.
+    @abstractmethod
+    def apply(self, build: BuildData) -> None: ...
+    @abstractmethod
+    def transform(self, result: list[BaseComponent]) -> None: ...
 
-        It is safe to modify the component in place and return the same instance.
-        It is also possible to return a new instance of the component if needed.
-        """
-        pass
-
-    @override
-    def transform(self, result: list[BaseComponent]) -> None:
-        """Injects behavior into the given component after the build process.
-
-        It is safe to modify the component in place and return the same instance.
-        It is also possible to return a new instance of the component if needed.
-        """
-        pass
+    def __str__(self) -> str:
+        return self.__class__.__name__
 
 
 def _convert_to_modifier_dict(modifiers: ModifierLike) -> ModifierDict:
