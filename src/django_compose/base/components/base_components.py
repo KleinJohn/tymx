@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from abc import ABC, ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Sequence
 from typing import TYPE_CHECKING, ClassVar, cast
 
@@ -12,7 +12,7 @@ from typing_extensions import (
     override,
 )
 
-from django_compose.base.context import Context, ContextFrame, DataDict
+from django_compose.base.context import Context, DataDict
 from django_compose.base.attributes import (
     Attribute,
     Attributes,
@@ -34,33 +34,44 @@ from django_compose.base.config import attribute_string_handler
 
 from django_compose.base.helpers import BaseModel
 
-from attrs import define, field, evolve
+from attrs import field, evolve
 
 if TYPE_CHECKING:
     import htpy
 
 
 def _convert_children_to_list(children: Children) -> list[BaseComponent]:
-    if not children:
-        return []
-    match children:
-        case type():
-            return [children()]
-        case str():
-            return [Text(text=children)]
-        case BaseComponent():
-            return [children]
-        case Sequence():
-            lst: list[BaseComponent] = []
-            for child in children:
-                lst.extend(_convert_children_to_list(child))
-            return lst
-        case Callable():
-            # TODO
-            # return [TemplateComponent(template_function=children)]
-            return [Text(text="UNDEFINED")]
-        case _:
-            raise ValueError("Invalid child type: " + str(type(children)))
+    def convert_children_recursive(
+        children: Children, result: list[BaseComponent]
+    ) -> None:
+        match children:
+            case None:
+                return
+            case type():
+                result.append(children())
+            case str():
+                result.append(Text(text=children))
+            case BaseComponent():
+                result.append(children)
+            case Sequence():
+                for child in children:
+                    convert_children_recursive(child, result)
+            case Callable():
+                # TODO
+                # return [TemplateComponent(template_function=children)]
+                result.append(Text(text="UNDEFINED"))
+            case _:
+                raise ValueError("Invalid child type: " + str(type(children)))
+
+    result: list[BaseComponent] = []
+    convert_children_recursive(children, result)
+    return result
+
+
+def _convert_children_to_tuple(
+    children: Children,
+) -> tuple[BaseComponent, ...]:
+    return tuple(_convert_children_to_list(children))
 
 
 def _extract_additional_attributes(extra_dict: dict[str, Any]) -> list[Attribute]:
@@ -241,8 +252,8 @@ class BaseComponent(BaseModel, auto_frozen=True):
     )
     modifiers: FrozenModifiers = field(init=False)
     attributes: FrozenAttributes = field(init=False)
-    children: list[BaseComponent] = field(
-        default=None, converter=_convert_children_to_list
+    children: tuple[BaseComponent, ...] = field(
+        default=None, converter=_convert_children_to_tuple
     )
     htpy_kwargs: dict[str, str] = field(factory=dict)
     is_built: bool = field(default=False)

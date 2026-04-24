@@ -1,8 +1,13 @@
 # from dataclasses import dataclass, field
+import builtins
 from abc import ABCMeta
+from threading import local
 from typing import Any, Callable, cast, dataclass_transform
-from attrs import define, field
+from attrs import define, field, fields
 from attrs.exceptions import FrozenInstanceError
+
+
+_repr_context = local()
 
 
 # @dataclass_transform(kw_only_default=True, field_specifiers=(field,))
@@ -45,7 +50,7 @@ class ModelMeta(type):
         if name == "ModelBase":
             return cls
 
-        attrs_settings: dict[str, Any] = {"kw_only": True}
+        attrs_settings: dict[str, Any] = {"kw_only": True, "repr": False}
         attrs_settings.update(kwargs)
 
         # 2. Flag the namespace before sending it to attrs
@@ -94,29 +99,31 @@ class BaseModel(metaclass=ModelABCMeta):
     def __attrs_post_init__(self) -> None:
         object.__setattr__(self, "__is_init_complete__", True)
 
+    def __repr__(self) -> str:
+        object_id = builtins.id(self)
+        already_repring: set[int] = getattr(_repr_context, "already_repring", set())
+
+        if object_id in already_repring:
+            return "..."
+
+        _repr_context.already_repring = already_repring
+        already_repring.add(object_id)
+        try:
+            field_reprs: list[str] = []
+            for attr_field in fields(self.__class__):
+                if attr_field.repr is False:
+                    continue
+                value = getattr(self, attr_field.name)
+                value_repr = (
+                    attr_field.repr(value)
+                    if callable(attr_field.repr)
+                    else builtins.repr(value)
+                )
+                field_reprs.append(f"{attr_field.name}={value_repr}")
+            return f"{self.__class__.__qualname__}({', '.join(field_reprs)})"
+        finally:
+            already_repring.remove(object_id)
+
 
 def convert_to_int(value: str | int) -> int:
     return int(value)
-
-
-class MyModel(BaseModel, auto_frozen=True):
-    a: int = field(kw_only=False, converter=convert_to_int)
-
-
-class Derived(MyModel):
-    b: str = "default value"
-    c: list[str]
-
-
-m1 = MyModel(10)
-m2 = Derived(10, b="hello", c=["world"])
-
-print(m2.a)  # Output: 10
-print(m2.b)  # Output: hello
-print(m2.c)  # Output: world
-
-# This should raise a FrozenInstanceError since Derived is frozen after initialization:
-# m1.a = 20
-m2.b = "updated"
-# m2.a = 20
-print(m1, m2)

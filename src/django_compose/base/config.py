@@ -5,13 +5,10 @@ This module provides globally accessible configuration variables that can be
 overwritten from outside the library.
 """
 
-from typing import TYPE_CHECKING
+from typing import Callable
 
 from django_compose.base.theme import Theme, ThemeType
-
-if TYPE_CHECKING:
-    from django_compose.base.attributes import Attribute, classes
-    from typing_extensions import Callable
+from django_compose.base.attributes import Attribute, classes
 
 
 # Default attribute that can be overridden by external code

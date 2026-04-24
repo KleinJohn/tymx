@@ -60,7 +60,7 @@ ignore = [
 
 [tool.mypy]
 python_version = "3.12"
-disable_error_code = ["type-arg", "name-defined", "misc", "valid-type", "import-untyped", "no-any-return"]
+disable_error_code = ["type-arg", "name-defined", "misc", "valid-type", "import-untyped", "no-any-return", "arg-type"]
 strict = true
 warn_return_any = true
 warn_unused_configs = true

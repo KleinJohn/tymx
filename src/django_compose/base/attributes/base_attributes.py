@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from collections import OrderedDict
 from collections.abc import Callable, Iterable, Sequence
-from typing import cast
-
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, SkipValidation
-from typing_extensions import (
-    Annotated,
+from typing import (
+    cast,
     Any,
     Self,
     override,
@@ -15,18 +12,11 @@ from typing_extensions import (
     Iterator,
 )
 
-from django_compose.base.config import attribute_string_handler
+from attrs import evolve, field
+
 from django_compose.base.context import Consumable, ConsumerPolicy
+from django_compose.base.helpers import BaseModel
 from django_compose.base.types import AttributeLike
-
-
-def _add_init_kwargs(
-    init_kwargs: dict[str, Any] | None, **kwargs: Any
-) -> dict[str, Any]:
-    if init_kwargs is None:
-        init_kwargs = {}
-    init_kwargs.update(kwargs)
-    return init_kwargs
 
 
 def _clean_kwargs(
@@ -42,22 +32,17 @@ def _clean_kwargs(
     return cleaned_kwargs
 
 
-class Attribute(BaseModel, ABC):
+class Attribute[T](BaseModel, frozen=True):
     """A modifier which adds attributes to a Component.
 
     A Attribute can hold multiple attribute values, which can be set when the Attribute is called.
     The default value for each attribute is an empty string.
     """
 
-    name: str = Field(kw_only=False)
-    value: Any | None = None
+    name: str = field(kw_only=False)
+    value: T | None = None
 
-    def __init__(self, name: str, **data: Any) -> None:
-        super().__init__(name=name, **data)
-
-    def __call__(
-        self, value: Any | None = None, *, init_kwargs: dict[str, Any] | None = None
-    ) -> Self:
+    def __call__(self, value: T | None = None, **kwargs: Any) -> Self:
         """Assigns values to the attributes.
 
         The values are assigned to the attributes in the order they were defined.
@@ -65,17 +50,7 @@ class Attribute(BaseModel, ABC):
         If fewer values are provided than attributes, the remaining attributes keep their current values.
         Overrides of this method should call their parent's __call__ method.
         """
-        try:
-            return self.__class__(
-                self.name,
-                value=value,
-                **(init_kwargs if init_kwargs else {}),
-            )
-        except TypeError as e:
-            raise TypeError(
-                str(e)
-                + "\n- likely due to subclass not passing all required arguments for __init__ in its __call__ method."
-            ) from e
+        return evolve(self, value=value, **kwargs)
 
     def __or__(self, other: Self) -> Self:
         return self.merge(other)
@@ -101,16 +76,11 @@ class Attribute(BaseModel, ABC):
         return self.__class__(self.name, value=other.value)
 
 
-class SimpleAttribute(Attribute):
+class SimpleAttribute(Attribute[str], frozen=True):
     value: str | None = None
 
-    def __call__(
-        self,
-        value: str | None = None,
-        *,
-        init_kwargs: dict[str, Any] | None = None,
-    ) -> Self:
-        return super().__call__(value, init_kwargs=init_kwargs)
+    def __call__(self, value: str | None = None, **kwargs: Any) -> Self:
+        return super().__call__(value, **kwargs)
 
     def __str__(self) -> str:
         if self.value is None:
@@ -118,7 +88,7 @@ class SimpleAttribute(Attribute):
         return f'{self.name}="{self.value}"'
 
 
-class BooleanAttribute(Attribute):
+class BooleanAttribute(Attribute[bool], frozen=True):
     """A modifier which adds a boolean attribute to a Component.
 
     The attribute is included when the value is True, and omitted when the value is False.
@@ -127,32 +97,14 @@ class BooleanAttribute(Attribute):
     value: bool | None = None
     use_true_false: tuple[Any, Any] | None = None
 
-    def __init__(
-        self,
-        name: str,
-        *,
-        value: bool | None = None,
-        use_true_false: tuple[Any, Any] | None = None,
-    ) -> None:
-        if value is None:
-            value = True
-        super().__init__(name, value=value)
-        self.use_true_false = use_true_false
-
     def __call__(
         self,
         value: bool | None = None,
-        *,
-        init_kwargs: dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> Self:
         if self.use_true_false is not None:
             value = self.use_true_false[0] if value else self.use_true_false[1]
-        return super().__call__(
-            value,
-            init_kwargs=_add_init_kwargs(
-                init_kwargs, use_true_false=self.use_true_false
-            ),
-        )
+        return super().__call__(value, **kwargs)
 
     def __str__(self) -> str:
         if self.use_true_false is not None:
@@ -172,7 +124,7 @@ class ComposePolicy(BaseModel):
     remove_duplicates: bool = True
 
 
-class ComposedAttribute(SimpleAttribute):
+class ComposedAttribute(SimpleAttribute, frozen=True):
     """Allows multiple values to be composed together."""
 
     policy: ComposePolicy
@@ -188,7 +140,6 @@ class ComposedAttribute(SimpleAttribute):
         self,
         value: str | dict[str, Any] | None = None,
         *values: str | None,
-        init_kwargs: dict[str, Any] | None = None,
         add_after: bool = True,
         clean_underscores: bool = True,
         **kwargs: str,
@@ -220,9 +171,7 @@ class ComposedAttribute(SimpleAttribute):
         composed_values = tuple(value for value in joined_values if value is not None)
         return super().__call__(
             self.policy.composer(composed_values),
-            init_kwargs=_add_init_kwargs(
-                init_kwargs, composed_values=composed_values, policy=self.policy
-            ),
+            composed_values=composed_values,
         )
 
     def merge(self, other: Attribute) -> "ComposedAttribute":
@@ -242,7 +191,7 @@ class ComposedAttribute(SimpleAttribute):
         if self.policy.remove_duplicates:
             # Remove duplicates while preserving order
             total_values = tuple(dict.fromkeys(total_values, None).keys())
-        return self(*total_values)
+        return self.__call__(*total_values)
 
     def __contains__(self, item: Any) -> bool:
         if not isinstance(item, str) or self.composed_values is None:
@@ -253,6 +202,8 @@ class ComposedAttribute(SimpleAttribute):
 def _convert_to_attributes_dict(
     attr_like: AttributeLike,
 ) -> OrderedDict[str, Attribute]:
+    from django_compose.base.config import attribute_string_handler
+
     def _match_attributes_recursive(
         attribute: AttributeLike, attr_dict: OrderedDict[str, Attribute]
     ) -> None:
@@ -277,24 +228,17 @@ def _convert_to_attributes_dict(
     return attr_dict
 
 
-class Attributes(Consumable):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+class Attributes(Consumable, frozen=False):  # type: ignore
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.DIRECT_BUILT_CHILDREN
+    consume_first_matching: ClassVar[bool] = True
 
-    internal_data: SkipValidation[AttributeLike] = Field(
+    _data: OrderedDict[str, Attribute] = field(
         alias="attributes",
-        init=True,
-        default=None,
+        converter=_convert_to_attributes_dict,
         kw_only=False,
-        exclude=True,
+        default=None,
+        repr=False,
     )
-
-    def __init__(self, *attributes: AttributeLike) -> None:
-        super().__init__(attributes=_convert_to_attributes_dict(attributes))  # type: ignore
-
-    @property
-    def _data(self) -> OrderedDict[str, Attribute]:
-        return cast(OrderedDict[str, Attribute], self.internal_data)
 
     def values(self) -> dict[str, Any]:
         return {attr.name: attr.value for attr in self._data.values()}
@@ -313,11 +257,14 @@ class Attributes(Consumable):
             self.add(attr, overwrite=overwrite)
 
     @override
-    def merge(self, other: Attributes) -> Self:
-        return self.__class__([self, other])
+    def merge(self, other: Consumable) -> Self:
+        """Merges with other by overwriting with other's attributes."""
+        if not isinstance(other, Attributes):
+            raise TypeError("Can only merge with another Attributes instance.")
+        return evolve(self, _data=_convert_to_attributes_dict([self, other]))
 
     def copy(self) -> Self:
-        return self.__class__(self)
+        return evolve(self, _data=self._data.copy())
 
     def __call__(self) -> Self:
         return self
@@ -362,8 +309,7 @@ class Attributes(Consumable):
         return NotImplemented
 
 
-class FrozenAttributes(Attributes):
-    model_config = ConfigDict(frozen=True)
+class FrozenAttributes(Attributes, frozen=True):  # type: ignore
 
     @override
     def add(self, attribute: Attribute, overwrite: bool = True) -> None:
@@ -372,8 +318,3 @@ class FrozenAttributes(Attributes):
     @override
     def update(self, attributes: AttributeLike, overwrite: bool = True) -> None:
         raise TypeError("FrozenAttributes cannot be modified.")
-
-
-# Resolve forward references for recursive AttributeLike typing.
-Attributes.model_rebuild()
-FrozenAttributes.model_rebuild()

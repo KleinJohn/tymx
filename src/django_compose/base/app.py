@@ -5,24 +5,16 @@ from collections.abc import Iterable
 from typing_extensions import override
 
 from django_compose.base.components.base_components import (
-    BaseComponent,
+    BuildData,
     Component,
     VoidComponentMixin,
 )
 
 from django_compose.base.theme import Theme
-from django_compose.base.views.view_base import ComposePageView
 from django_compose.base.types import Children
-from django_compose.base.attributes import Attribute, Attributes
-from django_compose.base.modifiers import Modifier, Modifiers
 
-from .components.html_components import (
-    Body,
-    Head,
-    Html,
-)
+from .components.html_components import Body, Head, Html
 
-import django_compose.base.config as config
 from django_compose.base.context import Context
 from django_compose.base.router import Router
 
@@ -78,7 +70,7 @@ class Page(VoidComponentMixin, Component):
     #     return self._build_result
 
     @override
-    def build(self, context: Context, children: Children) -> Children:
+    def build(self, build: BuildData, children: Children) -> Children:
         return Html[
             Head,
             Body,
@@ -89,9 +81,6 @@ class Page(VoidComponentMixin, Component):
     #     if self._build_result is None:
     #         raise ValueError("Page must be built before rendering.")
     #     return self._build_result.render()
-
-
-Page.model_rebuild()
 
 
 class ComposeApp:

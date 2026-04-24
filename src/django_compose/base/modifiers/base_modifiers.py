@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from collections import OrderedDict
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, cast, ClassVar, Self, override
+from typing import TYPE_CHECKING, Iterator, ClassVar, Self, override
 
-from attrs import field
+from attrs import evolve, field
 
 from django_compose.base.types import (
     ModifierDict,
     ModifierLike,
-    T_Modifier,
 )
 
 from django_compose.base.context import (
@@ -82,20 +81,13 @@ class Modifiers(BaseModifier, frozen=False):
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.ALL_CHILDREN
     consume_first_matching: ClassVar[bool] = False
 
-    internal_data: ModifierLike = field(
+    _data: ModifierDict = field(
         alias="modifiers",
-        init=True,
-        default=None,
+        converter=_convert_to_modifier_dict,
         kw_only=False,
-        exclude=True,
+        default=None,
+        repr=False,
     )
-
-    def __init__(self, *modifiers: ModifierLike) -> None:
-        super().__init__(modifiers=_convert_to_modifier_dict(modifiers))  # type: ignore
-
-    @property
-    def _data(self) -> ModifierDict:
-        return cast(ModifierDict, self.internal_data)
 
     def values(self) -> ModifierDict:
         return OrderedDict(self._data)
@@ -110,23 +102,25 @@ class Modifiers(BaseModifier, frozen=False):
             self.add(mod, overwrite=overwrite)
 
     @override
-    def merge(self, other: Modifiers) -> Modifiers:
+    def merge(self, other: Consumable) -> Self:
         """Merges with other by overwriting with other's modifiers."""
         if not isinstance(other, Modifiers):
-            raise TypeError("Modifiers can only be merged with other Modifiers.")
-        return self.__class__([self, other])
+            raise TypeError("Can only merge with another Modifiers instance.")
+        return evolve(self, _data=_convert_to_modifier_dict([self, other]))
 
     @override
     def merge_if_policy_applies(
-        self: Modifiers,
-        other: Modifiers | None,
+        self,
+        other: Consumable | None,
         context_snapshot: ContextTraversalSnapshot,
         overwrite: bool = True,
-    ) -> Modifiers:
+    ) -> Self:
+        if not isinstance(other, Modifiers) and other is not None:
+            raise TypeError("Can only merge with another Modifiers instance.")
         if other is None:
-            return Modifiers(
+            return self.__class__(
                 # only include modifiers which can be consumed -> [0]
-                *(m for m in self if m.policy_applies(context_snapshot))
+                [m for m in self if m.policy_applies(context_snapshot)],
             )
         merged = self.copy()
         for modifier in other:
@@ -139,11 +133,12 @@ class Modifiers(BaseModifier, frozen=False):
         pass
 
     @override
-    def transform(self, build: BuildData) -> None:
+    def transform(self, result: list[BaseComponent]) -> None:
         pass
 
     def copy(self) -> Self:
-        return self.__class__(self)
+        """Creates a copy of this Modifiers (deep copy)"""
+        return evolve(self, _data=self._data.copy())
 
     def __call__(self) -> Self:
         return self
@@ -154,7 +149,7 @@ class Modifiers(BaseModifier, frozen=False):
     def __iter__(self) -> Iterator[Modifier]:
         return iter(self._data.values())
 
-    def __contains__(self, item: type[T_Modifier] | T_Modifier) -> bool:
+    def __contains__(self, item: type[Modifier] | Modifier) -> bool:
         if isinstance(item, type):
             return item in self._data
         return type(item) in self._data

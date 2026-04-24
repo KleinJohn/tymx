@@ -2,13 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 
-from typing import (
-    TypeVar,
-    TypeAlias,
-    TypeAliasType,
-    OrderedDict,
-    TYPE_CHECKING,
-)
+from typing import TypeVar, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from django_compose.base.attributes import Attribute, Attributes
@@ -16,10 +10,11 @@ if TYPE_CHECKING:
     from django_compose.base.modifiers.base_modifiers import Modifier, Modifiers
     from django_compose.base.components import BaseComponent
 
-T_BaseComponent = TypeVar("T_BaseComponent", bound="BaseComponent")
+_T = TypeVar("_T")
+Registry = dict[type[_T], _T]
 
-TemplateFunctionType: TypeAlias = Callable[["Context"], "Children"]
-Children: TypeAlias = (
+type TemplateFunctionType = Callable[["Context"], "Children"]
+type Children = (
     None
     | str
     | BaseComponent
@@ -28,23 +23,19 @@ Children: TypeAlias = (
     | Sequence["Children"]
 )
 
-AttributeLike = TypeAliasType(
-    "AttributeLike", "None | str | Attribute | Attributes | Sequence[AttributeLike]"
-)
-ModifierLike = TypeAliasType(
-    "ModifierLike", "None | Modifier | Modifiers | Sequence[ModifierLike]"
-)
-ModifiersOrAttributes = TypeAliasType(
-    "ModifiersOrAttributes",
-    "None | str | Attribute | Attributes | Modifier | Modifiers | Sequence[ModifiersOrAttributes]",
-)
+type ModifierLike = None | Modifier | Modifiers | Sequence[ModifierLike]
+type AttributeLike = None | str | Attribute | Attributes | Sequence[AttributeLike]
+type ModifiersOrAttributes = None | str | Attribute | Attributes | Modifier | Modifiers | Sequence[
+    ModifiersOrAttributes
+]
 
-T_Modifier = TypeVar("T_Modifier", bound="Modifier")
-ModifierDict = OrderedDict[type[T_Modifier], T_Modifier]
+type ModifierDict = Registry[Modifier]
 
 __all__ = [
     "TemplateFunctionType",
     "Children",
     "AttributeLike",
+    "ModifierLike",
     "ModifiersOrAttributes",
+    "ModifierDict",
 ]
