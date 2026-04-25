@@ -29,7 +29,7 @@ class BaseModifier(Consumable, frozen=False):  # type: ignore
     @abstractmethod
     def apply(self, build: BuildData) -> None: ...
     @abstractmethod
-    def transform(self, result: list[BaseComponent]) -> None: ...
+    def transform(self, result: list[BaseComponent]) -> list[BaseComponent]: ...
 
     def __str__(self) -> str:
         return self.__class__.__name__
@@ -38,10 +38,13 @@ class BaseModifier(Consumable, frozen=False):  # type: ignore
 class Modifier(BaseModifier):
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.ALL_CHILDREN
 
-    @abstractmethod
-    def apply(self, build: BuildData) -> None: ...
-    @abstractmethod
-    def transform(self, result: list[BaseComponent]) -> None: ...
+    @override
+    def apply(self, build: BuildData) -> None:
+        pass
+
+    @override
+    def transform(self, result: list[BaseComponent]) -> list[BaseComponent]:
+        return result
 
     def __str__(self) -> str:
         return self.__class__.__name__
@@ -125,8 +128,8 @@ class Modifiers(BaseModifier, frozen=False):
         pass
 
     @override
-    def transform(self, result: list[BaseComponent]) -> None:
-        pass
+    def transform(self, result: list[BaseComponent]) -> list[BaseComponent]:
+        return result
 
     def copy(self) -> Self:
         """Creates a copy of this Modifiers (deep copy)"""

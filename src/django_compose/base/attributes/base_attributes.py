@@ -269,8 +269,8 @@ class Attributes(BaseModifier, frozen=False):  # type: ignore
         build.attributes.update(self)
 
     @override
-    def transform(self, result: list[BaseComponent]) -> None:
-        pass
+    def transform(self, result: list[BaseComponent]) -> list[BaseComponent]:
+        return result
 
     def __call__(self) -> Self:
         return self

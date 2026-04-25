@@ -4,9 +4,8 @@ from .base_components import (
     TemplateComponent,
     Component,
     Renderable,
-    SingleChildComponentMixin,
     Text,
-    VoidComponentMixin,
+    NoChildren,
     ThemedComponent,
 )
 from .compose_components import PageLink
@@ -15,8 +14,7 @@ __all__ = [
     "BuildData",
     "BaseComponent",
     "Component",
-    "VoidComponentMixin",
-    "SingleChildComponentMixin",
+    "NoChildren",
     "Renderable",
     "TemplateComponent",
     "Text",

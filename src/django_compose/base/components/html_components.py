@@ -3,7 +3,7 @@ from typing import TypeVar, final, override, ClassVar
 from .base_components import (
     Component,
     Renderable,
-    VoidComponentMixin,
+    NoChildren,
 )
 
 import htpy
@@ -24,7 +24,7 @@ class HtmlComponent(HtmlBaseComponent):
 
 
 # HtmlVoidComponents do not have children and do not implement RendersHtmlMixin
-class HtmlVoidComponent(VoidComponentMixin, HtmlBaseComponent):
+class HtmlVoidComponent(NoChildren, HtmlBaseComponent):
     element: ClassVar[htpy.VoidElement]
 
     @override

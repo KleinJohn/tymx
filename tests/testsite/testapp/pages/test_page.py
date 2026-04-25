@@ -1,18 +1,10 @@
-from attrs import evolve, fields
-
 from django_compose.base.components.base_components import (
     BuildData,
     Component,
-    Fragment,
+    validate_is_built,
     wrap_components,
 )
-from django_compose.base.components.html_components import (
-    A,
-    H1,
-    Button,
-    Div,
-    Input,
-)
+import django_compose.base.components.html_components as html
 from django_compose.base.attributes import (
     disabled,
     id,
@@ -30,17 +22,12 @@ from django_compose.base.router import Router
 from django_compose.base.types import Children
 
 
-# class TimeData(ContextData):
-#     time: str | None = None
-#     in_hours: int | None = None
-
-
 class CustomButton(Component):
 
     def build(self, build: BuildData, children: Children) -> Children:
-        return Div[
+        return html.Div[
             "Custom Button Start",
-            Button[children],
+            html.Button[children],
             "End of Custom Button",
         ]
 
@@ -48,25 +35,22 @@ class CustomButton(Component):
 class CustomDiv(Component):
 
     def build(self, build: BuildData, children: Children) -> Children:
-        return Div[
+        return html.Div[
             "Custom Div Start",
-            children,
+            CustomButton("custom-button-test")[children],
+            CustomButton["Me too!", html.Input],
             "Custom Div End",
         ]
 
 
 context = Context(Router("testapp", pages=[]), Page())
-component = CustomDiv(
-    [
-        classes("custom-div"),
-        id("custom-div-id"),
-    ]
-).with_attributes(
+component = CustomDiv([classes("custom-div"), id("custom-div-id")]).with_attributes(
     style="color: red;"
-)[CustomButton["Click Me!"]]
-built_component = wrap_components(component.full_build(context))
-print("attributes:", built_component.attributes)
-# print(built_component.to_string(verbose=True, pretty=True))
+)[html.Input()]
+built_components = component.full_build(context)
+validate_is_built(built_components)
+print(wrap_components(built_components).to_string(verbose=True, pretty=True))
+
 
 # router = Router("testapp", pages=[])
 # context = Context(router, Page())

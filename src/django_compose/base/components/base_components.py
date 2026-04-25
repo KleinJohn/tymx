@@ -40,9 +40,20 @@ if TYPE_CHECKING:
     import htpy
 
 
+class ValidationError(Exception):
+    pass
+
+
 def wrap_components(components: Children) -> Component:
     """Wraps the given components in a Fragment for easier handling as a single component."""
     return Fragment(children=components)
+
+
+def validate_is_built(components: Sequence[BaseComponent]) -> None:
+    for component in components:
+        if not component.is_built:
+            raise ValidationError(f"{component.__class__.__name__} is not built!")
+        validate_is_built(component.children)
 
 
 def _convert_children_to_list(children: Children) -> list[BaseComponent]:
@@ -88,31 +99,31 @@ def _extract_additional_attributes(extra_dict: dict[str, Any]) -> list[Attribute
 
 
 def _split_attributes_and_modifiers(
-    items: Sequence[ModifiersOrAttributes],
+    items: ModifiersOrAttributes,
 ) -> tuple[list[Attribute], list[Modifier]]:
     def split_recursive(
-        items: Sequence[ModifiersOrAttributes],
+        item: ModifiersOrAttributes,
         attrs: list[Attribute],
         mods: list[Modifier],
     ) -> None:
-        for item in items:
-            match item:
-                case None:
-                    continue
-                case str():
-                    attrs.append(attribute_string_handler(item))
-                case Attribute():
-                    attrs.append(item)
-                case Modifier():
-                    mods.append(item)
-                case Attributes():
-                    attrs.extend(item)
-                case Modifiers():
-                    mods.extend(item)
-                case Sequence() if not isinstance(item, str):
-                    split_recursive(item, attrs, mods)
-                case _:
-                    raise ValueError(f"Invalid attribute/modifier: {item}")
+        match item:
+            case None:
+                return
+            case str():
+                attrs.append(attribute_string_handler(item))
+            case Attribute():
+                attrs.append(item)
+            case Modifier():
+                mods.append(item)
+            case Attributes():
+                attrs.extend(item)
+            case Modifiers():
+                mods.extend(item)
+            case Sequence():
+                for i in item:
+                    split_recursive(i, attrs, mods)
+            case _:
+                raise ValueError(f"Invalid attribute/modifier: {item}")
 
     attrs: list[Attribute] = []
     mods: list[Modifier] = []
@@ -194,61 +205,60 @@ class Builder(BaseModel, frozen=True):
 
 class DefaultBuilder(Builder, frozen=True):
     """Handles building the component tree.
-
     The builder should be fully dependent on the supplied BuildData object.
     ### Build Process
+    **Forward Pass**    (from root to leaves)
+    1. Consume parent provided data into build data's attributes and modifiers
+    2. Apply modifier.apply to the build data
+    3. Push own provided data onto the context
+    4. Call component's build method with unbuilt children
+    5. Recursively build any components returned from build method
+    6. Call build_self with the built results
 
-    **Forward Pass**
-        1. Push data to be provided onto the context
-        2. Fully build children
-
-    **Backward Pass**
-        3. Remove own provided data from the context
-        4. Consume data provided by parents into data's DataDict
-        5. Build the component by supplying the built children and write result to data.result
+    **Backward Pass**   (from leaves to root)
+    1. Pop own provided data from the context
+    2. Apply modifier.transform to the built result
     """
 
     data: BuildData
 
     @override
     def build(self) -> list[BaseComponent]:
-        self._before_build_children()
-        children = self._build_children()
-        self._after_build_children()
         self._before_build()
-        self._handle_build(children)
+        with self.data.context.frame(self.data.component):
+            children = self._collect_children()
+            self.data.result = self._handle_build(children)
         self._after_build()
         return self.data.result
 
-    def _before_build_children(self) -> None:
-        provide_data: DataDict = DataDict()
-        self.data.component.provide(provide_data)
-        self.data.context.push(self.data.component, provide_data)
-
-    def _build_children(self) -> list[BaseComponent]:
-        """Builds component's children entirely based on the previously prepared context."""
-        lst: list[BaseComponent] = []
-        for child in self.data.component.children:
-            lst.extend(child.full_build(self.data.context))
-        return lst
-
-    def _after_build_children(self) -> None:
-        self.data.context.pop_frame()
+    def _collect_children(self) -> list[BaseComponent]:
+        """Collects unbuilt children to be passed to the build method."""
+        return list(self.data.component.children)
 
     def _before_build(self) -> None:
         self.data.component.consume(self.data)
         for modifier in self.data.modifiers:
             modifier.apply(self.data)
 
-    def _handle_build(self, children: list[BaseComponent]) -> None:
-        # first, build children entirely based on context
-        self.data.result = _convert_children_to_list(
+    def _handle_build(self, children: list[BaseComponent]) -> list[BaseComponent]:
+        built = _convert_children_to_list(
             self.data.component.build(self.data, children)
+        )
+        result: list[BaseComponent] = []
+        for component in built:
+            if component.is_built:
+                result.append(component)
+            else:
+                result.extend(component.full_build(self.data.context))
+        return _convert_children_to_list(
+            self.data.component.build_self(self.data, result)
         )
 
     def _after_build(self) -> None:
+        result = self.data.result
         for modifier in self.data.modifiers:
-            modifier.transform(self.data.result)
+            result = modifier.transform(result)
+        self.data.result = result
 
 
 class BaseComponent(BaseModel, auto_frozen=True):
@@ -266,10 +276,9 @@ class BaseComponent(BaseModel, auto_frozen=True):
     is_built: bool = field(default=False)
 
     def __attrs_post_init__(self) -> None:
-        object.__setattr__(self, "modifiers", _convert_inputs_to_modifiers(self._items))
-        object.__setattr__(
-            self, "attributes", _convert_inputs_to_attributes(self._items)
-        )
+        attrs, mods = _split_attributes_and_modifiers(self._items)
+        object.__setattr__(self, "modifiers", FrozenModifiers(mods))
+        object.__setattr__(self, "attributes", FrozenAttributes(attrs))
         super().__attrs_post_init__()
 
     @abstractmethod
@@ -291,7 +300,7 @@ class BaseComponent(BaseModel, auto_frozen=True):
             return evolve(self, modifiers=[new_attrs, self.modifiers])
 
     def provide(self, data: DataDict) -> None:
-        if self.attributes:  # and not built
+        if self.attributes:
             data[Attributes] = self.attributes
         if self.modifiers:
             data[Modifiers] = self.modifiers
@@ -304,8 +313,6 @@ class BaseComponent(BaseModel, auto_frozen=True):
 
     def full_build(self, context: Context) -> list[BaseComponent]:
         """The component should return to its original state after building."""
-        if self.is_built:
-            return [self]
         build_data = BuildData.from_component(self, context)
         return self.builder(data=build_data).build()
 
@@ -314,12 +321,9 @@ class BaseComponent(BaseModel, auto_frozen=True):
             self, children=_convert_children_to_tuple(children), **update_kwargs
         )
 
-    def build_self(self, build: BuildData, children: Children) -> BaseComponent:
+    def build_self(self, build: BuildData, children: Children) -> Children:
         """Returns a copy of this component with given children and is_built=True flag."""
-        print("build_self called on", self.__class__.__name__)
-        return self.copy_with_children(
-            children, modifiers=[build.attributes, build.modifiers], is_built=True
-        )
+        return children
 
     def to_string(
         self,
@@ -395,20 +399,12 @@ class Component(BaseComponent):
         build.data[Theme] = self.theme or build.context.get(Theme)
 
 
-class VoidComponentMixin:
+class NoChildren:
     def __attrs_post_init__(self) -> None:
         component = cast(Component, self)
         if component.children:
-            raise ValueError(f"{component.__class__.__name__} cannot have children.")
-        super().__attrs_post_init__()  # type: ignore
-
-
-class SingleChildComponentMixin:
-    def __attrs_post_init__(self) -> None:
-        component = cast(Component, self)
-        if len(component.children) != 1:
             raise ValueError(
-                f"{component.__class__.__name__} only accepts exactly one child."
+                f"Component '{component.__class__.__name__}' cannot have children."
             )
         super().__attrs_post_init__()  # type: ignore
 
@@ -417,9 +413,14 @@ class Renderable(ABC):
     @abstractmethod
     def render(self) -> htpy.Renderable: ...
 
-    def build(self, build: BuildData, children: Children) -> BaseComponent:
+    def build(self, build: BuildData, children: Children) -> Children:
+        return children
+
+    def build_self(self, build: BuildData, children: Children) -> Children:
         component = cast(BaseComponent, self)
-        return component.build_self(build, children)
+        return component.copy_with_children(
+            children, modifiers=[build.attributes, build.modifiers], is_built=True
+        )
 
 
 class TemplateComponent(Component):
@@ -528,7 +529,7 @@ class ThemedComponent(Component):
 
 
 @final
-class Text(VoidComponentMixin, Renderable, Component):
+class Text(NoChildren, Renderable, Component):
     text: str = ""
 
     @override

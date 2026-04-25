@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from enum import Enum, auto
 
 from typing import (
     Any,
+    Generator,
     Self,
     TypeVar,
     TYPE_CHECKING,
@@ -191,7 +193,17 @@ class Context(BaseModel, frozen=True):
             raise ValueError("No component found in context.")
         return self._context_frames[-1].component
 
-    def push(self, component: BaseComponent, data: DataDict) -> None:
+    @contextmanager
+    def frame(self, component: BaseComponent) -> Generator[None, None, None]:
+        provide_data = DataDict()
+        component.provide(provide_data)
+        self.push_frame(component, provide_data)
+        try:
+            yield
+        finally:
+            self.pop_frame()
+
+    def push_frame(self, component: BaseComponent, data: DataDict) -> None:
         self._context_frames.append(ContextFrame(component=component, data=data))
 
     def pop_frame(self) -> None:

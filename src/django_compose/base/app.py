@@ -7,7 +7,7 @@ from typing_extensions import override
 from django_compose.base.components import (
     BuildData,
     Component,
-    VoidComponentMixin,
+    NoChildren,
 )
 
 from django_compose.base.theme import Theme
@@ -19,7 +19,7 @@ from django_compose.base.context import Context
 from django_compose.base.router import Router
 
 
-class Page(VoidComponentMixin, Component):
+class Page(NoChildren, Component):
     # def __init__(
     #     self,
     #     *modifiers: ModifiersOrAttributes,
