@@ -1,4 +1,4 @@
-from typing import final, override, ClassVar
+from typing import TypeVar, final, override, ClassVar
 
 from .base_components import (
     Component,
@@ -10,7 +10,7 @@ import htpy
 
 
 class HtmlBaseComponent(Renderable, Component):
-    element: ClassVar[htpy.BaseElement]
+    element: ClassVar
 
 
 class HtmlComponent(HtmlBaseComponent):
