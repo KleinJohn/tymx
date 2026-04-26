@@ -8,19 +8,14 @@ if TYPE_CHECKING:
     from django_compose.base.attributes import Attribute, Attributes
     from django_compose.base.context import Context
     from django_compose.base.modifiers.base_modifiers import Modifier, Modifiers
-    from django_compose.base.components import BaseComponent
+    from django_compose.base.components import Component
 
 _T = TypeVar("_T")
 Registry = dict[type[_T], _T]
 
-type TemplateFunctionType = Callable[["Context"], "Children"]
+type BuildFunctionType = Callable[["Context"], "Children"]
 type Children = (
-    None
-    | str
-    | BaseComponent
-    | type[BaseComponent]
-    | TemplateFunctionType
-    | Sequence["Children"]
+    None | str | Component | type[Component] | BuildFunctionType | Sequence["Children"]
 )
 
 type ModifierLike = None | Modifier | Modifiers | Sequence[ModifierLike]
@@ -32,7 +27,7 @@ type ModifiersOrAttributes = None | str | Attribute | Attributes | Modifier | Mo
 type ModifierDict = Registry[Modifier]
 
 __all__ = [
-    "TemplateFunctionType",
+    "BuildFunctionType",
     "Children",
     "AttributeLike",
     "ModifierLike",

@@ -14,7 +14,7 @@ from django_compose.base.types import (
 )
 
 if TYPE_CHECKING:
-    from django_compose.base.components import BaseComponent
+    from django_compose.base.components import Component
     from django_compose.base.context import Context, ContextTraversalSnapshot
 
 
@@ -25,7 +25,7 @@ class BaseModifier(Consumable, frozen=False):  # type: ignore
     @abstractmethod
     def apply(self, context: Context) -> None: ...
     @abstractmethod
-    def transform(self, result: list[BaseComponent]) -> list[BaseComponent]: ...
+    def transform(self, result: list[Component]) -> list[Component]: ...
 
     def __str__(self) -> str:
         return self.__class__.__name__
@@ -39,7 +39,7 @@ class Modifier(BaseModifier):
         pass
 
     @override
-    def transform(self, result: list[BaseComponent]) -> list[BaseComponent]:
+    def transform(self, result: list[Component]) -> list[Component]:
         return result
 
     def __str__(self) -> str:
@@ -122,7 +122,7 @@ class Modifiers(BaseModifier, frozen=False):
         pass
 
     @override
-    def transform(self, result: list[BaseComponent]) -> list[BaseComponent]:
+    def transform(self, result: list[Component]) -> list[Component]:
         return result
 
     def copy(self) -> Self:

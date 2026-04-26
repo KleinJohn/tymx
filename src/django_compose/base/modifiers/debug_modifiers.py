@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from attrs import field
 from typing_extensions import Any
 
-from django_compose.base.components import BaseComponent
+from django_compose.base.components import Component
 from django_compose.base.context import ConsumerPolicy
 
 from .base_modifiers import Modifier
@@ -21,7 +21,7 @@ class PrintContextModifier(Modifier):
     def apply(self, context: Context) -> None:
         print(context)
 
-    def transform(self, result: list[BaseComponent]) -> list[BaseComponent]:
+    def transform(self, result: list[Component]) -> list[Component]:
         return result
 
 
@@ -38,7 +38,7 @@ class PrintComponentsModifier(Modifier):
         print(context)
         print()
 
-    def transform(self, result: list[BaseComponent]) -> list[BaseComponent]:
+    def transform(self, result: list[Component]) -> list[Component]:
         print("After build:")
         for component in result:
             print(component.to_string(self.pretty, self.verbose, **self.print_kwargs))

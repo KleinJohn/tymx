@@ -13,7 +13,7 @@ from django_compose.base.types import AttributeLike
 from django_compose.base.consumable import ConsumerPolicy, Consumable
 
 if TYPE_CHECKING:
-    from django_compose.base.components.base_components import BaseComponent
+    from django_compose.base.components.base_components import Component
     from django_compose.base.context import Context
 
 
@@ -260,7 +260,7 @@ class Attributes(BaseModifier, frozen=False):  # type: ignore
         context.data.attributes.update(self)
 
     @override
-    def transform(self, result: list[BaseComponent]) -> list[BaseComponent]:
+    def transform(self, result: list[Component]) -> list[Component]:
         return result
 
     def __call__(self) -> Self:

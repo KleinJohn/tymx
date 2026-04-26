@@ -19,7 +19,7 @@ from django_compose.base.helpers import BaseModel
 from django_compose.base.modifiers.base_modifiers import Modifiers
 
 if TYPE_CHECKING:
-    from django_compose.base.components.base_components import BaseComponent
+    from django_compose.base.components.base_components import Component
 
 
 class DataDict(dict[type[T_Consumable], T_Consumable]):
@@ -40,7 +40,7 @@ class DataDict(dict[type[T_Consumable], T_Consumable]):
 
 class ContextFrame(BaseModel):
 
-    component: BaseComponent
+    component: Component
     data: DataDict = field(factory=DataDict)
 
     def get(self, key: type[T_Consumable]) -> T_Consumable | None:
@@ -102,7 +102,7 @@ class Context(BaseModel):
         return self._data
 
     @property
-    def parent(self) -> BaseComponent:
+    def parent(self) -> Component:
         if not self.history:
             raise ValueError("No component found in context.")
         return self.history[-1].component
@@ -128,7 +128,7 @@ class Context(BaseModel):
     def pop_frame(self) -> None:
         self.history.pop()
 
-    def create_data(self, component: BaseComponent) -> None:
+    def create_data(self, component: Component) -> None:
         self._data = ContextFrame(component=component)
 
     def get(self, key: type[T_Consumable]) -> T_Consumable | None:

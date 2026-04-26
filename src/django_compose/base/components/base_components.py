@@ -49,15 +49,15 @@ def wrap_components(components: Children) -> Component:
     return Fragment(children=components)
 
 
-def validate_is_built(components: Sequence[BaseComponent]) -> None:
+def validate_is_built(components: Sequence[Component]) -> None:
     for component in components:
         if not component.is_built:
             raise ValidationError(f"{component.__class__.__name__} is not built!")
         validate_is_built(component.children)
 
 
-def _convert_children_to_list(children: Children) -> list[BaseComponent]:
-    def convert_children_recursive(children: Children, result: list[BaseComponent]) -> None:
+def _convert_children_to_list(children: Children) -> list[Component]:
+    def convert_children_recursive(children: Children, result: list[Component]) -> None:
         match children:
             case None:
                 return
@@ -65,7 +65,7 @@ def _convert_children_to_list(children: Children) -> list[BaseComponent]:
                 result.append(children())
             case str():
                 result.append(Text(text=children))
-            case BaseComponent():
+            case Component():
                 result.append(children)
             case Sequence():
                 for child in children:
@@ -77,14 +77,14 @@ def _convert_children_to_list(children: Children) -> list[BaseComponent]:
             case _:
                 raise ValueError("Invalid child type: " + str(type(children)))
 
-    result: list[BaseComponent] = []
+    result: list[Component] = []
     convert_children_recursive(children, result)
     return result
 
 
 def _convert_children_to_tuple(
     children: Children,
-) -> tuple[BaseComponent, ...]:
+) -> tuple[Component, ...]:
     return tuple(_convert_children_to_list(children))
 
 
@@ -159,7 +159,7 @@ class Builder(BaseModel, frozen=True):
     context: Context = field(kw_only=False)
 
     @abstractmethod
-    def build(self, component: BaseComponent) -> list[BaseComponent]:
+    def build(self, component: Component) -> list[Component]:
         """Builds the given component and returns a list of built components to
         replace it in the tree."""
         ...
@@ -185,24 +185,25 @@ class DefaultBuilder(Builder, frozen=True):
     context: Context = field(kw_only=False)
 
     @override
-    def build(self, component: BaseComponent) -> list[BaseComponent]:
+    def build(self, component: Component) -> list[Component]:
         self._before_build(component)
         returned = self._call_build()
         built = self._build_returned(returned)
         return self._after_build(built)
 
-    def _before_build(self, component: BaseComponent) -> None:
+    def _before_build(self, component: Component) -> None:
         self.context.create_data(component)
         component.consume(self.context)
         for modifier in self.context.data.modifiers:
             modifier.apply(self.context)
 
-    def _call_build(self) -> list[BaseComponent]:
+    def _call_build(self) -> list[Component]:
+        print(f"Building {self.context.data.component.__class__.__name__:20}{self.context}")
         component = self.context.data.component
         return _convert_children_to_list(component.build(self.context))
 
-    def _build_returned(self, returned: list[BaseComponent]) -> list[BaseComponent]:
-        result: list[BaseComponent] = []
+    def _build_returned(self, returned: list[Component]) -> list[Component]:
+        result: list[Component] = []
         provide_data = DataDict()
         self.context.data.component.provide(provide_data)
         with self.context.frame(provide_data):
@@ -215,13 +216,13 @@ class DefaultBuilder(Builder, frozen=True):
             self.context.data.component.build_self(self.context, result)
         )
 
-    def _after_build(self, result: list[BaseComponent]) -> list[BaseComponent]:
+    def _after_build(self, result: list[Component]) -> list[Component]:
         for modifier in self.context.data.modifiers:
             result = modifier.transform(result)
         return result
 
 
-class BaseComponent(BaseModel, auto_frozen=True):
+class Component(BaseModel, auto_frozen=True):
     builder: ClassVar[type[Builder]] = DefaultBuilder
 
     _items: ModifiersOrAttributes = field(
@@ -229,7 +230,8 @@ class BaseComponent(BaseModel, auto_frozen=True):
     )
     modifiers: FrozenModifiers = field(init=False)
     attributes: FrozenAttributes = field(init=False)
-    children: tuple[BaseComponent, ...] = field(default=None, converter=_convert_children_to_tuple)
+    children: tuple[Component, ...] = field(default=None, converter=_convert_children_to_tuple)
+    theme: Optional[Theme] = None
     htpy_kwargs: dict[str, str] = field(factory=dict)
     is_built: bool = field(default=False)
 
@@ -238,12 +240,6 @@ class BaseComponent(BaseModel, auto_frozen=True):
         object.__setattr__(self, "modifiers", FrozenModifiers(mods))
         object.__setattr__(self, "attributes", FrozenAttributes(attrs))
         super().__attrs_post_init__()
-
-    @abstractmethod
-    def build(self, context: Context) -> Children: ...
-
-    @abstractmethod
-    def render(self) -> htpy.Node: ...
 
     @class_or_instance_method
     def with_attributes(self_or_cls, **attributes: Any) -> Self:
@@ -255,7 +251,18 @@ class BaseComponent(BaseModel, auto_frozen=True):
             new_attrs = self.attributes.merge(_extract_additional_attributes(attributes))
             return evolve(self, modifiers=[new_attrs, self.modifiers])
 
-    def full_build(self, context: Context) -> list[BaseComponent]:
+    @abstractmethod
+    def build(self, context: Context) -> Children: ...
+
+    def render(self) -> htpy.Node:
+        # Can omit render method if build method returns other components.
+        raise NotImplementedError(
+            "Render method not implemented. "
+            "- Most likely called render on an unbuilt component. "
+            "Make sure your components build down to html."
+        )
+
+    def full_build(self, context: Context) -> list[Component]:
         """The component should return to its original state after building."""
         return self.builder(context).build(self)
 
@@ -264,12 +271,18 @@ class BaseComponent(BaseModel, auto_frozen=True):
             data[Attributes] = self.attributes
         if self.modifiers:
             data[Modifiers] = self.modifiers
+        if self.theme:
+            data[Theme] = self.theme
 
     def consume(self, context: Context) -> None:
         inherited_attributes = context.get(Attributes) or Attributes()
         context.data.attributes = inherited_attributes | self.attributes
         inherited_modifiers = context.get(Modifiers) or Modifiers()
         context.data.modifiers = inherited_modifiers | self.modifiers
+
+        inherited_theme = self.theme or context.get(Theme)
+        if inherited_theme:
+            context.data[Theme] = inherited_theme
 
     def copy_with_children(self, children: Children, **update_kwargs: Any) -> Self:
         return evolve(self, children=_convert_children_to_tuple(children), **update_kwargs)
@@ -323,37 +336,6 @@ class BaseComponent(BaseModel, auto_frozen=True):
         return True
 
 
-class Component(BaseComponent):
-    """Extends BaseComponent with support for themes."""
-
-    theme: Optional[Theme] = None
-
-    @abstractmethod
-    def build(self, context: Context) -> Children: ...
-
-    @override
-    def render(self) -> htpy.Node:
-        # Can omit render method if build method returns other components.
-        raise NotImplementedError(
-            "Render method not implemented. "
-            "- Most likely called render on an unbuilt component. "
-            "Make sure your components build down to html."
-        )
-
-    @override
-    def provide(self, data: DataDict) -> None:
-        super().provide(data)
-        if self.theme:
-            data[Theme] = self.theme
-
-    @override
-    def consume(self, context: Context) -> None:
-        super().consume(context)
-        inherited_theme = self.theme or context.get(Theme)
-        if inherited_theme:
-            context.data[Theme] = inherited_theme
-
-
 class NoChildren:
     def __attrs_post_init__(self) -> None:
         component = cast(Component, self)
@@ -363,18 +345,18 @@ class NoChildren:
 
 
 class Renderable(ABC):
-    """Mixin on BaseComponent for components that build and render themselves."""
+    """Mixin on Component for components that build and render themselves."""
 
     @abstractmethod
     def render(self) -> htpy.Renderable: ...
 
     def build(self, context: Context) -> Children:
-        self = cast(BaseComponent, self)
+        self = cast(Component, self)
         return self.children
 
     def build_self(self, context: Context, children: Children) -> Children:
         """Renderable components return themselves with the is_built flag set to True."""
-        self = cast(BaseComponent, self)
+        self = cast(Component, self)
         return self.copy_with_children(
             children, modifiers=[context.data.attributes, context.data.modifiers], is_built=True
         )
