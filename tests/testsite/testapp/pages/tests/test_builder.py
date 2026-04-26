@@ -5,7 +5,7 @@ from typing import override
 import django_compose.base.components.html_components as html
 from django_compose.base import Page, Router
 from django_compose.base.attributes import classes, id, style
-from django_compose.base.components import BuildData, Component
+from django_compose.base.components import Component
 from django_compose.base.components.base_components import validate_is_built
 from django_compose.base.context import Context
 from django_compose.base.types import Children
@@ -14,10 +14,10 @@ from django_compose.base.types import Children
 class CustomButton(Component):
 
     @override
-    def build(self, build: BuildData, children: Children) -> Children:
+    def build(self, context: Context) -> Children:
         return html.Div[
             "Custom Button Start",
-            html.Button[children],
+            html.Button[self.children],
             "End of Custom Button",
         ]
 
@@ -25,10 +25,10 @@ class CustomButton(Component):
 class CustomDiv(Component):
 
     @override
-    def build(self, build: BuildData, children: Children) -> Children:
+    def build(self, context: Context) -> Children:
         return html.Div[
             "Custom Div Start",
-            CustomButton[children],
+            CustomButton[self.children],
             CustomButton["Me too!", html.Input],
             "Custom Div End",
         ]
@@ -37,9 +37,9 @@ class CustomDiv(Component):
 class BuilderRegressionTests(unittest.TestCase):
     def test_builds_components_returned_from_build(self) -> None:
         context = Context(Router("testapp", pages=[]), Page())
-        component = CustomDiv(
-            [classes("custom-div"), id("custom-div-id")]
-        ).with_attributes(style="color: red;")["Click Me!"]
+        component = CustomDiv([classes("custom-div"), id("custom-div-id")]).with_attributes(
+            style="color: red;"
+        )["Click Me!"]
 
         built_components = component.full_build(context)
 

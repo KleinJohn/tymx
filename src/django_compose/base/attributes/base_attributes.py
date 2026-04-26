@@ -7,13 +7,14 @@ from typing import Any, Self, override, ClassVar, Iterator, TYPE_CHECKING
 
 from attrs import evolve, field
 
-from django_compose.base.context import ConsumerPolicy, Consumable
 from django_compose.base.modifiers import BaseModifier
 from django_compose.base.helpers import BaseModel
 from django_compose.base.types import AttributeLike
+from django_compose.base.consumable import ConsumerPolicy, Consumable
 
 if TYPE_CHECKING:
-    from django_compose.base.components.base_components import BaseComponent, BuildData
+    from django_compose.base.components.base_components import BaseComponent
+    from django_compose.base.context import Context
 
 
 def _clean_kwargs(
@@ -143,9 +144,7 @@ class ComposedAttribute(SimpleAttribute, frozen=True):
     ) -> Self:
         """The flag add_after determines whether to include kwargs before or after values."""
         if kwargs and not self.policy.kwarg_composer:
-            raise ValueError(
-                "kwarg_composer must be provided to use keyword arguments."
-            )
+            raise ValueError("kwarg_composer must be provided to use keyword arguments.")
         kwargs = _clean_kwargs(kwargs, underscores_to_hyphens=clean_underscores)
         # The items in value of type dict are not being cleaned.
         if isinstance(value, dict):
@@ -178,12 +177,8 @@ class ComposedAttribute(SimpleAttribute, frozen=True):
             raise ValueError(
                 f"Cannot merge attributes with different names: {self.name} and {other.name}"
             )
-        self_values: tuple[str, ...] = (
-            self.composed_values if self.composed_values else ()
-        )
-        other_values: tuple[str, ...] = (
-            other.composed_values if other.composed_values else ()
-        )
+        self_values: tuple[str, ...] = self.composed_values if self.composed_values else ()
+        other_values: tuple[str, ...] = other.composed_values if other.composed_values else ()
         total_values = self_values + other_values
         if self.policy.remove_duplicates:
             # Remove duplicates while preserving order
@@ -243,13 +238,9 @@ class Attributes(BaseModifier, frozen=False):  # type: ignore
         if attribute.name not in self:
             self._attributes[attribute.name] = attribute
         elif overwrite:
-            self._attributes[attribute.name] = (
-                self._attributes[attribute.name] | attribute
-            )
+            self._attributes[attribute.name] = self._attributes[attribute.name] | attribute
         else:
-            self._attributes[attribute.name] = (
-                attribute | self._attributes[attribute.name]
-            )
+            self._attributes[attribute.name] = attribute | self._attributes[attribute.name]
 
     def update(self, attributes: AttributeLike, overwrite: bool = True) -> None:
         attr_dict = _convert_to_attributes_dict(attributes)
@@ -265,8 +256,8 @@ class Attributes(BaseModifier, frozen=False):  # type: ignore
         return evolve(self, attributes=[self, other])
 
     @override
-    def apply(self, build: BuildData) -> None:
-        build.attributes.update(self)
+    def apply(self, context: Context) -> None:
+        context.data.attributes.update(self)
 
     @override
     def transform(self, result: list[BaseComponent]) -> list[BaseComponent]:

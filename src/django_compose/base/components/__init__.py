@@ -1,5 +1,4 @@
 from .base_components import (
-    BuildData,
     BaseComponent,
     TemplateComponent,
     Component,
@@ -11,7 +10,6 @@ from .base_components import (
 from .compose_components import PageLink
 
 __all__ = [
-    "BuildData",
     "BaseComponent",
     "Component",
     "NoChildren",

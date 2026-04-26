@@ -5,7 +5,6 @@ from collections.abc import Iterable
 from typing_extensions import override
 
 from django_compose.base.components import (
-    BuildData,
     Component,
     NoChildren,
 )
@@ -70,7 +69,7 @@ class Page(NoChildren, Component):
     #     return self._build_result
 
     @override
-    def build(self, build: BuildData, children: Children) -> Children:
+    def build(self, context: Context) -> Children:
         return Html[
             Head,
             Body,

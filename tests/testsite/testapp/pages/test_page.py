@@ -1,5 +1,4 @@
 from django_compose.base.components.base_components import (
-    BuildData,
     Component,
     validate_is_built,
     wrap_components,
@@ -24,20 +23,20 @@ from django_compose.base.types import Children
 
 class CustomButton(Component):
 
-    def build(self, build: BuildData, children: Children) -> Children:
+    def build(self, context: Context) -> Children:
         return html.Div[
             "Custom Button Start",
-            html.Button[children],
+            html.Button[self.children],
             "End of Custom Button",
         ]
 
 
 class CustomDiv(Component):
 
-    def build(self, build: BuildData, children: Children) -> Children:
+    def build(self, context: Context) -> Children:
         return html.Div[
             "Custom Div Start",
-            CustomButton("custom-button-test")[children],
+            CustomButton("custom-button-test")[self.children],
             CustomButton["Me too!", html.Input],
             "Custom Div End",
         ]

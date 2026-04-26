@@ -7,19 +7,15 @@ from typing import TYPE_CHECKING, Iterator, ClassVar, Self, override
 
 from attrs import evolve, field
 
+from django_compose.base.consumable import Consumable, ConsumerPolicy
 from django_compose.base.types import (
     ModifierDict,
     ModifierLike,
 )
 
-from django_compose.base.context import (
-    Consumable,
-    ConsumerPolicy,
-    ContextTraversalSnapshot,
-)
-
 if TYPE_CHECKING:
-    from django_compose.base.components import BuildData, BaseComponent
+    from django_compose.base.components import BaseComponent
+    from django_compose.base.context import Context, ContextTraversalSnapshot
 
 
 # We need BaseModifiers so that we can ensure that you can't have Modifiers inside Modifiers
@@ -27,7 +23,7 @@ class BaseModifier(Consumable, frozen=False):  # type: ignore
     """Defines the interface for applying modifications to components during the build process."""
 
     @abstractmethod
-    def apply(self, build: BuildData) -> None: ...
+    def apply(self, context: Context) -> None: ...
     @abstractmethod
     def transform(self, result: list[BaseComponent]) -> list[BaseComponent]: ...
 
@@ -39,7 +35,7 @@ class Modifier(BaseModifier):
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.ALL_CHILDREN
 
     @override
-    def apply(self, build: BuildData) -> None:
+    def apply(self, context: Context) -> None:
         pass
 
     @override
@@ -51,9 +47,7 @@ class Modifier(BaseModifier):
 
 
 def _convert_to_modifier_dict(modifiers: ModifierLike) -> ModifierDict:
-    def match_modifiers_recursive(
-        modifier: ModifierLike, mod_dict: ModifierDict
-    ) -> None:
+    def match_modifiers_recursive(modifier: ModifierLike, mod_dict: ModifierDict) -> None:
         match modifier:
             case None:
                 return
@@ -124,7 +118,7 @@ class Modifiers(BaseModifier, frozen=False):
         return merged
 
     @override
-    def apply(self, build: BuildData) -> None:
+    def apply(self, context: Context) -> None:
         pass
 
     @override

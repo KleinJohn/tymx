@@ -6,7 +6,6 @@ from attrs import field
 from typing_extensions import Any
 
 from django_compose.base.components import BaseComponent
-from django_compose.base.components.base_components import BuildData
 from django_compose.base.context import ConsumerPolicy
 
 from .base_modifiers import Modifier
@@ -19,11 +18,11 @@ if TYPE_CHECKING:
 class PrintContextModifier(Modifier):
     consumer_policy = ConsumerPolicy.ALL_CHILDREN
 
-    def apply(self, build: BuildData) -> None:
-        print(build.context)
+    def apply(self, context: Context) -> None:
+        print(context)
 
-    def transform(self, result: list[BaseComponent]) -> None:
-        pass
+    def transform(self, result: list[BaseComponent]) -> list[BaseComponent]:
+        return result
 
 
 class PrintComponentsModifier(Modifier):
@@ -34,15 +33,16 @@ class PrintComponentsModifier(Modifier):
     verbose: bool = True
     print_kwargs: dict[str, Any] = field(factory=dict)
 
-    def apply(self, build: BuildData) -> None:
+    def apply(self, context: Context) -> None:
         print("Before build:")
-        print(build.component.to_string(self.pretty, self.verbose, **self.print_kwargs))
+        print(context)
         print()
 
-    def transform(self, result: list[BaseComponent]) -> None:
+    def transform(self, result: list[BaseComponent]) -> list[BaseComponent]:
         print("After build:")
         for component in result:
             print(component.to_string(self.pretty, self.verbose, **self.print_kwargs))
+        return result
 
 
 # class PrintComponentModifier(Modifier):
