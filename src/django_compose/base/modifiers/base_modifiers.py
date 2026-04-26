@@ -15,7 +15,7 @@ from django_compose.base.types import (
 
 if TYPE_CHECKING:
     from django_compose.base.components import Component
-    from django_compose.base.context import Context, ContextTraversalSnapshot
+    from django_compose.base.context import Context, ContextFrame
 
 
 # We need BaseModifiers so that we can ensure that you can't have Modifiers inside Modifiers
@@ -101,19 +101,19 @@ class Modifiers(BaseModifier, frozen=False):
     def merge_if_policy_applies(
         self,
         other: Consumable | None,
-        context_snapshot: ContextTraversalSnapshot,
-        overwrite: bool = True,
+        context: Context,
+        frame: ContextFrame,
     ) -> Self:
         if not isinstance(other, Modifiers) and other is not None:
             raise TypeError("Can only merge with another Modifiers instance.")
         if other is None:
             return self.__class__(
                 # only include modifiers which can be consumed -> [0]
-                [m for m in self if m.policy_applies(context_snapshot)],
+                [m for m in self if m.policy_applies(context, frame)],
             )
         merged = self.copy()
         for modifier in other:
-            if modifier.policy_applies(context_snapshot):
+            if modifier.policy_applies(context, frame):
                 merged.add(modifier)
         return merged
 

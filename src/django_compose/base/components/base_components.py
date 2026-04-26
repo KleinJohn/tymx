@@ -32,7 +32,7 @@ from django_compose.base.types import (
 from django_compose.base.config import attribute_string_handler
 
 
-from django_compose.base.helpers import BaseModel, class_or_instance_method
+from django_compose.base.helpers import BaseModel, classinstancemethod
 
 from attrs import field, evolve
 
@@ -40,20 +40,9 @@ if TYPE_CHECKING:
     import htpy
 
 
-class ValidationError(Exception):
-    pass
-
-
 def wrap_components(components: Children) -> Component:
     """Wraps the given components in a Fragment for easier handling as a single component."""
     return Fragment(children=components)
-
-
-def validate_is_built(components: Sequence[Component]) -> None:
-    for component in components:
-        if not component.is_built:
-            raise ValidationError(f"{component.__class__.__name__} is not built!")
-        validate_is_built(component.children)
 
 
 def _convert_children_to_list(children: Children) -> list[Component]:
@@ -198,7 +187,6 @@ class DefaultBuilder(Builder, frozen=True):
             modifier.apply(self.context)
 
     def _call_build(self) -> list[Component]:
-        print(f"Building {self.context.data.component.__class__.__name__:20}{self.context}")
         component = self.context.data.component
         return _convert_children_to_list(component.build(self.context))
 
@@ -224,6 +212,7 @@ class DefaultBuilder(Builder, frozen=True):
 
 class Component(BaseModel, auto_frozen=True):
     builder: ClassVar[type[Builder]] = DefaultBuilder
+    builds_itself: ClassVar[bool] = False
 
     _items: ModifiersOrAttributes = field(
         alias="modifiers", repr=False, kw_only=False, default=None
@@ -241,7 +230,7 @@ class Component(BaseModel, auto_frozen=True):
         object.__setattr__(self, "attributes", FrozenAttributes(attrs))
         super().__attrs_post_init__()
 
-    @class_or_instance_method
+    @classinstancemethod
     def with_attributes(self_or_cls, **attributes: Any) -> Self:
         if isinstance(self_or_cls, type):
             cls = cast(type[Self], self_or_cls)
@@ -346,6 +335,8 @@ class NoChildren:
 
 class Renderable(ABC):
     """Mixin on Component for components that build and render themselves."""
+
+    builds_itself = True
 
     @abstractmethod
     def render(self) -> htpy.Renderable: ...

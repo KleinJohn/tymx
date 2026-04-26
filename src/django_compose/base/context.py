@@ -11,7 +11,7 @@ from typing import (
     ClassVar,
 )
 
-from attrs import field, fields
+from attrs import evolve, field, fields
 
 from django_compose.base.attributes.base_attributes import Attributes
 from django_compose.base.consumable import Consumable, ConsumerPolicy, T_Consumable
@@ -41,26 +41,27 @@ class DataDict(dict[type[T_Consumable], T_Consumable]):
 class ContextFrame(BaseModel):
 
     component: Component
-    data: DataDict = field(factory=DataDict)
+    _data: DataDict = field(alias="data", factory=DataDict)
+    level: int
 
     def get(self, key: type[T_Consumable]) -> T_Consumable | None:
-        return self.data.get(key)
+        return self._data.get(key)
 
     @property
     def attributes(self) -> Attributes:
-        return self.data[Attributes]
+        return self._data[Attributes]
 
     @attributes.setter
     def attributes(self, value: Attributes) -> None:
-        self.data[Attributes] = value
+        self._data[Attributes] = value
 
     @property
     def modifiers(self) -> Modifiers:
-        return self.data[Modifiers]
+        return self._data[Modifiers]
 
     @modifiers.setter
     def modifiers(self, value: Modifiers) -> None:
-        self.data[Modifiers] = value
+        self._data[Modifiers] = value
 
     def __getitem__(self, key: type[T_Consumable]) -> T_Consumable:
         value = self.get(key)
@@ -69,22 +70,13 @@ class ContextFrame(BaseModel):
         return value
 
     def __setitem__(self, key: type[T_Consumable], value: T_Consumable) -> None:
-        self.data[key] = value
+        self._data[key] = value
 
     def __contains__(self, key: type[T_Consumable]) -> bool:
-        return key in self.data
+        return key in self._data
 
     def __str__(self) -> str:
-        return str([f.__name__ for f in self.data.keys()])
-
-
-class ContextTraversalSnapshot(BaseModel, frozen=True):
-    """A snapshot of a traversal through the context's data stack"""
-
-    context: Context
-    max_depth: int
-    current_depth: int
-    frame: ContextFrame
+        return str([f.__name__ for f in self._data.keys()])
 
 
 class Context(BaseModel):
@@ -102,15 +94,15 @@ class Context(BaseModel):
         return self._data
 
     @property
-    def parent(self) -> Component:
+    def parent(self) -> Component | None:
         if not self.history:
-            raise ValueError("No component found in context.")
+            return None
         return self.history[-1].component
 
     @contextmanager
     def frame(self, provide_data: DataDict) -> Generator[None, None, None]:
         saved_data = self._data
-        frame = ContextFrame(component=self.data.component, data=provide_data)
+        frame = evolve(self.data, data=provide_data)
         self._data = None
         self.push_frame(frame)
         try:
@@ -119,9 +111,6 @@ class Context(BaseModel):
             self.pop_frame()
             self._data = saved_data
 
-    def get_frame(self, level: int) -> ContextFrame:
-        return self.history[level]
-
     def push_frame(self, frame: ContextFrame) -> None:
         self.history.append(frame)
 
@@ -129,36 +118,28 @@ class Context(BaseModel):
         self.history.pop()
 
     def create_data(self, component: Component) -> None:
-        self._data = ContextFrame(component=component)
+        self._data = ContextFrame(component=component, level=len(self.history))
 
     def get(self, key: type[T_Consumable]) -> T_Consumable | None:
-        if not self.history:
+        if not self.history or not self._data:
             return None
-        if key.consumer_policy.is_built_only and not self.parent.is_built:
+        if key.consumer_policy.is_built_only and not self.data.component.builds_itself:
             return None
-        temp: T_Consumable | None = None
-        depth = len(self.history)
-        for level in reversed(range(depth)):
-            frame = self.get_frame(level)
+        accumulated: T_Consumable | None = None
+        for frame in reversed(self.history):
             consumable = frame.get(key)
-            snapshot = ContextTraversalSnapshot(
-                context=self,
-                max_depth=depth,
-                current_depth=level,
-                frame=frame,
-            )
-            if consumable is None or not consumable.policy_applies(snapshot):
+            if consumable is None or not consumable.policy_applies(self, frame):
                 continue
-            temp = consumable.merge_if_policy_applies(temp, snapshot)
+            accumulated = consumable.merge_if_policy_applies(accumulated, self, frame)
             if key.consume_first_matching:
                 break
-        return temp
+        return accumulated
 
     def __len__(self) -> int:
         return len(self.history)
 
     def __str__(self) -> str:
-        return f"Context(history={[str(s) for s in self.history]}, data={str(self.data)})"
+        return f"Context(history={[str(s) for s in self.history]}, data={str(self.data.component.attributes)})"
 
     def __bool__(self) -> bool:
         return bool(self.history)

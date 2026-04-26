@@ -1,6 +1,5 @@
 from django_compose.base.components.base_components import (
     Component,
-    validate_is_built,
     wrap_components,
 )
 import django_compose.base.components.html_components as html
@@ -10,9 +9,9 @@ from django_compose.base.attributes import (
     style,
     classes,
 )
-from django_compose.base.modifiers import Modifier, Modifiers
 from django_compose.base.app import Page
 from django_compose.base.context import Context
+from django_compose.base.helpers.debug import validate_is_built
 from django_compose.base.modifiers.debug_modifiers import (
     PrintComponentsModifier,
     PrintContextModifier,
@@ -34,7 +33,7 @@ class CustomButton(Component):
 class CustomDiv(Component):
 
     def build(self, context: Context) -> Children:
-        return html.Div[
+        return [
             "Custom Div Start",
             CustomButton("custom-button-test")[self.children],
             CustomButton["Me too!", html.Input],

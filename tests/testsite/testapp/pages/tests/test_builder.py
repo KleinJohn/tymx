@@ -6,7 +6,7 @@ import django_compose.base.components.html_components as html
 from django_compose.base import Page, Router
 from django_compose.base.attributes import classes, id, style
 from django_compose.base.components import Component
-from django_compose.base.components.base_components import validate_is_built
+from django_compose.base.helpers.debug import validate_is_built
 from django_compose.base.context import Context
 from django_compose.base.types import Children
 

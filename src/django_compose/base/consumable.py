@@ -7,7 +7,7 @@ from django_compose.base.helpers.base_model import BaseModel
 
 
 if TYPE_CHECKING:
-    from django_compose.base.context import Context, ContextTraversalSnapshot
+    from django_compose.base.context import Context, ContextFrame
 
 
 T_Consumable = TypeVar("T_Consumable", bound="Consumable")
@@ -80,30 +80,27 @@ class Consumable(BaseModel, frozen=True):
         retrieved = cls.maybe_of(context)
         return retrieved if retrieved is not None else cls()
 
-    def policy_applies(self, context_snapshot: ContextTraversalSnapshot) -> bool:
+    def policy_applies(self, context: Context, frame: ContextFrame) -> bool:
         match self.consumer_policy:
             case ConsumerPolicy.NONE:
                 return False
             case ConsumerPolicy.ALL_CHILDREN:
                 return True
             case ConsumerPolicy.ALL_BUILT_CHILDREN:
-                component = context_snapshot.context.parent
-                return component.is_built if component else False
+                return context.data.component.builds_itself
             case ConsumerPolicy.DIRECT_CHILDREN:
-                return context_snapshot.current_depth == context_snapshot.max_depth - 1
+                return frame.level == len(context.history) - 1
             case ConsumerPolicy.DIRECT_BUILT_CHILDREN:
                 # we can't use current_depth here because there might be unbuilt components in
                 # between, so we need to check all components between
-                frames = context_snapshot.context.history
-                component = context_snapshot.context.parent
                 return all(
-                    not frame.component.is_built
-                    for frame in frames[context_snapshot.current_depth + 1 :]
+                    not frame.component.builds_itself
+                    for frame in context.history[frame.level + 1 :]
                 )
             case ConsumerPolicy.CUSTOM:
-                return self.custom_policy(context_snapshot)
+                return self.custom_policy(context, frame)
 
-    def custom_policy(self, context_snapshot: ContextTraversalSnapshot) -> bool:
+    def custom_policy(self, context: Context, frame: ContextFrame) -> bool:
         raise NotImplementedError()
 
     def merge(self: Self, other: Consumable) -> Self:
@@ -115,7 +112,8 @@ class Consumable(BaseModel, frozen=True):
     def merge_if_policy_applies(
         self: Self,
         other: Self | None,
-        context_snapshot: ContextTraversalSnapshot,
+        context: Context,
+        frame: ContextFrame,
     ) -> Self:
         """Only override if you want to check if policy applies to parts of
         a collection of this consumable."""

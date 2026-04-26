@@ -3,7 +3,6 @@ from .router import Route, Router
 from .context import (
     Context,
     ContextFrame,
-    ContextTraversalSnapshot,
     Consumable,
     ConsumerPolicy,
 )
@@ -18,7 +17,6 @@ __all__ = [
     "Theme",
     "Context",
     "ContextFrame",
-    "ContextTraversalSnapshot",
     "Consumable",
     "ConsumerPolicy",
     "Attributes",

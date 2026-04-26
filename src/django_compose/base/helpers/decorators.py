@@ -1,7 +1,7 @@
 import types
 
 
-class class_or_instance_method:
+class classinstancemethod:
     """
     A custom decorator that binds the method to the class if called on the class,
     and binds it to the instance if called on the instance.
