@@ -49,6 +49,8 @@ class ContextFrame(BaseModel):
 
     @property
     def attributes(self) -> Attributes:
+        if Attributes not in self._data:
+            return Attributes()
         return self._data[Attributes]
 
     @attributes.setter
@@ -57,6 +59,8 @@ class ContextFrame(BaseModel):
 
     @property
     def modifiers(self) -> Modifiers:
+        if Modifiers not in self._data:
+            return Modifiers()
         return self._data[Modifiers]
 
     @modifiers.setter

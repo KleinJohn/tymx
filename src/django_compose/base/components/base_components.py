@@ -333,6 +333,16 @@ class NoChildren:
         super().__attrs_post_init__()  # type: ignore
 
 
+class NoInheritance:
+    def consume(self, context: Context) -> None:
+        # Do not consume any attributes, modifiers, or theme etc.
+        pass
+
+    def provide(self, data: DataDict) -> None:
+        # Do not provide any attributes, modifiers, or theme etc.
+        pass
+
+
 class Renderable(ABC):
     """Mixin on Component for components that build and render themselves."""
 
@@ -459,7 +469,7 @@ class ThemedComponent(Component):
 
 
 @final
-class Text(NoChildren, Renderable, Component):
+class Text(NoInheritance, NoChildren, Renderable, Component):
     text: str = ""
 
     @override
@@ -471,7 +481,7 @@ class Text(NoChildren, Renderable, Component):
         return (f"text='{self.text}'", str(self.attributes), str(self.modifiers))
 
 
-class Fragment(Component):
+class Fragment(NoInheritance, Component):
 
     @override
     def build(self, context: Context) -> Children:
