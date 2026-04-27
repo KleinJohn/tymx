@@ -221,8 +221,7 @@ def _convert_to_attributes_dict(
 
 
 class Attributes(BaseModifier, frozen=False):  # type: ignore
-    consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.DIRECT_BUILT_CHILDREN
-    consume_first_matching: ClassVar[bool] = True
+    consumer_policy = ConsumerPolicy.DIRECT_BUILT_CHILDREN
 
     _attributes: OrderedDict[str, Attribute] = field(
         alias="attributes",

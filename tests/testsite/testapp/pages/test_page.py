@@ -39,6 +39,7 @@ context = Context(Router("testapp", pages=[]), Page())
 component = CustomDiv([classes("custom-div"), id("custom-div-id")]).with_attributes(
     style="color: red;"
 )[html.Input()]
+
 built_components = component.full_build(context)
 validate_is_built(built_components)
 print(wrap_components(built_components).to_string(verbose=True, pretty=True))
