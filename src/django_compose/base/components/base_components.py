@@ -178,7 +178,8 @@ class DefaultBuilder(Builder, frozen=True):
         self._before_build(component)
         returned = self._call_build()
         built = self._build_returned(returned)
-        return self._after_build(built)
+        composed = self._compose_built(built)
+        return self._after_build(composed)
 
     def _before_build(self, component: Component) -> None:
         self.context.create_data(component)
@@ -202,7 +203,10 @@ class DefaultBuilder(Builder, frozen=True):
                     result.append(child)
                 else:
                     result.extend(child.full_build(self.context))
-        return _convert_children_to_list(self.context.data.component.compose(self.context, result))
+        return result
+
+    def _compose_built(self, built: list[Component]) -> list[Component]:
+        return _convert_children_to_list(self.context.data.component.compose(self.context, built))
 
     def _after_build(self, result: list[Component]) -> list[Component]:
         modifiers = self.context.data.modifiers

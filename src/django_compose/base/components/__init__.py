@@ -11,7 +11,6 @@ from .compose_components import PageLink
 
 __all__ = [
     "Component",
-    "Component",
     "NoChildren",
     "RenderableComponent",
     "TemplateComponent",

@@ -1,85 +1,108 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import override
 
-from typing_extensions import override
+from attrs import field
 
-from django_compose.base.components import (
-    Component,
-    NoChildren,
-)
+from django_compose.base.components import Component, NoChildren
 
+from django_compose.base.components.base_components import _convert_children_to_tuple
 from django_compose.base.theme import Theme
 from django_compose.base.types import Children
 
-from .components.html_components import Body, Head, Html
-
-from django_compose.base.context import Context
+from django_compose.base.context import Context, ContextData, DataDict
 from django_compose.base.router import Router
+
+import django_compose.base.components.html_components as html
+from django_compose.base.views.view_base import ComposePageView
 
 
 class Page(NoChildren, Component):
-    # def __init__(
-    #     self,
-    #     *modifiers: ModifiersOrAttributes,
-    #     name: str,
-    #     head: Children,
-    #     body: Children,
-    #     children: Children = None,
-    #     theme: Theme | None = config.default_theme,
-    #     view: type[ComposePageView] | None = None,
-    #     route_pattern: str | None = None,
-    #     data: list[ContextData] | None = None,
-    #     htpy_kwargs: dict[str, str] | None = None,
-    # ):
-    #     super().__init__(
-    #         *modifiers,
-    #         children=children,
-    #         theme=theme,
-    #         htpy_kwargs=htpy_kwargs,
-    #     )
-    #     self.use_props(
-    #         name=name,
-    #         head=head,
-    #         body=body,
-    #         view=view,
-    #         route_pattern=route_pattern,
-    #         data=data,
-    #     )
-    #     self.name = name
-    #     self.head = head
-    #     self.body = body
-    #     self._build_result: DocumentLevelComponent | None = None
-    #     self.view = view or ComposePageView
-    #     self.route_pattern = f"{self.name}/" if route_pattern is None else route_pattern
-    #     self.data = data or []
-    #     if self._theme is None:
-    #         self._theme = default_theme
 
-    # @override
-    # def provide(self, data: DataDict) -> None:
-    #     for d in self.data:
-    #         data[d.__class__] = d
-    #     data.add(self.theme)
-
-    # @override
-    # def full_build(self, context: Context) -> DocumentLevelComponent:
-    #     context = context.copy_with(page=self)
-    #     self._build_result = cast("DocumentLevelComponent", super().full_build(context))
-    #     return self._build_result
+    name: str
+    head: tuple[Component, ...] = field(converter=_convert_children_to_tuple)
+    body: tuple[Component, ...] = field(converter=_convert_children_to_tuple)
+    view: type[ComposePageView] | None = None
+    route_pattern: str | None = None
+    context_data: tuple[ContextData, ...] = field(factory=tuple)
 
     @override
     def build(self, context: Context) -> Children:
-        return Html[
-            Head,
-            Body,
+        return html.Html[
+            html.Head[self.head],
+            html.Body[self.body],
         ]
 
-    # @override
-    # def render(self) -> htpy.Renderable:
-    #     if self._build_result is None:
-    #         raise ValueError("Page must be built before rendering.")
-    #     return self._build_result.render()
+    @override
+    def provide(self, data: DataDict) -> None:
+        super().provide(data)
+        for d in self.context_data:
+            data.add(d)
+
+
+# class Page(NoChildren, Component):
+# def __init__(
+#     self,
+#     *modifiers: ModifiersOrAttributes,
+#     name: str,
+#     head: Children,
+#     body: Children,
+#     children: Children = None,
+#     theme: Theme | None = config.default_theme,
+#     view: type[ComposePageView] | None = None,
+#     route_pattern: str | None = None,
+#     data: list[ContextData] | None = None,
+#     htpy_kwargs: dict[str, str] | None = None,
+# ):
+#     super().__init__(
+#         *modifiers,
+#         children=children,
+#         theme=theme,
+#         htpy_kwargs=htpy_kwargs,
+#     )
+#     self.use_props(
+#         name=name,
+#         head=head,
+#         body=body,
+#         view=view,
+#         route_pattern=route_pattern,
+#         data=data,
+#     )
+#     self.name = name
+#     self.head = head
+#     self.body = body
+#     self._build_result: DocumentLevelComponent | None = None
+#     self.view = view or ComposePageView
+#     self.route_pattern = f"{self.name}/" if route_pattern is None else route_pattern
+#     self.data = data or []
+#     if self._theme is None:
+#         self._theme = default_theme
+
+# @override
+# def provide(self, data: DataDict) -> None:
+#     for d in self.data:
+#         data[d.__class__] = d
+#     data.add(self.theme)
+
+# @override
+# def full_build(self, context: Context) -> DocumentLevelComponent:
+#     context = context.copy_with(page=self)
+#     self._build_result = cast("DocumentLevelComponent", super().full_build(context))
+#     return self._build_result
+
+# @override
+# def build(self, context: Context) -> Children:
+#     return Html[
+#         Head,
+#         Body,
+#     ]
+
+# @override
+# def render(self) -> htpy.Renderable:
+#     if self._build_result is None:
+#         raise ValueError("Page must be built before rendering.")
+#     return self._build_result.render()
 
 
 class ComposeApp:
