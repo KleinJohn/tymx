@@ -1,15 +1,11 @@
-from typing import TypeVar, final, override, ClassVar
+from typing import final, override, ClassVar
 
-from .base_components import (
-    Component,
-    Renderable,
-    NoChildren,
-)
+from .base_components import RenderableComponent, NoChildren
 
 import htpy
 
 
-class HtmlBaseComponent(Renderable, Component):
+class HtmlBaseComponent(RenderableComponent):
     element: ClassVar
 
 

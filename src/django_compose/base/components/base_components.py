@@ -200,9 +200,7 @@ class DefaultBuilder(Builder, frozen=True):
                     result.append(child)
                 else:
                     result.extend(child.full_build(self.context))
-        return _convert_children_to_list(
-            self.context.data.component.build_self(self.context, result)
-        )
+        return _convert_children_to_list(self.context.data.component.compose(self.context, result))
 
     def _after_build(self, result: list[Component]) -> list[Component]:
         for modifier in self.context.data.modifiers:
@@ -241,7 +239,9 @@ class Component(BaseModel, auto_frozen=True):
             return evolve(self, modifiers=[new_attrs, self.modifiers])
 
     @abstractmethod
-    def build(self, context: Context) -> Children: ...
+    def build(self, context: Context) -> Children:
+        """Defines the strategy for replacing this component in the forward pass."""
+        ...
 
     def render(self) -> htpy.Node:
         # Can omit render method if build method returns other components.
@@ -250,6 +250,16 @@ class Component(BaseModel, auto_frozen=True):
             "- Most likely called render on an unbuilt component. "
             "Make sure your components build down to html."
         )
+
+    def compose(self, context: Context, children: Children) -> Children:
+        """Defines the strategy for replacing this component in the backward pass.
+
+        The given children are at this point already built.
+        By default, the component is replaced with its children. Renderable components
+        instead return themselves with the built children replacing the unbuilt ones
+        and the is_built flag set to True.
+        """
+        return children
 
     def full_build(self, context: Context) -> list[Component]:
         """The component should return to its original state after building."""
@@ -276,31 +286,37 @@ class Component(BaseModel, auto_frozen=True):
     def copy_with_children(self, children: Children, **update_kwargs: Any) -> Self:
         return evolve(self, children=_convert_children_to_tuple(children), **update_kwargs)
 
-    def build_self(self, context: Context, children: Children) -> Children:
-        """For composed components, building itself means replacing itself with its children."""
-        return children
-
     def to_string(
         self,
         pretty: bool = False,
         verbose: bool = False,
         level: int = 0,
-        tab_length: int = 4,
+        _last: bool = True,
+        _prefix: str = "",
     ) -> str:
-        pre_str = (" " * level * tab_length + ("- " if self.children else "")) * int(pretty)
         v_str = str(self) if verbose else self.__class__.__name__
-        if pretty:
-            child_str = "".join(
-                "\n" + c.to_string(pretty, verbose, level + 1) for c in self.children
-            )
-        else:
+
+        if not pretty:
             if self.children:
-                child_str = (
-                    f"[{', '.join(c.to_string(pretty, verbose, level + 1) for c in self.children)}]"
-                )
+                child_str = f"[{', '.join(c.to_string(False, verbose) for c in self.children)}]"
             else:
                 child_str = ""
-        return f"{pre_str}{v_str}{child_str}"
+            return f"{v_str}{child_str}"
+
+        connector = "└── " if _last else "├── "
+        line = (_prefix + connector + v_str) if level > 0 else v_str
+
+        if not self.children:
+            return line
+
+        child_prefix = _prefix + ("    " if _last else "│   ")
+        child_lines = [
+            c.to_string(
+                True, verbose, level + 1, _last=(i == len(self.children) - 1), _prefix=child_prefix
+            )
+            for i, c in enumerate(self.children)
+        ]
+        return line + "\n" + "\n".join(child_lines)
 
     def _verbose_string_parts(self) -> Iterable[str]:
         return (
@@ -325,25 +341,29 @@ class Component(BaseModel, auto_frozen=True):
         return True
 
 
-class NoChildren:
+class NoChildren(Component):
+
+    @override
     def __attrs_post_init__(self) -> None:
-        component = cast(Component, self)
-        if component.children:
-            raise ValueError(f"Component '{component.__class__.__name__}' cannot have children.")
+        if self.children:
+            raise ValueError(f"Component '{self.__class__.__name__}' cannot have children.")
         super().__attrs_post_init__()  # type: ignore
 
 
-class NoInheritance:
+class NoInheritance(Component):
+
+    @override
     def consume(self, context: Context) -> None:
         # Do not consume any attributes, modifiers, or theme etc.
         pass
 
+    @override
     def provide(self, data: DataDict) -> None:
         # Do not provide any attributes, modifiers, or theme etc.
         pass
 
 
-class Renderable(ABC):
+class RenderableComponent(Component, ABC):
     """Mixin on Component for components that build and render themselves."""
 
     builds_itself = True
@@ -351,13 +371,13 @@ class Renderable(ABC):
     @abstractmethod
     def render(self) -> htpy.Renderable: ...
 
+    @override
     def build(self, context: Context) -> Children:
-        self = cast(Component, self)
         return self.children
 
-    def build_self(self, context: Context, children: Children) -> Children:
+    @override
+    def compose(self, context: Context, children: Children) -> Children:
         """Renderable components return themselves with the is_built flag set to True."""
-        self = cast(Component, self)
         return self.copy_with_children(
             children, modifiers=[context.data.attributes, context.data.modifiers], is_built=True
         )
@@ -469,7 +489,7 @@ class ThemedComponent(Component):
 
 
 @final
-class Text(NoInheritance, NoChildren, Renderable, Component):
+class Text(NoInheritance, NoChildren, RenderableComponent, Component):
     text: str = ""
 
     @override
@@ -481,6 +501,7 @@ class Text(NoInheritance, NoChildren, Renderable, Component):
         return (f"text='{self.text}'", str(self.attributes), str(self.modifiers))
 
 
+@final
 class Fragment(NoInheritance, Component):
 
     @override
@@ -493,8 +514,12 @@ class Fragment(NoInheritance, Component):
         pretty: bool = False,
         verbose: bool = False,
         level: int = 0,
-        tab_length: int = 4,
+        _last: bool = True,
+        _prefix: str = "",
     ) -> str:
         return "\n".join(
-            child.to_string(pretty, verbose, level, tab_length) for child in self.children
+            c.to_string(
+                pretty, verbose, level, _last=(i == len(self.children) - 1), _prefix=_prefix
+            )
+            for i, c in enumerate(self.children)
         )
