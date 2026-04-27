@@ -72,13 +72,8 @@ class Consumable(BaseModel, frozen=True):
     consume_first_matching: ClassVar[bool] = False
 
     @classmethod
-    def maybe_of(cls: type[T_Consumable], context: Context) -> T_Consumable | None:
+    def of(cls: type[T_Consumable], context: Context) -> T_Consumable | None:
         return context.get(cls)
-
-    @classmethod
-    def of(cls: type[T_Consumable], context: Context) -> T_Consumable:
-        retrieved = cls.maybe_of(context)
-        return retrieved if retrieved is not None else cls()
 
     def policy_applies(self, context: Context, frame: ContextFrame) -> bool:
         match self.consumer_policy:

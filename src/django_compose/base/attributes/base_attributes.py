@@ -256,7 +256,9 @@ class Attributes(BaseModifier, frozen=False):  # type: ignore
 
     @override
     def apply(self, context: Context) -> None:
-        context.data.attributes.update(self)
+        attributes = context.data.attributes
+        if attributes is not None:
+            attributes.update(self)
 
     @override
     def transform(self, result: list[Component]) -> list[Component]:

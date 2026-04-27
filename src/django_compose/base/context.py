@@ -48,20 +48,16 @@ class ContextFrame(BaseModel):
         return self._data.get(key)
 
     @property
-    def attributes(self) -> Attributes:
-        if Attributes not in self._data:
-            return Attributes()
-        return self._data[Attributes]
+    def attributes(self) -> Attributes | None:
+        return self._data.get(Attributes)
 
     @attributes.setter
     def attributes(self, value: Attributes) -> None:
         self._data[Attributes] = value
 
     @property
-    def modifiers(self) -> Modifiers:
-        if Modifiers not in self._data:
-            return Modifiers()
-        return self._data[Modifiers]
+    def modifiers(self) -> Modifiers | None:
+        return self._data.get(Modifiers)
 
     @modifiers.setter
     def modifiers(self, value: Modifiers) -> None:
@@ -143,7 +139,8 @@ class Context(BaseModel):
         return len(self.history)
 
     def __str__(self) -> str:
-        return f"Context(history={[str(s) for s in self.history]}, data={str(self.data.component.attributes)})"
+        c_name = self._data.component.__class__.__name__ if self._data else None
+        return f"Context(current={c_name}, history={[str(s) for s in self.history]})"
 
     def __bool__(self) -> bool:
         return bool(self.history)

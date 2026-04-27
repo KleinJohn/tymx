@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from attrs import field
 from typing_extensions import Any
@@ -35,7 +35,7 @@ class PrintComponentsModifier(Modifier):
 
     def apply(self, context: Context) -> None:
         print("Before build:")
-        print(context)
+        print(context.data.component.to_string(self.pretty, self.verbose, **self.print_kwargs))
         print()
 
     def transform(self, result: list[Component]) -> list[Component]:

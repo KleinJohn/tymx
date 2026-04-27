@@ -183,8 +183,10 @@ class DefaultBuilder(Builder, frozen=True):
     def _before_build(self, component: Component) -> None:
         self.context.create_data(component)
         component.consume(self.context)
-        for modifier in self.context.data.modifiers:
-            modifier.apply(self.context)
+        modifiers = self.context.data.modifiers
+        if modifiers is not None:
+            for modifier in modifiers:
+                modifier.apply(self.context)
 
     def _call_build(self) -> list[Component]:
         component = self.context.data.component
@@ -203,8 +205,10 @@ class DefaultBuilder(Builder, frozen=True):
         return _convert_children_to_list(self.context.data.component.compose(self.context, result))
 
     def _after_build(self, result: list[Component]) -> list[Component]:
-        for modifier in self.context.data.modifiers:
-            result = modifier.transform(result)
+        modifiers = self.context.data.modifiers
+        if modifiers is not None:
+            for modifier in modifiers:
+                result = modifier.transform(result)
         return result
 
 

@@ -26,7 +26,7 @@ class CustomButton(Component):
 class CustomDiv(Component):
 
     def build(self, context: Context) -> Children:
-        return [
+        return html.Div[
             "Custom Div Start",
             html.Div("custom-div-class"),
             CustomButton("custom-button-test")[self.children],
@@ -36,13 +36,17 @@ class CustomDiv(Component):
 
 
 context = Context(Router("testapp", pages=[]), Page())
-component = CustomDiv([classes("custom-div"), id("custom-div-id")]).with_attributes(
-    style="color: red;"
+component = CustomDiv(
+    [
+        classes("custom-div"),
+        id("custom-div-id"),
+        PrintComponentsModifier(),
+    ]
 )[html.Input()]
 
 built_components = component.full_build(context)
 validate_is_built(built_components)
-print(wrap_components(built_components).to_string(verbose=True, pretty=True))
+# print(wrap_components(built_components).to_string(verbose=True, pretty=True))
 
 
 # router = Router("testapp", pages=[])
