@@ -36,10 +36,12 @@ class CustomDiv(Component):
 
 class BuilderRegressionTests(unittest.TestCase):
     def test_builds_components_returned_from_build(self) -> None:
-        context = Context(Router("testapp", pages=[]), Page())
-        component = CustomDiv([classes("custom-div"), id("custom-div-id")]).with_attributes(
-            style="color: red;"
-        )["Click Me!"]
+        context = Context(
+            Router("testapp", pages=[]), Page(name="test", head=[], body=[])
+        )
+        component = CustomDiv(
+            [classes("custom-div"), id("custom-div-id")]
+        ).with_attributes(style="color: red;")["Click Me!"]
 
         built_components = component.full_build(context)
 

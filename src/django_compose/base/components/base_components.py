@@ -2,15 +2,19 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Sequence
-from typing import TYPE_CHECKING, ClassVar, cast
 
-from typing_extensions import (
+from typing import (
     Any,
     Self,
     Optional,
+    ClassVar,
     final,
     override,
+    cast,
+    TYPE_CHECKING,
 )
+
+import attrs
 
 from django_compose.base.context import Context, DataDict
 from django_compose.base.attributes import (
@@ -144,6 +148,10 @@ def _convert_inputs_to_attributes(items: ModifiersOrAttributes) -> FrozenAttribu
             return FrozenAttributes()
 
 
+def children_field(**kwargs) -> Any:
+    return field(converter=_convert_children_to_tuple, **kwargs)
+
+
 class Builder(BaseModel, frozen=True):
     context: Context = field(kw_only=False)
 
@@ -206,7 +214,9 @@ class DefaultBuilder(Builder, frozen=True):
         return result
 
     def _compose_built(self, built: list[Component]) -> list[Component]:
-        return _convert_children_to_list(self.context.data.component.compose(self.context, built))
+        return _convert_children_to_list(
+            self.context.data.component.compose(self.context, built)
+        )
 
     def _after_build(self, result: list[Component]) -> list[Component]:
         modifiers = self.context.data.modifiers
@@ -225,11 +235,14 @@ class Component(BaseModel, auto_frozen=True):
     )
     modifiers: FrozenModifiers = field(init=False)
     attributes: FrozenAttributes = field(init=False)
-    children: tuple[Component, ...] = field(default=None, converter=_convert_children_to_tuple)
+    children: tuple[Component, ...] = field(
+        converter=_convert_children_to_tuple, default=None
+    )
     theme: Optional[Theme] = None
     htpy_kwargs: dict[str, str] = field(factory=dict)
     is_built: bool = field(default=False)
 
+    @override
     def __attrs_post_init__(self) -> None:
         attrs, mods = _split_attributes_and_modifiers(self._items)
         object.__setattr__(self, "modifiers", FrozenModifiers(mods))
@@ -243,7 +256,9 @@ class Component(BaseModel, auto_frozen=True):
             return cls(_extract_additional_attributes(attributes))
         else:
             self = cast(Self, self_or_cls)
-            new_attrs = self.attributes.merge(_extract_additional_attributes(attributes))
+            new_attrs = self.attributes.merge(
+                _extract_additional_attributes(attributes)
+            )
             return evolve(self, modifiers=[new_attrs, self.modifiers])
 
     @abstractmethod
@@ -292,7 +307,9 @@ class Component(BaseModel, auto_frozen=True):
             context.data[Theme] = inherited_theme
 
     def copy_with_children(self, children: Children, **update_kwargs: Any) -> Self:
-        return evolve(self, children=_convert_children_to_tuple(children), **update_kwargs)
+        return evolve(
+            self, children=_convert_children_to_tuple(children), **update_kwargs
+        )
 
     def to_string(
         self,
@@ -306,7 +323,9 @@ class Component(BaseModel, auto_frozen=True):
 
         if not pretty:
             if self.children:
-                child_str = f"[{', '.join(c.to_string(False, verbose) for c in self.children)}]"
+                child_str = (
+                    f"[{', '.join(c.to_string(False, verbose) for c in self.children)}]"
+                )
             else:
                 child_str = ""
             return f"{v_str}{child_str}"
@@ -320,7 +339,11 @@ class Component(BaseModel, auto_frozen=True):
         child_prefix = _prefix + ("    " if _last else "│   ")
         child_lines = [
             c.to_string(
-                True, verbose, level + 1, _last=(i == len(self.children) - 1), _prefix=child_prefix
+                True,
+                verbose,
+                level + 1,
+                _last=(i == len(self.children) - 1),
+                _prefix=child_prefix,
             )
             for i, c in enumerate(self.children)
         ]
@@ -354,7 +377,9 @@ class NoChildren(Component):
     @override
     def __attrs_post_init__(self) -> None:
         if self.children:
-            raise ValueError(f"Component '{self.__class__.__name__}' cannot have children.")
+            raise ValueError(
+                f"Component '{self.__class__.__name__}' cannot have children."
+            )
         super().__attrs_post_init__()  # type: ignore
 
 
@@ -387,7 +412,9 @@ class RenderableComponent(Component, ABC):
     def compose(self, context: Context, children: Children) -> Children:
         """Renderable components return themselves with the is_built flag set to True."""
         return self.copy_with_children(
-            children, modifiers=[context.data.attributes, context.data.modifiers], is_built=True
+            children,
+            modifiers=[context.data.attributes, context.data.modifiers],
+            is_built=True,
         )
 
 
@@ -527,7 +554,11 @@ class Fragment(NoInheritance, Component):
     ) -> str:
         return "\n".join(
             c.to_string(
-                pretty, verbose, level, _last=(i == len(self.children) - 1), _prefix=_prefix
+                pretty,
+                verbose,
+                level,
+                _last=(i == len(self.children) - 1),
+                _prefix=_prefix,
             )
             for i, c in enumerate(self.children)
         )
