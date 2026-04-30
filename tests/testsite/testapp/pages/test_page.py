@@ -1,6 +1,9 @@
 from attrs import field
 
-from django_compose.base.components.base_components import Component, _convert_children_to_tuple
+from django_compose.base.components.base_components import (
+    Component,
+    _convert_children_to_tuple,
+)
 from django_compose.base.attributes import disabled, id, style, classes
 from django_compose.base.app import Page
 from django_compose.base.context import Context
@@ -24,13 +27,13 @@ class CustomButton(Component):
 
 class CustomDiv(Component):
 
-    test_children: Children = field(converter=_convert_children_to_tuple)
+    test_children: tuple[Component, ...] = field(converter=_convert_children_to_tuple)
 
     def build(self, context: Context) -> Children:
         return [
             "Custom Div Start",
             self.test_children,
-            html.Div("custom-div-class"),
+            3 * html.Div("custom-div-class"),
             CustomButton("custom-button-test")[self.children],
             CustomButton["Me too!", html.Input],
             "Custom Div End",
@@ -50,26 +53,16 @@ index_page = Page(
             test_children=html.Div("test-children"),
         )[
             html.Input(),
-        ]
+        ](
+            id("overwritten-div-id"),
+        )
     ],
 )
 
 
 context = Context(Router("testapp", pages=[]), index_page)
-component = CustomDiv(
-    [
-        classes("custom-div"),
-        id("custom-div-id"),
-        PrintComponentsModifier(),
-    ],
-    test_children=html.Div("test-children"),
-)[
-    html.Input(),
-]
 
-# index_page.full_build(context)
-
-built_components = component.full_build(context)
+built_components = index_page.full_build(context)
 validate_is_built(built_components)
 
 

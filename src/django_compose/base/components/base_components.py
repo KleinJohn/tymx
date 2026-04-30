@@ -306,10 +306,8 @@ class Component(BaseModel, auto_frozen=True):
         if inherited_theme:
             context.data[Theme] = inherited_theme
 
-    def copy_with_children(self, children: Children, **update_kwargs: Any) -> Self:
-        return evolve(
-            self, children=_convert_children_to_tuple(children), **update_kwargs
-        )
+    def copy(self, **update_kwargs: Any) -> Self:
+        return evolve(self, **update_kwargs)
 
     def to_string(
         self,
@@ -355,6 +353,31 @@ class Component(BaseModel, auto_frozen=True):
             str(self.modifiers),
         )
 
+    def __getitem__(self, *children: Children) -> Self:
+        return self.copy(children=children)
+
+    def __class_getitem__(cls: type[Self], *children: Children) -> Self:
+        return cls(children=_convert_children_to_tuple(children))
+
+    def __call__(
+        self,
+        modifiers: ModifiersOrAttributes = None,
+        *,
+        children: Children = None,
+        theme: Theme | None = None,
+        htpy_kwargs: dict[str, str] | None = None,
+        is_built: bool = False,
+        **kwargs: Any,
+    ) -> Any:
+        return self.copy(
+            modifiers=modifiers,
+            children=children,
+            theme=theme,
+            htpy_kwargs=htpy_kwargs,
+            is_built=is_built,
+            **kwargs,
+        )
+
     def __str__(self) -> str:
         v_content = " | ".join(filter(bool, self._verbose_string_parts()))
         if v_content:
@@ -362,14 +385,16 @@ class Component(BaseModel, auto_frozen=True):
         else:
             return self.__class__.__name__
 
-    def __getitem__(self, *children: Children) -> Self:
-        return self.copy_with_children(children)
-
-    def __class_getitem__(cls: type[Self], *children: Children) -> Self:
-        return cls(children=_convert_children_to_tuple(children))
-
     def __bool__(self) -> bool:
         return True
+
+    def __mul__(self, other: int) -> list[Self]:
+        if not isinstance(other, int):
+            raise TypeError("Can only multiply Component by an integer.")
+        return [self.copy() for _ in range(other)]
+
+    def __rmul__(self, other: int) -> list[Self]:
+        return self.__mul__(other)
 
 
 class NoChildren(Component):
@@ -411,8 +436,8 @@ class RenderableComponent(Component, ABC):
     @override
     def compose(self, context: Context, children: Children) -> Children:
         """Renderable components return themselves with the is_built flag set to True."""
-        return self.copy_with_children(
-            children,
+        return self.copy(
+            children=children,
             modifiers=[context.data.attributes, context.data.modifiers],
             is_built=True,
         )
