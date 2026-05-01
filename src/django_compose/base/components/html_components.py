@@ -8,6 +8,9 @@ import htpy
 class HtmlBaseComponent(RenderableComponent):
     element: ClassVar
 
+    @override
+    def render(self) -> htpy.Renderable: ...
+
 
 class HtmlComponent(HtmlBaseComponent):
     element: ClassVar[htpy.Element]

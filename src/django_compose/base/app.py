@@ -7,7 +7,7 @@ from attrs import field
 
 from django_compose.base.components import Component, NoChildren
 
-from django_compose.base.components.base_components import _convert_children_to_tuple
+from django_compose.base.components.base_components import children_to_tuple
 from django_compose.base.theme import Theme
 from django_compose.base.types import Children
 
@@ -21,8 +21,8 @@ from django_compose.base.views.view_base import ComposePageView
 class Page(NoChildren, Component):
 
     name: str
-    head: tuple[Component, ...] = field(converter=_convert_children_to_tuple)
-    body: tuple[Component, ...] = field(converter=_convert_children_to_tuple)
+    head: tuple[Component, ...] = field(converter=children_to_tuple)
+    body: tuple[Component, ...] = field(converter=children_to_tuple)
     view: type[ComposePageView] | None = None
     route_pattern: str | None = None
     context_data: tuple[ContextData, ...] = field(factory=tuple)

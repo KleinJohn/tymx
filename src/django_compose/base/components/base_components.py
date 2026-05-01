@@ -6,15 +6,11 @@ from collections.abc import Callable, Iterable, Sequence
 from typing import (
     Any,
     Self,
-    Optional,
     ClassVar,
+    TypeVar,
     final,
     override,
-    cast,
-    TYPE_CHECKING,
 )
-
-import attrs
 
 from django_compose.base.context import Context, DataDict
 from django_compose.base.attributes import (
@@ -30,6 +26,7 @@ from django_compose.base.modifiers.base_modifiers import (
 )
 from django_compose.base.theme import Theme
 from django_compose.base.types import (
+    BuildFunctionType,
     Children,
     ModifiersOrAttributes,
 )
@@ -40,16 +37,17 @@ from django_compose.base.helpers import BaseModel, classinstancemethod
 
 from attrs import field, evolve
 
-if TYPE_CHECKING:
-    import htpy
+import htpy
+
+T_Component = TypeVar("T_Component", bound="Component")
 
 
 def wrap_components(components: Children) -> Component:
     """Wraps the given components in a Fragment for easier handling as a single component."""
-    return Fragment(children=components)
+    return Fragment(children=components, is_built=True)
 
 
-def _convert_children_to_list(children: Children) -> list[Component]:
+def children_to_list(children: Children) -> list[Component]:
     def convert_children_recursive(children: Children, result: list[Component]) -> None:
         match children:
             case None:
@@ -64,9 +62,7 @@ def _convert_children_to_list(children: Children) -> list[Component]:
                 for child in children:
                     convert_children_recursive(child, result)
             case Callable():
-                # TODO
-                # return [TemplateComponent(template_function=children)]
-                result.append(Text(text="UNDEFINED"))
+                result.append(TemplateComponent(template_function=children))
             case _:
                 raise ValueError("Invalid child type: " + str(type(children)))
 
@@ -75,10 +71,10 @@ def _convert_children_to_list(children: Children) -> list[Component]:
     return result
 
 
-def _convert_children_to_tuple(
+def children_to_tuple(
     children: Children,
 ) -> tuple[Component, ...]:
-    return tuple(_convert_children_to_list(children))
+    return tuple(children_to_list(children))
 
 
 def _extract_additional_attributes(extra_dict: dict[str, Any]) -> list[Attribute]:
@@ -149,10 +145,10 @@ def _convert_inputs_to_attributes(items: ModifiersOrAttributes) -> FrozenAttribu
 
 
 def children_field(**kwargs) -> Any:
-    return field(converter=_convert_children_to_tuple, **kwargs)
+    return field(converter=children_to_tuple, **kwargs)
 
 
-class Builder(BaseModel, frozen=True):
+class Builder(BaseModel):
     context: Context = field(kw_only=False)
 
     @abstractmethod
@@ -162,7 +158,7 @@ class Builder(BaseModel, frozen=True):
         ...
 
 
-class DefaultBuilder(Builder, frozen=True):
+class ComponentBuilder(Builder):
     """Handles building the component tree.
     The builder should be fully dependent on the supplied BuildData object.
     ### Build Process
@@ -199,7 +195,7 @@ class DefaultBuilder(Builder, frozen=True):
 
     def _call_build(self) -> list[Component]:
         component = self.context.data.component
-        return _convert_children_to_list(component.build(self.context))
+        return children_to_list(component.build(self.context))
 
     def _build_returned(self, returned: list[Component]) -> list[Component]:
         result: list[Component] = []
@@ -214,7 +210,7 @@ class DefaultBuilder(Builder, frozen=True):
         return result
 
     def _compose_built(self, built: list[Component]) -> list[Component]:
-        return _convert_children_to_list(
+        return children_to_list(
             self.context.data.component.compose(self.context, built)
         )
 
@@ -227,7 +223,7 @@ class DefaultBuilder(Builder, frozen=True):
 
 
 class Component(BaseModel, auto_frozen=True):
-    builder: ClassVar[type[Builder]] = DefaultBuilder
+    builder: ClassVar[type[Builder]] = ComponentBuilder
     builds_itself: ClassVar[bool] = False
 
     _items: ModifiersOrAttributes = field(
@@ -235,10 +231,8 @@ class Component(BaseModel, auto_frozen=True):
     )
     modifiers: FrozenModifiers = field(init=False)
     attributes: FrozenAttributes = field(init=False)
-    children: tuple[Component, ...] = field(
-        converter=_convert_children_to_tuple, default=None
-    )
-    theme: Optional[Theme] = None
+    children: tuple[Component, ...] = field(converter=children_to_tuple, default=None)
+    theme: Theme | None = None
     htpy_kwargs: dict[str, str] = field(factory=dict)
     is_built: bool = field(default=False)
 
@@ -250,12 +244,12 @@ class Component(BaseModel, auto_frozen=True):
         super().__attrs_post_init__()
 
     @classinstancemethod
-    def with_attributes(self_or_cls, **attributes: Any) -> Self:
-        if isinstance(self_or_cls, type):
-            cls = cast(type[Self], self_or_cls)
-            return cls(_extract_additional_attributes(attributes))
+    def with_attributes(
+        self: type[T_Component] | T_Component, **attributes: Any
+    ) -> T_Component:
+        if isinstance(self, type):
+            return self(_extract_additional_attributes(attributes))
         else:
-            self = cast(Self, self_or_cls)
             new_attrs = self.attributes.merge(
                 _extract_additional_attributes(attributes)
             )
@@ -269,7 +263,7 @@ class Component(BaseModel, auto_frozen=True):
     def render(self) -> htpy.Node:
         # Can omit render method if build method returns other components.
         raise NotImplementedError(
-            "Render method not implemented. "
+            f"Render method not implemented in {self.__class__.__name__}. "
             "- Most likely called render on an unbuilt component. "
             "Make sure your components build down to html."
         )
@@ -357,7 +351,7 @@ class Component(BaseModel, auto_frozen=True):
         return self.copy(children=children)
 
     def __class_getitem__(cls: type[Self], *children: Children) -> Self:
-        return cls(children=_convert_children_to_tuple(children))
+        return cls(children=children_to_tuple(children))
 
     def __call__(
         self,
@@ -405,16 +399,18 @@ class NoChildren(Component):
             raise ValueError(
                 f"Component '{self.__class__.__name__}' cannot have children."
             )
-        super().__attrs_post_init__()  # type: ignore
+        super().__attrs_post_init__()
 
 
 class NoInheritance(Component):
 
+    @final
     @override
     def consume(self, context: Context) -> None:
         # Do not consume any attributes, modifiers, or theme etc.
         pass
 
+    @final
     @override
     def provide(self, data: DataDict) -> None:
         # Do not provide any attributes, modifiers, or theme etc.
@@ -427,7 +423,7 @@ class RenderableComponent(Component, ABC):
     builds_itself = True
 
     @abstractmethod
-    def render(self) -> htpy.Renderable: ...
+    def render(self) -> htpy.Node: ...
 
     @override
     def build(self, context: Context) -> Children:
@@ -443,78 +439,62 @@ class RenderableComponent(Component, ABC):
         )
 
 
-class TemplateComponent(Component):
-    """Builds the given template_function during the render process."""
+class TemplateBuilder(ComponentBuilder):
+    """Builder for TemplateComponent that calls template_function instead of build (if possible)."""
 
-    pass
+    @override
+    def _call_build(self) -> list[Component]:
+        component = self.context.data.component
+        if (
+            isinstance(component, TemplateComponent)
+            and component.template_function is not None
+        ):
+            return children_to_list(component.template_function(self.context))
+        return children_to_list(component.build(self.context))
 
 
-#     def __init__(
-#         self,
-#         *modifiers: ModifiersOrAttributes,
-#         template_function: TemplateFunctionType | None = None,
-#         children: Children = None,
-#         theme: Theme | None = None,
-#         htpy_kwargs: dict[str, str] | None = None,
-#         **kwargs: Any,
-#     ) -> None:
-#         super().__init__(
-#             *modifiers,
-#             children=children,
-#             theme=theme,
-#             htpy_kwargs=htpy_kwargs,
-#             **kwargs,
-#         )
-#         self.template_function = template_function
+class TemplateComponent(RenderableComponent, Component):
+    """Delays the execution of `Component.build` to render time."""
 
-#     @override
-#     def full_build(self, context: Context) -> ComponentLike:
-#         """The component should return to its original state after building."""
+    builder: ClassVar[type[Builder]] = TemplateBuilder
+    builds_itself: ClassVar[bool] = False
 
-#         self._prepare_build(context)
-#         self.consume()
-#         self._before_build()
-#         return self
+    template_function: BuildFunctionType | None = None
+    stored_context: Context | None = None
 
-#     @override
-#     def _handle_build(self) -> list[BaseComponent]:
-#         children = self._children
-#         if not self.is_built:
-#             self._building = True
-#             children = self._children_to_list(self.build(self.context, self._children))
-#             self._building = False
+    @override
+    def build(self, context: Context) -> Children:
+        raise NotImplementedError(
+            "Called build on TemplateComponent without implementation"
+        )
 
-#         self._before_build_children(children)
-#         children = self._build_children(children)
-#         self._after_build_children(children)
+    @override
+    def full_build(self, context: Context) -> list[Component]:
+        # store a copy of the context in the composed TemplateComponent
+        # do not build the children until render time
+        return children_to_list(self.compose(context.copy(), self.children))
 
-#         if self.is_built:
-#             self._children = children
-#             children = [self]
-#         return children
+    @override
+    def render(self) -> htpy.Node:
+        if not issubclass(self.builder, TemplateBuilder):
+            raise ValueError("TemplateComponent must be built with TemplateBuilder.")
+        if self.stored_context is None:
+            raise ValueError(
+                "TemplateComponent must have stored_context set before rendering."
+            )
+        result = self.builder(self.stored_context).build(self)
+        return (child.render() for child in result)
 
-#     @override
-#     def _prepare_build(self, context: Context) -> None:
-#         self._build_data = ContextFrame(self)
-#         self._build_context = context.copy()
-
-#     @override
-#     def render(self) -> htpy.Node:
-#         children = self._handle_build()
-#         self._after_build(children)
-#         return [child.render() for child in children]
-
-#     @override
-#     def build(self, context: Context, children: Children) -> Children:
-#         if self.template_function is None:
-#             raise ValueError("TemplateComponent requires a template_function to build.")
-#         return self.template_function(context)
-
-#     @override
-#     def __getitem__(self, children: Children, **kwargs: Any) -> Self:
-#         return super().__getitem__(
-#             children, template_function=self.template_function, **kwargs
-#         )
+    @override
+    def compose(self, context: Context, children: Children) -> Children:
+        if self.is_built:
+            return children
+        return self.copy(
+            children=children,
+            modifiers=[self.attributes, self.modifiers],
+            is_built=True,
+            stored_context=context,
+        )
 
 
 class ThemedComponent(Component):
@@ -553,8 +533,8 @@ class Text(NoInheritance, NoChildren, RenderableComponent, Component):
     text: str = ""
 
     @override
-    def render(self) -> htpy.Renderable:
-        return htpy.fragment[self.text]
+    def render(self) -> htpy.Node:
+        return self.text
 
     @override
     def _verbose_string_parts(self) -> Iterable[str]:
@@ -562,11 +542,15 @@ class Text(NoInheritance, NoChildren, RenderableComponent, Component):
 
 
 @final
-class Fragment(NoInheritance, Component):
+class Fragment(NoInheritance, RenderableComponent, Component):
 
     @override
     def build(self, context: Context) -> Children:
         return self.children
+
+    @override
+    def render(self) -> htpy.Renderable:
+        return htpy.fragment[(child.render() for child in self.children)]
 
     @override
     def to_string(

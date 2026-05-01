@@ -31,8 +31,13 @@ class DataDict(dict[type[T_Consumable], T_Consumable]):
             raise KeyError(f"Key {key} not found in data dict.")
         return value
 
+    @override
     def __setitem__(self, key: type[T_Consumable], value: T_Consumable) -> None:
         super().__setitem__(key, value)
+
+    @override
+    def copy(self) -> Self:
+        return self.__class__(super().copy())
 
     def add(self, item: T_Consumable) -> None:
         self[item.__class__] = item
@@ -62,6 +67,13 @@ class ContextFrame(BaseModel):
     @modifiers.setter
     def modifiers(self, value: Modifiers) -> None:
         self._data[Modifiers] = value
+
+    def copy(self) -> Self:
+        return self.__class__(
+            component=self.component,
+            data=self._data.copy(),
+            level=self.level,
+        )
 
     def __getitem__(self, key: type[T_Consumable]) -> T_Consumable:
         value = self.get(key)
@@ -134,6 +146,16 @@ class Context(BaseModel):
             if key.consume_first_matching:
                 break
         return accumulated
+
+    def copy(self) -> Self:
+        res = self.__class__(
+            router=self.router,
+            page=self.page,
+            history=[frame.copy() for frame in self.history],
+        )
+        if self._data:
+            res._data = self._data.copy()
+        return res
 
     def __len__(self) -> int:
         return len(self.history)

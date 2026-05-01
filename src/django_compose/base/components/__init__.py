@@ -7,7 +7,7 @@ from .base_components import (
     NoChildren,
     ThemedComponent,
     Builder,
-    DefaultBuilder,
+    ComponentBuilder,
     children_field,
 )
 from .compose_components import PageLink
@@ -21,6 +21,6 @@ __all__ = [
     "PageLink",
     "ThemedComponent",
     "Builder",
-    "DefaultBuilder",
+    "ComponentBuilder",
     "children_field",
 ]
