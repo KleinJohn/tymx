@@ -8,9 +8,9 @@ from django_compose.base.components.html_components import Div
 from django_compose.base.context import Context
 from django_compose.bulma.components import BulmaButton
 from django_compose.bulma.components.interaction_components import (
-    BulmaButtonColor,
-    BulmaButtonColorScheme,
-    BulmaButtonType,
+    ButtonColor,
+    ButtonColorScheme,
+    ButtonType,
 )
 
 import django_compose.base.components.html_components as html
@@ -34,7 +34,9 @@ def traverse_bf(component: "Component") -> "Generator[Component, None, None]":
 
 class KeywordAwareComponent(Component):
 
-    def __init__(self, *args: Any, label: str = "", uppercase: bool = False, **kwargs: Any) -> None:
+    def __init__(
+        self, *args: Any, label: str = "", uppercase: bool = False, **kwargs: Any
+    ) -> None:
         super().__init__(*args, **kwargs)
         self.use_props(label=label, uppercase=uppercase)
         self.label = label
@@ -77,7 +79,7 @@ class BulmaTest(unittest.TestCase):
 
     def test_bulma_button1(self) -> None:
         button = BulmaButton(
-            button_type=BulmaButtonType.SUBMIT,
+            button_type=ButtonType.SUBMIT,
             fullwidth=True,
             loading=True,
             disabled=True,
@@ -93,16 +95,16 @@ class BulmaTest(unittest.TestCase):
 
     def test_bulma_button2(self) -> None:
         button = BulmaButton(
-            button_type=BulmaButtonType.BUTTON,
-            color=BulmaButtonColor.DANGER,
+            button_type=ButtonType.BUTTON,
+            color=ButtonColor.DANGER,
             size="is-large",
-            color_scheme=BulmaButtonColorScheme.LIGHT,
+            color_scheme=ButtonColorScheme.LIGHT,
             responsive=True,
             selected=True,
         )["Push Me"].full_build(self.context)
-        expected = html.Button("button is-danger is-light is-large is-responsive is-selected")[
-            "Push Me"
-        ].full_build(self.context)
+        expected = html.Button(
+            "button is-danger is-light is-large is-responsive is-selected"
+        )["Push Me"].full_build(self.context)
         assert isinstance(button, Component) and isinstance(expected, Component)
         print("Built:", button.to_string(verbose=True))
         print("Expected:", expected.to_string(verbose=True))
@@ -112,7 +114,7 @@ class BulmaTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             BulmaButton(button_type="invalid_type")
         with self.assertRaises(ValueError):
-            BulmaButton(color=BulmaButtonColor("unknown_color"))
+            BulmaButton(color=ButtonColor("unknown_color"))
 
 
 if __name__ == "__main__":

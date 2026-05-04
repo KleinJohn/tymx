@@ -362,7 +362,7 @@ class Component(BaseModel, auto_frozen=True):
         htpy_kwargs: dict[str, str] | None = None,
         is_built: bool = False,
         **kwargs: Any,
-    ) -> Any:
+    ) -> Self:
         return self.copy(
             modifiers=modifiers,
             children=children,

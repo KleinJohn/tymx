@@ -1,191 +1,155 @@
-from enum import Enum
+from typing import Any, Optional
 
-from typing_extensions import Any
+from attrs import field
 
-from django_compose.base.attributes import Attribute, classes, disabled, type_
-from django_compose.base.components import ModifiersOrAttributes, Children
-from django_compose.base.components.base_components import Component
+from django_compose.base.components import Component, children_to_tuple
 from django_compose.base.context import Context
+from django_compose.base.types import Children
+from django_compose.base.helpers import enum_converter, optional_enum_converter
+
+import django_compose.base.attributes as a
 import django_compose.base.components.html_components as html
 
-
-class BulmaButtonType(str, Enum):
-    BUTTON = "button"
-    LINK = "link"
-    SUBMIT = "submit"
-    RESET = "reset"
-
-
-class BulmaButtonColor(str, Enum):
-    WHITE = "is-white"
-    LIGHT = "is-light"
-    DARK = "is-dark"
-    BLACK = "is-black"
-    TEXT = "is-text"
-    GHOST = "is-ghost"
-    PRIMARY = "is-primary"
-    LINK = "is-link"
-    INFO = "is-info"
-    SUCCESS = "is-success"
-    WARNING = "is-warning"
-    DANGER = "is-danger"
+from ._types import (
+    ButtonType,
+    ButtonColor,
+    ButtonColorScheme,
+    ButtonSize,
+    ButtonStyle,
+    ButtonState,
+    ButtonAlignment,
+)
 
 
-class BulmaButtonColorScheme(str, Enum):
-    DARK = "is-dark"
-    LIGHT = "is-light"
+class Button(Component):
+    """Bulma button component.
 
+    - `(button|a|input)[children]` If `icon` is not provided
+    - `(button|a|input)[span[icon], span[children]]` If `icon` is provided
 
-class BulmaButtonSize(str, Enum):
-    SMALL = "is-small"
-    NORMAL = "is-normal"
-    MEDIUM = "is-medium"
-    LARGE = "is-large"
+    `button_type` controls the rendered element:
+    - `ButtonType.BUTTON` renders a `<button>` element.
+    - `ButtonType.LINK` renders an `<a>` element.
+    - `ButtonType.SUBMIT` and `ButtonType.RESET` render an `<input>` element.
 
+    See https://bulma.io/documentation/elements/button/ for details.
+    """
 
-class BulmaButtonStyle(str, Enum):
-    OUTLINED = "is-outlined"
-    INVERTED = "is-inverted"
-    ROUNDED = "is-rounded"
+    button_type: ButtonType = field(
+        default=ButtonType.BUTTON, converter=enum_converter(ButtonType)
+    )
+    color: ButtonColor | None = field(
+        default=None, converter=optional_enum_converter(ButtonColor)
+    )
+    color_scheme: ButtonColorScheme | None = field(
+        default=None, converter=optional_enum_converter(ButtonColorScheme)
+    )
+    size: ButtonSize | None = field(
+        default=None, converter=optional_enum_converter(ButtonSize)
+    )
+    style: ButtonStyle | None = field(
+        default=None, converter=optional_enum_converter(ButtonStyle)
+    )
+    state: ButtonState | None = field(
+        default=None, converter=optional_enum_converter(ButtonState)
+    )
+    responsive: bool = False
+    fullwidth: bool = False
+    loading: bool = False
+    disabled: bool = False
+    selected: bool = False
+    icon: tuple[Component, ...] = field(default=None, converter=children_to_tuple)
+    icon_size: None | ButtonSize = field(
+        default=None,
+        converter=optional_enum_converter(ButtonSize),
+    )
 
-
-class BulmaButtonState(str, Enum):
-    HOVERED = "is-hovered"
-    FOCUSED = "is-focused"
-    ACTIVE = "is-active"
-    STATIC = "is-static"
-
-
-class BulmaButtonAlignment(str, Enum):
-    LEFT = "is-left"
-    CENTERED = "is-centered"
-    RIGHT = "is-right"
-
-
-class BulmaButton(Component):
-
-    def __init__(
-        self,
-        *modifiers: ModifiersOrAttributes,
-        button_type: BulmaButtonType | str = BulmaButtonType.BUTTON,
-        color: BulmaButtonColor | str | None = None,
-        color_scheme: BulmaButtonColorScheme | str | None = None,
-        size: BulmaButtonSize | str | None = None,
-        style: BulmaButtonStyle | str | None = None,
-        state: BulmaButtonState | str | None = None,
-        responsive: bool = False,
-        fullwidth: bool = False,
-        loading: bool = False,
-        disabled: bool = False,
-        selected: bool = False,
-        icon: Children = None,
-        icon_size: BulmaButtonSize | str | None = None,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(*modifiers, **kwargs)
-        self.use_props(
-            button_type=button_type,
-            color=color,
-            color_scheme=color_scheme,
-            size=size,
-            style=style,
-            state=state,
-            responsive=responsive,
-            fullwidth=fullwidth,
-            loading=loading,
-            disabled=disabled,
-            selected=selected,
-            icon=icon,
-            icon_size=icon_size,
-        )
-        self.button_type = BulmaButtonType(button_type)
-        self.color = BulmaButtonColor(color) if color else None
-        self.color_scheme = (
-            BulmaButtonColorScheme(color_scheme) if color_scheme else None
-        )
-        self.size = BulmaButtonSize(size) if size else None
-        self.style = BulmaButtonStyle(style) if style else None
-        self.state = BulmaButtonState(state) if state else None
-        self.responsive = responsive
-        self.fullwidth = fullwidth
-        self.loading = loading
-        self.disabled = disabled
-        self.selected = selected
-        self.icon = icon
-        self.icon_size = BulmaButtonSize(icon_size) if icon_size else None
-
-    def _get_attributes(self, context: Context) -> list[Attribute]:
-        attrs: list[Attribute] = [classes("button")]
-        if self.button_type == BulmaButtonType.SUBMIT:
-            attrs.append(type_("submit"))
-        elif self.button_type == BulmaButtonType.RESET:
-            attrs.append(type_("reset"))
-        if self.color:
-            attrs.append(classes(self.color.value))
-        if self.color_scheme:
-            attrs.append(classes(self.color_scheme.value))
-        if self.size:
-            attrs.append(classes(self.size.value))
-        if self.style:
-            attrs.append(classes(self.style.value))
-        if self.state:
-            attrs.append(classes(self.state.value))
-        if self.responsive:
-            attrs.append(classes("is-responsive"))
-        if self.fullwidth:
-            attrs.append(classes("is-fullwidth"))
-        if self.loading:
-            attrs.append(classes("is-loading"))
-        if self.disabled:
-            attrs.append(disabled(True))
-        if self.selected:
-            attrs.append(classes("is-selected"))
-        return attrs
-
-    def build(self, context: Context, children: Children) -> Children:
+    def _get_element(self) -> type[Component]:
         html_element: type[Component] = html.Button
         match self.button_type:
-            case BulmaButtonType.BUTTON:
+            case ButtonType.BUTTON:
                 html_element = html.Button
-            case BulmaButtonType.LINK:
+            case ButtonType.LINK:
                 html_element = html.A
-            case BulmaButtonType.SUBMIT | BulmaButtonType.RESET:
+            case ButtonType.SUBMIT | ButtonType.RESET:
                 html_element = html.Input
+        return html_element
 
-        attrs = self._get_attributes(context)
+    def _get_attributes(self) -> list[a.Attribute]:
+        attrs: list[a.Attribute] = [a.classes("button")]
 
-        return html_element(*attrs)[
+        if self.button_type in (ButtonType.SUBMIT, ButtonType.RESET):
+            attrs.append(a.type_(self.button_type))
+
+        optional_classes = [
+            self.color,
+            self.color_scheme,
+            self.size,
+            self.style,
+            self.state,
+        ]
+        attrs.extend(a.classes(cls) for cls in optional_classes if cls)
+
+        boolean_classes = {
+            self.responsive: "is-responsive",
+            self.fullwidth: "is-fullwidth",
+            self.loading: "is-loading",
+            self.selected: "is-selected",
+        }
+        attrs.extend(a.classes(c) for active, c in boolean_classes.items() if active)
+
+        if self.disabled:
+            attrs.append(a.disabled(True))
+
+        return attrs
+
+    def build(self, context: Context) -> Children:
+        Element = self._get_element()
+        attrs = self._get_attributes()
+
+        return Element(attrs)[
             (
-                children
-                if self.icon is None
+                self.children
+                if not self.icon
                 else (
                     html.Span(
-                        classes("icon"),
-                        classes(self.icon_size.value) if self.icon_size else None,
+                        (
+                            a.classes("icon"),
+                            a.classes(self.icon_size) if self.icon_size else None,
+                        )
                     )[self.icon],
-                    html.Span[children] if children else None,
+                    html.Span[self.children] if self.children else None,
                 )
             )
         ]
 
 
-class BulmaButtons(Component):
-    def __init__(
-        self,
-        *modifiers: ModifiersOrAttributes,
-        addons: bool = False,
-        centered: BulmaButtonAlignment | str | None = None,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(*modifiers, **kwargs)
-        self.use_props(addons=addons, centered=centered)
-        self.addons = addons
-        self.centered = BulmaButtonAlignment(centered) if centered else None
+class Buttons(Component):
+    """Bulma buttons component for grouping multiple buttons.
 
-    def build(self, context: Context, children: Children) -> Children:
-        attrs: list[Attribute] = []
+    - `(div)[children]` where children are instances of `Button`
+
+    See https://bulma.io/documentation/elements/button/#list-of-buttons for details.
+    """
+
+    addons: bool = False
+    alignment: ButtonAlignment | None = field(
+        default=None, converter=optional_enum_converter(ButtonAlignment)
+    )
+
+    def __attrs_post_init__(self) -> None:
+        super().__attrs_post_init__()
+        if not all(isinstance(child, Button) for child in self.children):
+            raise ValueError("All children of Buttons must be instances of Button.")
+
+    def _get_attributes(self) -> list[a.Attribute]:
+        attrs: list[a.Attribute] = [a.classes("buttons")]
         if self.addons:
-            attrs.append(classes("has-addons"))
-        if self.centered:
-            attrs.append(classes(self.centered.value))
-        return html.Div(*attrs)[children]
+            attrs.append(a.classes("has-addons"))
+        if self.alignment:
+            attrs.append(a.classes(self.alignment))
+        return attrs
+
+    def build(self, context: Context) -> Children:
+        attrs = self._get_attributes()
+        return html.Div(attrs)[self.children]

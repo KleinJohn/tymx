@@ -1,8 +1,4 @@
-from typing import Callable
-
-from attrs import field
-import attrs
-
+from django_compose import bulma
 from django_compose.base.components.base_components import (
     Component,
     children_to_tuple,
@@ -20,6 +16,8 @@ from django_compose.base.router import Router
 from django_compose.base.types import Children
 
 import django_compose.base.components.html_components as html
+
+from attrs import field
 
 
 class CustomButton(Component):
@@ -68,7 +66,10 @@ index_page = Page(
 class TestComponent(Component):
 
     def build(self, context: Context) -> Children:
-        return lambda context: "Test Component"
+        button_prototype = bulma.Button(size="is-medium", color="is-primary")
+        return bulma.Buttons[
+            button_prototype(icon_size=bulma.ButtonSize.NORMAL), button_prototype
+        ]
 
 
 test_component = TestComponent(["test-class"])

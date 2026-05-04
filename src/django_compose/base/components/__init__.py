@@ -9,6 +9,7 @@ from .base_components import (
     Builder,
     ComponentBuilder,
     children_field,
+    children_to_tuple,
 )
 from .compose_components import PageLink
 
@@ -23,4 +24,5 @@ __all__ = [
     "Builder",
     "ComponentBuilder",
     "children_field",
+    "children_to_tuple",
 ]
