@@ -7,7 +7,7 @@ from django_compose.base.components import Children, Component, Component
 from django_compose.base.components.html_components import Div
 from django_compose.base.context import Context
 from django_compose.bulma.components import BulmaButton
-from django_compose.bulma.components.interaction_components import (
+from django_compose.bulma.components._elements import (
     ButtonColor,
     ButtonColorScheme,
     ButtonType,
@@ -19,7 +19,7 @@ import django_compose.base.components.html_components as html
 def traverse_df(component: "Component") -> "Generator[Component, None, None]":
     """Depth-first traversal generator for BaseComponent and its children."""
     yield component
-    for child in component._children:
+    for child in component.children:
         yield from traverse_df(child)
 
 
@@ -29,7 +29,7 @@ def traverse_bf(component: "Component") -> "Generator[Component, None, None]":
     while queue:
         current = queue.pop(0)
         yield current
-        queue.extend(current._children)
+        queue.extend(current.children)
 
 
 class KeywordAwareComponent(Component):

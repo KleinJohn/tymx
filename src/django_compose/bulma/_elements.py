@@ -21,11 +21,39 @@ from ._types import (
 )
 
 
+class Block(Component):
+    """Bulma's most basic spacer block.
+
+    - `<element>[children]`
+
+    See https://bulma.io/documentation/elements/block/ for details.
+    """
+
+    element: type[Component] = html.Div
+
+    def build(self, context: Context) -> Children:
+        return self.element(a.classes("block"))[self.children]
+
+
+class Box(Component):
+    """A white box to contain other elements.
+
+    - `<element>[children]`
+
+    See https://bulma.io/documentation/elements/box/ for details.
+    """
+
+    element: type[Component] = html.Div
+
+    def build(self, context: Context) -> Children:
+        return self.element(a.classes("box"))[self.children]
+
+
 class Button(Component):
     """Bulma button component.
 
-    - `(button|a|input)[children]` If `icon` is not provided
-    - `(button|a|input)[span[icon], span[children]]` If `icon` is provided
+    - `<button|a|input>[children]` If `icon` is not provided
+    - `<button|a|input>[span[icon], span[children]]` If `icon` is provided
 
     `button_type` controls the rendered element:
     - `ButtonType.BUTTON` renders a `<button>` element.
@@ -127,7 +155,7 @@ class Button(Component):
 class Buttons(Component):
     """Bulma buttons component for grouping multiple buttons.
 
-    - `(div)[children]` where children are instances of `Button`
+    - `<div>[children]` where children are instances of `Button`
 
     See https://bulma.io/documentation/elements/button/#list-of-buttons for details.
     """

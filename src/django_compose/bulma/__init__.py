@@ -1,6 +1,4 @@
-from .components import (
-    Button,
-    Buttons,
+from ._types import (
     ButtonAlignment,
     ButtonColor,
     ButtonColorScheme,
@@ -8,8 +6,16 @@ from .components import (
     ButtonState,
     ButtonStyle,
 )
+from ._elements import (
+    Block,
+    Box,
+    Button,
+    Buttons,
+)
 
-__all__: list[str] = [
+__all__ = [
+    "Block",
+    "Box",
     "Button",
     "Buttons",
     "ButtonAlignment",

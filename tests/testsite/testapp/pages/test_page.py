@@ -66,13 +66,17 @@ index_page = Page(
 class TestComponent(Component):
 
     def build(self, context: Context) -> Children:
-        button_prototype = bulma.Button(size="is-medium", color="is-primary")
-        return bulma.Buttons[
-            button_prototype(icon_size=bulma.ButtonSize.NORMAL), button_prototype
+        button_prototype = bulma.Button(size="is-large", color="is-primary")
+        return bulma.Block[
+            bulma.Buttons[
+                button_prototype(size=bulma.ButtonSize.NORMAL), button_prototype
+            ]
         ]
 
 
-test_component = TestComponent(["test-class"])
+# Why does the block not get test-class?
+# TODO: It seems like attribute merging is not working entirely
+test_component = TestComponent("test-class")
 # test_component = index_page
 
 context = Context(Router("testapp", pages=[]), index_page)
