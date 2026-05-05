@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, ClassVar, Self, TypeVar
 
 from django_compose.base.helpers.base_model import BaseModel
 
-
 if TYPE_CHECKING:
     from django_compose.base.context import Context, ContextFrame
 
@@ -90,7 +89,7 @@ class Consumable(BaseModel, frozen=True):
                 # between, so we need to check all components between
                 return all(
                     not frame.component.builds_itself
-                    for frame in context.history[frame.level + 1 :]
+                    for frame in context.history[frame.level :]
                 )
             case ConsumerPolicy.CUSTOM:
                 return self.custom_policy(context, frame)

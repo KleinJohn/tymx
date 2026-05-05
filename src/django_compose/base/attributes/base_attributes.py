@@ -71,7 +71,13 @@ class Attribute[T](BaseModel, frozen=True):
             raise ValueError(
                 f"Cannot merge attributes with different names: {self.name} and {other.name}"
             )
-        return self.__class__(self.name, value=other.value)
+        return evolve(self, value=other.value)
+
+    def merge_all(self, attributes: Iterable[Self]) -> Self:
+        merged = self
+        for attr in attributes:
+            merged = merged | attr
+        return merged
 
 
 class SimpleAttribute(Attribute[str], frozen=True):
@@ -144,7 +150,9 @@ class ComposedAttribute(SimpleAttribute, frozen=True):
     ) -> Self:
         """The flag add_after determines whether to include kwargs before or after values."""
         if kwargs and not self.policy.kwarg_composer:
-            raise ValueError("kwarg_composer must be provided to use keyword arguments.")
+            raise ValueError(
+                "kwarg_composer must be provided to use keyword arguments."
+            )
         kwargs = _clean_kwargs(kwargs, underscores_to_hyphens=clean_underscores)
         # The items in value of type dict are not being cleaned.
         if isinstance(value, dict):
@@ -177,8 +185,12 @@ class ComposedAttribute(SimpleAttribute, frozen=True):
             raise ValueError(
                 f"Cannot merge attributes with different names: {self.name} and {other.name}"
             )
-        self_values: tuple[str, ...] = self.composed_values if self.composed_values else ()
-        other_values: tuple[str, ...] = other.composed_values if other.composed_values else ()
+        self_values: tuple[str, ...] = (
+            self.composed_values if self.composed_values else ()
+        )
+        other_values: tuple[str, ...] = (
+            other.composed_values if other.composed_values else ()
+        )
         total_values = self_values + other_values
         if self.policy.remove_duplicates:
             # Remove duplicates while preserving order
@@ -197,27 +209,40 @@ def _convert_to_attributes_dict(
     from django_compose.base.config import attribute_string_handler
 
     def _match_attributes_recursive(
-        attribute: AttributeLike, attr_dict: OrderedDict[str, Attribute]
+        attribute: AttributeLike, attr_dict: OrderedDict[str, list[Attribute]]
     ) -> None:
         match attribute:
             case None:
                 return
             case str():
-                attr_dict[attribute] = attribute_string_handler(attribute)
+                str_attr = attribute_string_handler(attribute)
+                if attribute in attr_dict:
+                    attr_dict[attribute].append(str_attr)
+                else:
+                    attr_dict[attribute] = [str_attr]
             case Attribute():
-                attr_dict[attribute.name] = attribute
+                if attribute.name in attr_dict:
+                    attr_dict[attribute.name].append(attribute)
+                else:
+                    attr_dict[attribute.name] = [attribute]
             case Attributes():
                 for a in attribute:
-                    attr_dict[a.name] = a
+                    if a.name in attr_dict:
+                        attr_dict[a.name].append(a)
+                    else:
+                        attr_dict[a.name] = [a]
             case Sequence():
                 for item in attribute:
                     _match_attributes_recursive(item, attr_dict)
             case _:
                 raise ValueError(f"Invalid attribute type: {type(attribute)}.")
 
-    attr_dict: OrderedDict[str, Attribute] = OrderedDict()
+    attr_dict: OrderedDict[str, list[Attribute]] = OrderedDict()
     _match_attributes_recursive(attr_like, attr_dict)
-    return attr_dict
+    return OrderedDict(
+        (name, attr_list[0].merge_all(attr_list[1:]))
+        for name, attr_list in attr_dict.items()
+    )
 
 
 class Attributes(BaseModifier, frozen=False):  # type: ignore
@@ -237,9 +262,13 @@ class Attributes(BaseModifier, frozen=False):  # type: ignore
         if attribute.name not in self:
             self._attributes[attribute.name] = attribute
         elif overwrite:
-            self._attributes[attribute.name] = self._attributes[attribute.name] | attribute
+            self._attributes[attribute.name] = (
+                self._attributes[attribute.name] | attribute
+            )
         else:
-            self._attributes[attribute.name] = attribute | self._attributes[attribute.name]
+            self._attributes[attribute.name] = (
+                attribute | self._attributes[attribute.name]
+            )
 
     def update(self, attributes: AttributeLike, overwrite: bool = True) -> None:
         attr_dict = _convert_to_attributes_dict(attributes)

@@ -293,6 +293,7 @@ class Component(BaseModel, auto_frozen=True):
     def consume(self, context: Context) -> None:
         inherited_attributes = context.get(Attributes) or Attributes()
         context.data.attributes = inherited_attributes | self.attributes
+
         inherited_modifiers = context.get(Modifiers) or Modifiers()
         context.data.modifiers = inherited_modifiers | self.modifiers
 

@@ -67,7 +67,7 @@ class TestComponent(Component):
 
     def build(self, context: Context) -> Children:
         button_prototype = bulma.Button(size="is-large", color="is-primary")
-        return bulma.Block[
+        return bulma.Block(element=html.Section)[
             bulma.Buttons[
                 button_prototype(size=bulma.ButtonSize.NORMAL), button_prototype
             ]
