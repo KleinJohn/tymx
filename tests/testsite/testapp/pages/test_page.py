@@ -74,10 +74,8 @@ class TestComponent(Component):
         ]
 
 
-# Why does the block not get test-class?
-# TODO: It seems like attribute merging is not working entirely
-test_component = TestComponent("test-class")
-# test_component = index_page
+# test_component = TestComponent("test-class")
+test_component = index_page
 
 context = Context(Router("testapp", pages=[]), index_page)
 built_component = wrap_components(test_component.full_build(context))
