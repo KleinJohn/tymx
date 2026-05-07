@@ -15,7 +15,12 @@ from django_compose.base.context import Context, ContextData, DataDict
 from django_compose.base.router import Router
 
 import django_compose.base.components.html_components as html
-from django_compose.base.views.view_base import ComposePageView
+from django_compose.base.views.view_base import ComponentView
+
+
+def _route_pattern_not_none(route_pattern: str | None) -> str:
+    # route_pattern is set base on name in __attrs_post_init__ if None
+    return route_pattern  # type: ignore[return-value]
 
 
 class Page(NoChildren, Component):
@@ -23,9 +28,18 @@ class Page(NoChildren, Component):
     name: str
     head: tuple[Component, ...] = field(converter=children_to_tuple)
     body: tuple[Component, ...] = field(converter=children_to_tuple)
-    view: type[ComposePageView] | None = None
-    route_pattern: str | None = None
+    view: type[ComponentView] = ComponentView
+    route_pattern: str = field(converter=_route_pattern_not_none, default=None)
     context_data: tuple[ContextData, ...] = field(factory=tuple)
+
+    def __attrs_post_init__(self) -> None:
+        super().__attrs_post_init__()
+        if self.route_pattern is None:
+            object.__setattr__(
+                self,
+                "route_pattern",
+                f"{self.name}/" if self.route_pattern is None else self.route_pattern,
+            )
 
     @override
     def build(self, context: Context) -> Children:
@@ -105,22 +119,21 @@ class Page(NoChildren, Component):
 #     return self._build_result.render()
 
 
-class ComposeApp:
+class DjangoApp:
     def __init__(
         self,
         *,
         name: str,
-        starts_on: str,
         pages: Iterable[Page],
-        theme: Theme | None = None,
     ):
         self.name = name
-        self.theme = theme
-        self.starts_on = starts_on
-        self.router = Router(self.name, pages=pages)
+        self.router = Router(self, pages=pages)
+        # App-level cache for built (document-level) page results. Keyed by page name.
+        self.built_pages: dict[str, Component] = {}
 
     def build(self) -> None:
-        # theme = self.theme or Theme()
         context = Context(router=self.router)
         for route in self.router:
-            route.page.full_build(context)
+            built = route.page.full_build(context)
+            # can access [0] since page returns single html component
+            self.built_pages[route.page.name] = built[0]

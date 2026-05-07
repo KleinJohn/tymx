@@ -1,7 +1,7 @@
-from .base import ComposeApp, Page, Route, Router
+from .base import DjangoApp, Page, Route, Router
 
 __all__ = [
-    "ComposeApp",
+    "DjangoApp",
     "Page",
     "Route",
     "Router",

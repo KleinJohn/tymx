@@ -405,6 +405,11 @@ class NoChildren(Component):
 
 class NoInheritance(Component):
 
+    @property
+    def target(self) -> ModifiersOrAttributes:
+        """Used to give the attributes/modifiers to another component instead of inheriting them to children."""
+        return [self.attributes, self.modifiers]
+
     @final
     @override
     def consume(self, context: Context) -> None:

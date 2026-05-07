@@ -1,13 +1,10 @@
-from django_compose.base.app import ComposeApp
-from testapp.pages.test_page import index_page, service_page
+from django_compose.base.app import DjangoApp
+from testapp.pages.test_page import index_page
 
-
-app = ComposeApp(
+app = DjangoApp(
     name="testapp",
-    starts_on="index",
     pages=[
         index_page,
-        service_page,
     ],
 )
 

@@ -1,5 +1,5 @@
-from .view_base import ComposePageView
+from .view_base import ComponentView
 
 __all__ = [
-    "ComposePageView",
+    "ComponentView",
 ]

@@ -1,8 +1,9 @@
-from typing import Any, Optional
+from __future__ import annotations
 
 from attrs import field
 
 from django_compose.base.components import Component, children_to_tuple
+from django_compose.base.components.base_components import NoInheritance
 from django_compose.base.context import Context
 from django_compose.base.types import Children
 from django_compose.base.helpers import enum_converter, optional_enum_converter
@@ -53,7 +54,7 @@ class Button(Component):
     """Bulma button component.
 
     - `<button|a|input>[children]` If `icon` is not provided
-    - `<button|a|input>[span[icon], span[children]]` If `icon` is provided
+    - `<button|a|input>[icon, span[children]]` If `icon` is provided
 
     `button_type` controls the rendered element:
     - `ButtonType.BUTTON` renders a `<button>` element.
@@ -86,7 +87,7 @@ class Button(Component):
     loading: bool = False
     disabled: bool = False
     selected: bool = False
-    icon: tuple[Component, ...] = field(default=None, converter=children_to_tuple)
+    icon: Icon | None = None
     icon_size: None | ButtonSize = field(
         default=None,
         converter=optional_enum_converter(ButtonSize),
@@ -140,12 +141,7 @@ class Button(Component):
                 self.children
                 if not self.icon
                 else (
-                    html.Span(
-                        (
-                            a.classes("icon"),
-                            a.classes(self.icon_size) if self.icon_size else None,
-                        )
-                    )[self.icon],
+                    self.icon,
                     html.Span[self.children] if self.children else None,
                 )
             )
@@ -181,3 +177,59 @@ class Buttons(Component):
     def build(self, context: Context) -> Children:
         attrs = self._get_attributes()
         return html.Div(attrs)[self.children]
+
+
+class Content(Component):
+    """A single class to handle WYSIWYG generated content, where only HTML tags are available.
+
+    - `<element>[children]`
+
+    See https://bulma.io/documentation/elements/content/ for details.
+    """
+
+    element: type[Component] = html.Div
+
+    def build(self, context: Context) -> Children:
+        return self.element(a.classes("content"))[self.children]
+
+
+class Delete(Component):
+    """A versatile delete cross.
+
+    - `<button>[children]`
+
+    See https://bulma.io/documentation/elements/delete/ for details.
+    """
+
+    size: ButtonSize | None = field(
+        default=None, converter=optional_enum_converter(ButtonSize)
+    )
+
+    def build(self, context: Context) -> Children:
+        return html.Button(a.classes("delete"))[self.children]
+
+
+class Icon(NoInheritance, Component):
+    """A wrapper for icons.
+
+    Structure:
+        - `<span>[<i>(target)]` if no children are provided
+        - `<span>[<span>[<i>(target)], <span>[children]]` if children are provided
+
+    See also:
+        https://bulma.io/documentation/elements/icon/
+    """
+
+    size: ButtonSize | None = field(
+        default=None, converter=optional_enum_converter(ButtonSize)
+    )
+
+    def build(self, context: Context) -> Children:
+        inner_icon = html.Span(("icon", self.size))[html.I(self.target)]
+        if self.children:
+            return html.Span("icon-text")[
+                inner_icon,
+                html.Span[self.children],
+            ]
+        else:
+            return inner_icon

@@ -8,7 +8,7 @@ from typing_extensions import Any
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
-    from django_compose.base.app import Page
+    from django_compose.base.app import Page, DjangoApp
 
 
 class Route:
@@ -23,10 +23,10 @@ class Route:
 
 
 class Router:
-    def __init__(self, app_name: str, *, pages: Iterable[Page], **view_kwargs: Any):
-        self.app_name = app_name
+    def __init__(self, app: DjangoApp, *, pages: Iterable[Page], **view_kwargs: Any):
+        self.app = app
         self.routes: dict[str, Route] = {
-            page.name: Route(self.app_name, page) for page in pages
+            page.name: Route(self.app.name, page) for page in pages
         }
         self._view_kwargs = view_kwargs
         self._iter = iter(self.routes.values())
@@ -47,10 +47,11 @@ class Router:
     def get_urlpatterns(self) -> list[URLPattern]:
         urlpatterns: list[URLPattern] = []
         for route in self.routes.values():
+            component = self.app.built_pages.get(route.page.name)
             urlpatterns.append(
                 path(
                     route.page.route_pattern,
-                    route.page.view.as_view(page=route.page, **self._view_kwargs),
+                    route.page.view.as_view(component=component, **self._view_kwargs),
                     name=route.page.name,
                 )
             )

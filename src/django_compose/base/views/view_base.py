@@ -1,19 +1,18 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from django.http import HttpRequest, HttpResponse, HttpResponseNotFound
 from django.views import View
-from typing_extensions import Any
 
 if TYPE_CHECKING:
-    from django_compose.base.app import Page
+    from django_compose.base.components.base_components import Component
 
 
-class ComposePageView(View):
-    page: Page | None = None
+class ComponentView(View):
+    component: Component | None = None
 
     def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
-        if not self.page:
-            return HttpResponseNotFound("Page is not built.")
-        return HttpResponse(self.page.render())
+        if not self.component:
+            return HttpResponseNotFound("Component is not built.")
+        return HttpResponse(self.component.render())

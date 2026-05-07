@@ -1,4 +1,4 @@
-from .app import ComposeApp, Page
+from .app import DjangoApp, Page
 from .router import Route, Router
 from .context import (
     Context,
@@ -11,7 +11,7 @@ from .theme import Theme, ThemeType
 
 __all__ = [
     "Page",
-    "ComposeApp",
+    "DjangoApp",
     "Router",
     "Route",
     "Theme",

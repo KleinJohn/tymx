@@ -5,7 +5,7 @@ from django_compose.base.components.base_components import (
     wrap_components,
 )
 from django_compose.base.attributes import disabled, id, style, classes
-from django_compose.base.app import Page
+from django_compose.base.app import DjangoApp, Page
 from django_compose.base.context import Context
 from django_compose.base.helpers.debug import validate_is_built
 from django_compose.base.modifiers.debug_modifiers import (
@@ -69,15 +69,15 @@ class TestComponent(Component):
         button_prototype = bulma.Button(size="is-large", color="is-primary")
         return bulma.Block(element=html.Section)[
             bulma.Buttons[
-                button_prototype(size=bulma.ButtonSize.NORMAL), button_prototype
+                button_prototype(size=bulma.ButtonSize.MEDIUM), button_prototype
             ]
         ]
 
 
 # test_component = TestComponent("test-class")
-test_component = index_page
+test_component = bulma.Icon("fa fa-test")
 
-context = Context(Router("testapp", pages=[]), index_page)
+context = Context(Router(DjangoApp(name="testapp", pages=[]), pages=[]), index_page)
 built_component = wrap_components(test_component.full_build(context))
 validate_is_built([built_component])
 print(built_component.to_string(verbose=True, pretty=True))

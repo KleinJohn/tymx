@@ -11,6 +11,9 @@ from ._elements import (
     Box,
     Button,
     Buttons,
+    Content,
+    Delete,
+    Icon,
 )
 
 __all__ = [
@@ -24,4 +27,7 @@ __all__ = [
     "ButtonSize",
     "ButtonState",
     "ButtonStyle",
+    "Content",
+    "Delete",
+    "Icon",
 ]
