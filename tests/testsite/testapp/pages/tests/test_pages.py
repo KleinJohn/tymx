@@ -1,3 +1,4 @@
+from django_compose.base.app import DjangoApp
 from django_compose.base.components import Component
 from django_compose.base.components.base_components import wrap_components
 from django_compose.base.types import Children
@@ -41,28 +42,19 @@ class IndexLink(Component):
         return A[self.children]
 
 
-index_page = Page(
-    name="index",
-    route_pattern="",
-    head=[],
-    body=[
-        H1((id("header1"), style(color="blue", font_size="12px")))[
-            CustomDiv("custom-div")[H1["press"]],
-            IndexLink["Go to Service Page"],
-        ],
-        "An Input:",
-        Input((classes("input-field"), style(margin="5px"), disabled)),
+index_page = Page(name="index", route_pattern="")[
+    H1((id("header1"), style(color="blue", font_size="12px")))[
+        CustomDiv("custom-div")[H1["press"]],
+        IndexLink["Go to Service Page"],
     ],
-)
+    "An Input:",
+    Input((classes("input-field"), style(margin="5px"), disabled)),
+]
 
-service_page = Page(
-    name="service",
-    head=[],
-    body=[
-        H1(("title", style("font-size:3em")))["Service Page"],
-        IndexLink["Go to Index Page"],
-    ],
-)
+service_page = Page(name="service")[
+    H1(("title", style("font-size:3em")))["Service Page"],
+    IndexLink["Go to Index Page"],
+]
 
 
 def custom_label(context: Context) -> Children:
@@ -80,17 +72,15 @@ class CustomContent(Component):
         ]
 
 
-test_page = Page(
-    name="test",
-    head=[],
-    body=[
-        H1["Title"],
-        CustomContent("custom-content")["Label"],
-    ],
-)
+test_page = Page(name="test")[
+    H1["Title"],
+    CustomContent("custom-content")["Label"],
+]
 
 
 if __name__ == "__main__":
-    context = Context(router=Router("test", pages=[test_page]))
+    context = Context(
+        router=Router(DjangoApp(name="test", pages=[]), pages=[test_page])
+    )
     built_test_page = wrap_components(test_page.full_build(context))
     print(built_test_page.to_string(pretty=True, verbose=True))

@@ -1,6 +1,7 @@
 import unittest
 
 from django_compose.base import Page, Router
+from django_compose.base.app import DjangoApp
 from django_compose.base.components.html_components import Div
 from django_compose.base.context import Context, ContextFrame, DataDict
 from django_compose.base.attributes import Attributes
@@ -8,8 +9,8 @@ from django_compose.base.modifiers import Modifiers
 
 
 def make_router_and_page() -> tuple[Router, Page]:
-    page = Page(name="index", head=[], body=[])
-    router = Router("testapp", pages=[page])
+    page = Page(name="index")
+    router = Router(DjangoApp(name="testapp", pages=[]), pages=[page])
     return router, page
 
 

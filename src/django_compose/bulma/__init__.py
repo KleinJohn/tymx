@@ -15,8 +15,11 @@ from ._elements import (
     Delete,
     Icon,
 )
+from ._helpers import cdn, fontawesome_cdn
 
 __all__ = [
+    "cdn",
+    "fontawesome_cdn",
     "Block",
     "Box",
     "Button",

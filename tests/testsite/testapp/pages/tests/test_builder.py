@@ -2,6 +2,7 @@ import unittest
 
 from typing import override
 
+from django_compose.base.app import DjangoApp
 import django_compose.base.components.html_components as html
 from django_compose.base import Page, Router
 from django_compose.base.attributes import classes, id, style
@@ -37,7 +38,8 @@ class CustomDiv(Component):
 class BuilderRegressionTests(unittest.TestCase):
     def test_builds_components_returned_from_build(self) -> None:
         context = Context(
-            Router("testapp", pages=[]), Page(name="test", head=[], body=[])
+            Router(DjangoApp(name="testapp", pages=[]), pages=[]),
+            Page(name="test", head=[]),
         )
         component = CustomDiv(
             [classes("custom-div"), id("custom-div-id")]

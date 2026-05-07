@@ -48,19 +48,14 @@ class CustomDiv(Component):
 index_page = Page(
     (PrintComponentsModifier(), classes("index-page")),
     name="index",
-    head=[],
-    body=[
-        CustomDiv(
-            [
-                classes("custom-div"),
-                id("custom-div-id"),
-            ],
-            test_children=html.Div("test-children"),
-        )[html.Button()](
-            id("overwritten-div-id"),
-        )
-    ],
-)
+)[
+    CustomDiv(
+        [classes("custom-div"), id("custom-div-id")],
+        test_children=html.Div("test-children"),
+    )[html.Button()](
+        id("overwritten-div-id"),
+    )
+]
 
 
 class TestComponent(Component):

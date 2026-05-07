@@ -21,5 +21,6 @@ from testapp.urls import app
 
 urlpatterns = [
     path("", include("testapp.urls")),
+    path("bulma/", include("bulma.urls")),
     path("admin/", admin.site.urls),
 ]
