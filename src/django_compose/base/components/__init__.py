@@ -11,7 +11,7 @@ from .base_components import (
     children_field,
     children_to_tuple,
 )
-from .compose_components import PageLink
+from .compose_components import Stylesheet
 
 __all__ = [
     "Component",
@@ -19,7 +19,7 @@ __all__ = [
     "RenderableComponent",
     "TemplateComponent",
     "Text",
-    "PageLink",
+    "Stylesheet",
     "ThemedComponent",
     "Builder",
     "ComponentBuilder",
