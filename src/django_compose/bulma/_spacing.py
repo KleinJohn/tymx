@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import ClassVar, Literal, Self, final, override
+from typing import ClassVar, Literal, Self, override
 
 from attrs import define, field
 
@@ -62,6 +62,15 @@ class _Spacing(str):
                 raise ValueError(
                     f"Invalid spacing value: {value}. Valid values are: {cls.valid_values}"
                 )
+
+    @override
+    def __call__(self, all_sizes: str | int | None = None, **kwds) -> str:
+        val = str(all_sizes) if all_sizes is not None else None
+        return self.with_values(t=val, r=val, b=val, l=val)
+
+    def all(self, value: str | int | None) -> Self:
+        val = str(value) if value is not None else None
+        return self.with_values(t=val, r=val, b=val, l=val)
 
     @classmethod
     def from_values(

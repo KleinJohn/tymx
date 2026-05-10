@@ -8,11 +8,12 @@ index_page = Page(
     name="index",
     head=dependencies,
 )[
-    bulma.Box[
+    bulma.Box((bulma.Text.centered.align_desktop.family_code))[
         "Hier ein wenig Text",
         bulma.Button(
             (
-                bulma.M.y6.x4,
+                bulma.M.all(2),
+                bulma.P.x2,
                 bulma.Color.DANGER.text.invert,
                 bulma.Color.DANGER.background,
             ),

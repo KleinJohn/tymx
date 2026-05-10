@@ -97,7 +97,8 @@ def _split_attributes_and_modifiers(
             case None:
                 return
             case str():
-                attrs.append(attribute_string_handler(item))
+                if item:
+                    attrs.append(attribute_string_handler(item))
             case Attribute():
                 attrs.append(item)
             case Modifier():
