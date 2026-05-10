@@ -61,7 +61,7 @@ index_page = Page(
 class TestComponent(Component):
 
     def build(self, context: Context) -> Children:
-        button_prototype = bulma.Button(size="is-large", color=bulma.Color.INHERIT.text)
+        button_prototype = bulma.Button(size="is-large")
         return bulma.Block(element=html.Section)[
             bulma.Buttons[
                 button_prototype(size=bulma.ButtonSize.MEDIUM), button_prototype

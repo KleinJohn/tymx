@@ -8,10 +8,15 @@ index_page = Page(
     name="index",
     head=dependencies,
 )[
-    bulma.Box((bulma.Color.TEXT.shade(50).background))[
+    bulma.Box[
         "Hier ein wenig Text",
         bulma.Button(
-            icon=bulma.Icon("fa fa-heart"),
+            (
+                bulma.M.y6.x4,
+                bulma.Color.DANGER.text.invert,
+                bulma.Color.DANGER.background,
+            ),
+            icon=bulma.Icon("fa fa-rocket"),
             icon_side=bulma.Side.RIGHT,
         )[
             "Hello, Bulma!",

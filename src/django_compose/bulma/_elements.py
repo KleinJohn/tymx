@@ -71,7 +71,6 @@ class Button(Component):
     button_type: ButtonType = field(
         default=ButtonType.BUTTON, converter=enum_converter(ButtonType)
     )
-    color: str | None = field(default=None, converter=color_converter(Color))
     color_scheme: ColorScheme | None = field(
         default=None, converter=optional_enum_converter(ColorScheme)
     )
@@ -119,7 +118,6 @@ class Button(Component):
             attrs.append(a.type_(self.button_type))
 
         optional_classes = [
-            self.color,
             self.color_scheme,
             self.size,
             self.style,

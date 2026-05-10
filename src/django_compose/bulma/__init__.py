@@ -1,4 +1,5 @@
 from ._colors import Color
+from ._spacing import M, P
 from ._types import (
     ButtonAlignment,
     ColorScheme,
@@ -23,6 +24,8 @@ from ._helpers import cdn, fontawesome_cdn
 __all__ = [
     "cdn",
     "fontawesome_cdn",
+    "M",
+    "P",
     "Color",
     "Block",
     "Box",
