@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from attrs import field
 
-from django_compose.base.components import Component, children_to_tuple
+from django_compose.base.components import Component
 from django_compose.base.components.base_components import NoInheritance
 from django_compose.base.context import Context
 from django_compose.base.types import Children
@@ -10,15 +10,16 @@ from django_compose.base.helpers import enum_converter, optional_enum_converter
 
 import django_compose.base.attributes as a
 import django_compose.base.components.html_components as html
+from django_compose.bulma._colors import Color, color_converter
 
 from ._types import (
     ButtonType,
-    ButtonColor,
     ButtonColorScheme,
     ButtonSize,
     ButtonStyle,
     ButtonState,
     ButtonAlignment,
+    ImageSize,
 )
 
 
@@ -53,6 +54,7 @@ class Box(Component):
 class Button(Component):
     """Bulma button component.
 
+    Structure:
     - `<button|a|input>[children]` If `icon` is not provided
     - `<button|a|input>[icon, span[children]]` If `icon` is provided
 
@@ -67,9 +69,7 @@ class Button(Component):
     button_type: ButtonType = field(
         default=ButtonType.BUTTON, converter=enum_converter(ButtonType)
     )
-    color: ButtonColor | None = field(
-        default=None, converter=optional_enum_converter(ButtonColor)
-    )
+    color: str | None = field(default=None, converter=color_converter(Color))
     color_scheme: ButtonColorScheme | None = field(
         default=None, converter=optional_enum_converter(ButtonColorScheme)
     )
@@ -87,6 +87,8 @@ class Button(Component):
     loading: bool = False
     disabled: bool = False
     selected: bool = False
+    inverted: bool = False
+    ghost: bool = False
     icon: Icon | None = None
     icon_size: None | ButtonSize = field(
         default=None,
@@ -124,6 +126,8 @@ class Button(Component):
             self.fullwidth: "is-fullwidth",
             self.loading: "is-loading",
             self.selected: "is-selected",
+            self.inverted: "is-inverted",
+            self.ghost: "is-ghost",
         }
         attrs.extend(a.classes(c) for active, c in boolean_classes.items() if active)
 
@@ -151,9 +155,11 @@ class Button(Component):
 class Buttons(Component):
     """Bulma buttons component for grouping multiple buttons.
 
+    Structure:
     - `<div>[children]` where children are instances of `Button`
 
-    See https://bulma.io/documentation/elements/button/#list-of-buttons for details.
+    See also:
+        https://bulma.io/documentation/elements/button/#list-of-buttons
     """
 
     addons: bool = False
@@ -182,9 +188,11 @@ class Buttons(Component):
 class Content(Component):
     """A single class to handle WYSIWYG generated content, where only HTML tags are available.
 
+    Structure:
     - `<element>[children]`
 
-    See https://bulma.io/documentation/elements/content/ for details.
+    See also:
+        https://bulma.io/documentation/elements/content/
     """
 
     element: type[Component] = html.Div
@@ -196,9 +204,11 @@ class Content(Component):
 class Delete(Component):
     """A versatile delete cross.
 
+    Structure:
     - `<button>[children]`
 
-    See https://bulma.io/documentation/elements/delete/ for details.
+    See also:
+        https://bulma.io/documentation/elements/delete/
     """
 
     size: ButtonSize | None = field(
@@ -213,8 +223,8 @@ class Icon(NoInheritance, Component):
     """A wrapper for icons.
 
     Structure:
-        - `<span>[<i>(target)]` if no children are provided
-        - `<span>[<span>[<i>(target)], <span>[children]]` if children are provided
+    - `<span>[<i>(target)]` if no children are provided
+    - `<span>[<span>[<i>(target)], <span>[children]]` if children are provided
 
     See also:
         https://bulma.io/documentation/elements/icon/
@@ -233,3 +243,54 @@ class Icon(NoInheritance, Component):
             ]
         else:
             return inner_icon
+
+
+class Image(Component):
+    """A container for responsive images.
+
+    Structure:
+    - `<figure>[<img>(src)]` if no children are provided
+
+    See also:
+        https://bulma.io/documentation/elements/image/
+    """
+
+    src: str | None = None
+    size: ImageSize | None = field(
+        default=None, converter=optional_enum_converter(ImageSize)
+    )
+    rounded: bool = False
+    fullwidth: bool = False
+
+    def build(self, context: Context) -> Children:
+        fig_attrs: list[a.Attribute] = [a.classes("image")]
+        img_attrs: list[a.Attribute] = []
+        if self.size:
+            fig_attrs.append(a.classes(self.size))
+        if self.src:
+            img_attrs.append(a.src(self.src))
+        if self.rounded:
+            img_attrs.append(a.classes("is-rounded"))
+        if self.fullwidth:
+            img_attrs.append(a.classes("is-fullwidth"))
+
+        return html.Figure(fig_attrs)[html.Img(img_attrs)]
+
+
+class Notification(Component):
+    """Bold notification blocks, to alert your users of something.
+
+    Structure:
+    - `<div>[children]`
+
+    See also:
+        https://bulma.io/documentation/elements/notification/
+    """
+
+    color: str | None = field(default=None, converter=color_converter(Color))
+
+    def build(self, context: Context) -> Children:
+        attrs: list[a.Attribute] = [a.classes("notification")]
+        if self.color:
+            attrs.append(a.classes(self.color))
+        return html.Div(attrs)[self.children]

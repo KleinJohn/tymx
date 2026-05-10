@@ -1,6 +1,6 @@
 from .base_model import BaseModel, ModelMeta
 from .decorators import classinstancemethod
-from .enums import enum_converter, optional_enum_converter
+from .converters import enum_converter, optional_enum_converter
 
 __all__ = [
     "BaseModel",

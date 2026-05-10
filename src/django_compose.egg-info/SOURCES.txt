@@ -26,9 +26,9 @@ src/django_compose/base/components/html_components.py
 src/django_compose/base/components/interaction_components.py
 src/django_compose/base/helpers/__init__.py
 src/django_compose/base/helpers/base_model.py
+src/django_compose/base/helpers/converters.py
 src/django_compose/base/helpers/debug.py
 src/django_compose/base/helpers/decorators.py
-src/django_compose/base/helpers/enums.py
 src/django_compose/base/helpers/mypy_compose_plugin.py
 src/django_compose/base/modifiers/__init__.py
 src/django_compose/base/modifiers/base_modifiers.py
@@ -36,5 +36,7 @@ src/django_compose/base/modifiers/debug_modifiers.py
 src/django_compose/base/views/__init__.py
 src/django_compose/base/views/view_base.py
 src/django_compose/bulma/__init__.py
+src/django_compose/bulma/_colors.py
 src/django_compose/bulma/_elements.py
+src/django_compose/bulma/_helpers.py
 src/django_compose/bulma/_types.py

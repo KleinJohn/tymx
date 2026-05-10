@@ -61,7 +61,7 @@ index_page = Page(
 class TestComponent(Component):
 
     def build(self, context: Context) -> Children:
-        button_prototype = bulma.Button(size="is-large", color="is-primary")
+        button_prototype = bulma.Button(size="is-large", color=bulma.Color.INHERIT.text)
         return bulma.Block(element=html.Section)[
             bulma.Buttons[
                 button_prototype(size=bulma.ButtonSize.MEDIUM), button_prototype
@@ -70,7 +70,7 @@ class TestComponent(Component):
 
 
 # test_component = TestComponent("test-class")
-test_component = bulma.Icon("fa fa-test")
+test_component = TestComponent(classes("test-class"))
 
 context = Context(Router(DjangoApp(name="testapp", pages=[]), pages=[]), index_page)
 built_component = wrap_components(test_component.full_build(context))

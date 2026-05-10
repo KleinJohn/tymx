@@ -1,6 +1,6 @@
+from ._colors import Color
 from ._types import (
     ButtonAlignment,
-    ButtonColor,
     ButtonColorScheme,
     ButtonSize,
     ButtonState,
@@ -14,18 +14,20 @@ from ._elements import (
     Content,
     Delete,
     Icon,
+    Image,
+    Notification,
 )
 from ._helpers import cdn, fontawesome_cdn
 
 __all__ = [
     "cdn",
     "fontawesome_cdn",
+    "Color",
     "Block",
     "Box",
     "Button",
     "Buttons",
     "ButtonAlignment",
-    "ButtonColor",
     "ButtonColorScheme",
     "ButtonSize",
     "ButtonState",
@@ -33,4 +35,6 @@ __all__ = [
     "Content",
     "Delete",
     "Icon",
+    "Image",
+    "Notification",
 ]
