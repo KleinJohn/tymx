@@ -1,10 +1,11 @@
 from ._colors import Color
 from ._types import (
     ButtonAlignment,
-    ButtonColorScheme,
+    ColorScheme,
     ButtonSize,
     ButtonState,
     ButtonStyle,
+    Side,
 )
 from ._elements import (
     Block,
@@ -28,7 +29,7 @@ __all__ = [
     "Button",
     "Buttons",
     "ButtonAlignment",
-    "ButtonColorScheme",
+    "ColorScheme",
     "ButtonSize",
     "ButtonState",
     "ButtonStyle",
@@ -37,4 +38,5 @@ __all__ = [
     "Icon",
     "Image",
     "Notification",
+    "Side",
 ]

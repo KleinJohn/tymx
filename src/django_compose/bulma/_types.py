@@ -1,6 +1,11 @@
 from enum import StrEnum
 
 
+class Side(StrEnum):
+    LEFT = "left"
+    RIGHT = "right"
+
+
 class ButtonType(StrEnum):
     BUTTON = "button"
     LINK = "link"
@@ -8,7 +13,7 @@ class ButtonType(StrEnum):
     RESET = "reset"
 
 
-class ButtonColorScheme(StrEnum):
+class ColorScheme(StrEnum):
     DARK = "is-dark"
     LIGHT = "is-light"
 

@@ -12,6 +12,7 @@ index_page = Page(
         "Hier ein wenig Text",
         bulma.Button(
             icon=bulma.Icon("fa fa-heart"),
+            icon_side=bulma.Side.RIGHT,
         )[
             "Hello, Bulma!",
         ],

@@ -14,12 +14,13 @@ from django_compose.bulma._colors import Color, color_converter
 
 from ._types import (
     ButtonType,
-    ButtonColorScheme,
+    ColorScheme,
     ButtonSize,
     ButtonStyle,
     ButtonState,
     ButtonAlignment,
     ImageSize,
+    Side,
 )
 
 
@@ -56,7 +57,8 @@ class Button(Component):
 
     Structure:
     - `<button|a|input>[children]` If `icon` is not provided
-    - `<button|a|input>[icon, span[children]]` If `icon` is provided
+    - `<button|a|input>[icon, span[children]]` If `icon` is provided and icon_side = LEFT
+    - `<button|a|input>[span[children], icon]` If `icon` is provided and icon_side = RIGHT
 
     `button_type` controls the rendered element:
     - `ButtonType.BUTTON` renders a `<button>` element.
@@ -70,8 +72,8 @@ class Button(Component):
         default=ButtonType.BUTTON, converter=enum_converter(ButtonType)
     )
     color: str | None = field(default=None, converter=color_converter(Color))
-    color_scheme: ButtonColorScheme | None = field(
-        default=None, converter=optional_enum_converter(ButtonColorScheme)
+    color_scheme: ColorScheme | None = field(
+        default=None, converter=optional_enum_converter(ColorScheme)
     )
     size: ButtonSize | None = field(
         default=None, converter=optional_enum_converter(ButtonSize)
@@ -93,6 +95,10 @@ class Button(Component):
     icon_size: None | ButtonSize = field(
         default=None,
         converter=optional_enum_converter(ButtonSize),
+    )
+    icon_side: Side = field(
+        default=Side.LEFT,
+        converter=enum_converter(Side),
     )
 
     def _get_element(self) -> type[Component]:
@@ -147,7 +153,7 @@ class Button(Component):
                 else (
                     self.icon,
                     html.Span[self.children] if self.children else None,
-                )
+                )[:: -1 if self.icon_side == Side.RIGHT else 1]
             )
         ]
 
