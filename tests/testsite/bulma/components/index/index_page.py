@@ -11,10 +11,10 @@ index_page = Page(
     bulma.Box(
         (
             bulma.Text.size(mobile=6, tablet=5, desktop=4).centered,
-            bulma.Display.hide(mobile=True, tablet=True, desktop=True),
+            bulma.Flex.justify_center.align_items_center.wrap,
         )
     )[
-        "Hier ein wenig Text",
+        bulma.Block((bulma.Flex.align_self_baseline.grow(3),))["Hier ein wenig Text"],
         bulma.Button(
             (
                 bulma.M.all(2),

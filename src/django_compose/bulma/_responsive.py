@@ -109,19 +109,16 @@ class _DisplayBuilder(str):
 
         if display is not None:
             classes.append(f"is-{display}")
-
         for size, value in asdict(responsive_displays, filter=_none_filter).items():
             classes.append(f"is-{value}-{size.replace('_', '-')}")
 
         if hidden:
             classes.append("is-hidden")
-
         for size, active in asdict(responsive_hidden, filter=lambda k, v: v).items():
             classes.append(f"is-hidden-{size.replace('_', '-')}")
 
         if invisible:
             classes.append("is-invisible")
-
         if sr_only:
             classes.append("is-sr-only")
 

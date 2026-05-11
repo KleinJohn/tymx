@@ -1,4 +1,5 @@
 from ._colors import Color
+from ._flex import Flex
 from ._spacing import M, P
 from ._typography import Text, TextAlignment
 from ._responsive import Display
@@ -32,6 +33,7 @@ __all__ = [
     "TextAlignment",
     "Display",
     "Color",
+    "Flex",
     "Block",
     "Box",
     "Button",
