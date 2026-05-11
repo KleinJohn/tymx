@@ -163,7 +163,7 @@ class _TypographyBuilder(str):
         if alignment is not None:
             classes.append(f"has-text-{alignment.value}")
         for al, resp in asdict(responsive_alignments, filter=_none_filter).items():
-            classes.append(f"has-text-{al}-{resp}")
+            classes.append(f"has-text-{al}-{resp}".replace("_", "-"))
         if transformation is not None:
             classes.append(f"is-{transformation.value}")
         if weight is not None:

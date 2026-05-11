@@ -1,6 +1,7 @@
 from ._colors import Color
 from ._spacing import M, P
 from ._typography import Text, TextAlignment
+from ._responsive import Display
 from ._types import (
     ButtonAlignment,
     ColorScheme,
@@ -29,6 +30,7 @@ __all__ = [
     "P",
     "Text",
     "TextAlignment",
+    "Display",
     "Color",
     "Block",
     "Box",

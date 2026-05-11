@@ -8,7 +8,12 @@ index_page = Page(
     name="index",
     head=dependencies,
 )[
-    bulma.Box((bulma.Text.size(mobile=6, tablet=5, desktop=4).centered))[
+    bulma.Box(
+        (
+            bulma.Text.size(mobile=6, tablet=5, desktop=4).centered,
+            bulma.Display.hide(mobile=True, tablet=True, desktop=True),
+        )
+    )[
         "Hier ein wenig Text",
         bulma.Button(
             (
