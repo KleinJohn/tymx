@@ -1,6 +1,6 @@
 from ._colors import Color
 from ._spacing import M, P
-from ._typography import Text
+from ._typography import Text, TextAlignment
 from ._types import (
     ButtonAlignment,
     ColorScheme,
@@ -27,7 +27,8 @@ __all__ = [
     "fontawesome_cdn",
     "M",
     "P",
-    "TextBuilder",
+    "Text",
+    "TextAlignment",
     "Color",
     "Block",
     "Box",
