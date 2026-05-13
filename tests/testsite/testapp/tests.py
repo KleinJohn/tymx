@@ -1,14 +1,14 @@
-from django_compose.base.components import Component
-from django_compose.base.components.base_components import (
+from tymx.base.components import Component
+from tymx.base.components.base_components import (
     Children,
     Context,
 )
-from django_compose.base.components.html_components import A, H1, Button, Div, Input
-from django_compose.base.attributes import classes, disabled, id, style
-from django_compose.base.modifiers import Attributes, DebugModifier
-from django_compose.base.app import Page
-from django_compose.base.router import Router
-from django_compose.base.theme import Theme
+from tymx.base.components.html_components import A, H1, Button, Div, Input
+from tymx.base.attributes import classes, disabled, id, style
+from tymx.base.modifiers import Attributes, DebugModifier
+from tymx.base.app import Page
+from tymx.base.router import Router
+from tymx.base.theme import Theme
 
 
 class CustomButton(Component):

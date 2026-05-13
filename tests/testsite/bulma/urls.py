@@ -1,4 +1,4 @@
-from django_compose.base.app import DjangoApp
+from tymx.base.app import DjangoApp
 from .components.index.index_page import index_page
 
 app = DjangoApp(

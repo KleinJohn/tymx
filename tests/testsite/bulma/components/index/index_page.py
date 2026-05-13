@@ -1,6 +1,6 @@
-from django_compose.base import Page
+from tymx.base import Page
 
-from django_compose import bulma
+from tymx import bulma
 
 dependencies = [bulma.cdn, bulma.fontawesome_cdn]
 

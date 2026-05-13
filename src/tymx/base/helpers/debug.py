@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from django_compose.base.components import Component
+from tymx.base.components import Component
 
 
 class ValidationError(Exception):

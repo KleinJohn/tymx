@@ -1,13 +1,13 @@
 from typing import override
 
-import django_compose.base.attributes as a
-import django_compose.base.components.html_components as html
-from django_compose.base.components.base_components import (
+import tymx.base.attributes as a
+import tymx.base.components.html_components as html
+from tymx.base.components.base_components import (
     Children,
     Component,
     NoChildren,
 )
-from django_compose.base.context import Context
+from tymx.base.context import Context
 
 
 class Stylesheet(NoChildren, Component):

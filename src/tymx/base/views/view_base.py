@@ -6,7 +6,7 @@ from django.http import HttpRequest, HttpResponse, HttpResponseNotFound
 from django.views import View
 
 if TYPE_CHECKING:
-    from django_compose.base.components.base_components import Component
+    from tymx.base.components.base_components import Component
 
 
 class ComponentView(View):

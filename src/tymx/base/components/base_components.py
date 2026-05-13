@@ -14,22 +14,22 @@ from typing import (
 import htpy
 from attrs import evolve, field
 
-from django_compose.base.attributes import (
+from tymx.base.attributes import (
     ALL_ATTRIBUTES,
     Attribute,
     Attributes,
     FrozenAttributes,
 )
-from django_compose.base.config import attribute_string_handler
-from django_compose.base.context import Context, DataDict
-from django_compose.base.helpers import BaseModel, classinstancemethod
-from django_compose.base.modifiers.base_modifiers import (
+from tymx.base.config import attribute_string_handler
+from tymx.base.context import Context, DataDict
+from tymx.base.helpers import BaseModel, classinstancemethod
+from tymx.base.modifiers.base_modifiers import (
     FrozenModifiers,
     Modifier,
     Modifiers,
 )
-from django_compose.base.theme import Theme
-from django_compose.base.types import (
+from tymx.base.theme import Theme
+from tymx.base.types import (
     BuildFunctionType,
     Children,
     ModifiersOrAttributes,
@@ -207,7 +207,9 @@ class ComponentBuilder(Builder):
         return result
 
     def _compose_built(self, built: list[Component]) -> list[Component]:
-        return children_to_list(self.context.data.component.compose(self.context, built))
+        return children_to_list(
+            self.context.data.component.compose(self.context, built)
+        )
 
     def _after_build(self, result: list[Component]) -> list[Component]:
         modifiers = self.context.data.modifiers
@@ -239,11 +241,15 @@ class Component(BaseModel, auto_frozen=True):
         super().__attrs_post_init__()
 
     @classinstancemethod
-    def with_attributes(self: type[T_Component] | T_Component, **attributes: Any) -> T_Component:
+    def with_attributes(
+        self: type[T_Component] | T_Component, **attributes: Any
+    ) -> T_Component:
         if isinstance(self, type):
             return self(_extract_additional_attributes(attributes))
         else:
-            new_attrs = self.attributes.merge(_extract_additional_attributes(attributes))
+            new_attrs = self.attributes.merge(
+                _extract_additional_attributes(attributes)
+            )
             return evolve(self, modifiers=[new_attrs, self.modifiers])
 
     @abstractmethod
@@ -307,7 +313,9 @@ class Component(BaseModel, auto_frozen=True):
 
         if not pretty:
             if self.children:
-                child_str = f"[{', '.join(c.to_string(False, verbose) for c in self.children)}]"
+                child_str = (
+                    f"[{', '.join(c.to_string(False, verbose) for c in self.children)}]"
+                )
             else:
                 child_str = ""
             return f"{v_str}{child_str}"
@@ -385,7 +393,9 @@ class NoChildren(Component):
     @override
     def __attrs_post_init__(self) -> None:
         if self.children:
-            raise ValueError(f"Component '{self.__class__.__name__}' cannot have children.")
+            raise ValueError(
+                f"Component '{self.__class__.__name__}' cannot have children."
+            )
         super().__attrs_post_init__()
 
 
@@ -436,7 +446,10 @@ class TemplateBuilder(ComponentBuilder):
     @override
     def _call_build(self) -> list[Component]:
         component = self.context.data.component
-        if isinstance(component, TemplateComponent) and component.template_function is not None:
+        if (
+            isinstance(component, TemplateComponent)
+            and component.template_function is not None
+        ):
             return children_to_list(component.template_function(self.context))
         return children_to_list(component.build(self.context))
 
@@ -452,7 +465,9 @@ class TemplateComponent(RenderableComponent, Component):
 
     @override
     def build(self, context: Context) -> Children:
-        raise NotImplementedError("Called build on TemplateComponent without implementation")
+        raise NotImplementedError(
+            "Called build on TemplateComponent without implementation"
+        )
 
     @override
     def full_build(self, context: Context) -> list[Component]:
@@ -465,7 +480,9 @@ class TemplateComponent(RenderableComponent, Component):
         if not issubclass(self.builder, TemplateBuilder):
             raise ValueError("TemplateComponent must be built with TemplateBuilder.")
         if self.stored_context is None:
-            raise ValueError("TemplateComponent must have stored_context set before rendering.")
+            raise ValueError(
+                "TemplateComponent must have stored_context set before rendering."
+            )
         result = self.builder(self.stored_context).build(self)
         return (child.render() for child in result)
 

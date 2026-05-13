@@ -1,4 +1,4 @@
-from django_compose.base.components import Stylesheet
+from tymx.base.components import Stylesheet
 
 cdn = Stylesheet(href="https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css")
 

@@ -12,13 +12,13 @@ from typing import (
 
 from attrs import evolve, field, fields
 
-from django_compose.base.attributes.base_attributes import Attributes
-from django_compose.base.consumable import Consumable, ConsumerPolicy, T_Consumable
-from django_compose.base.helpers import BaseModel
-from django_compose.base.modifiers.base_modifiers import Modifiers
+from tymx.base.attributes.base_attributes import Attributes
+from tymx.base.consumable import Consumable, ConsumerPolicy, T_Consumable
+from tymx.base.helpers import BaseModel
+from tymx.base.modifiers.base_modifiers import Modifiers
 
 if TYPE_CHECKING:
-    from django_compose.base.components.base_components import Component
+    from tymx.base.components.base_components import Component
 
 
 class DataDict(dict[type[T_Consumable], T_Consumable]):

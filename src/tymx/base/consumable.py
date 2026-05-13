@@ -3,10 +3,10 @@ from __future__ import annotations
 from enum import Enum, auto
 from typing import TYPE_CHECKING, ClassVar, Self, TypeVar
 
-from django_compose.base.helpers.base_model import BaseModel
+from tymx.base.helpers.base_model import BaseModel
 
 if TYPE_CHECKING:
-    from django_compose.base.context import Context, ContextFrame
+    from tymx.base.context import Context, ContextFrame
 
 
 T_Consumable = TypeVar("T_Consumable", bound="Consumable")
@@ -88,7 +88,8 @@ class Consumable(BaseModel, frozen=True):
                 # we can't use current_depth here because there might be unbuilt components in
                 # between, so we need to check all components between
                 return all(
-                    not frame.component.builds_itself for frame in context.history[frame.level :]
+                    not frame.component.builds_itself
+                    for frame in context.history[frame.level :]
                 )
             case ConsumerPolicy.CUSTOM:
                 return self.custom_policy(context, frame)

@@ -4,14 +4,14 @@ from typing import TYPE_CHECKING, Any
 
 from attrs import field
 
-from django_compose.base.components import Component
-from django_compose.base.context import ConsumerPolicy
+from tymx.base.components import Component
+from tymx.base.context import ConsumerPolicy
 
 from .base_modifiers import Modifier
 
 if TYPE_CHECKING:
-    from django_compose.base.components.base_components import Component
-    from django_compose.base.context import Context
+    from tymx.base.components.base_components import Component
+    from tymx.base.context import Context
 
 
 class PrintContextModifier(Modifier):
@@ -34,7 +34,11 @@ class PrintComponentsModifier(Modifier):
 
     def apply(self, context: Context) -> None:
         print("Before build:")
-        print(context.data.component.to_string(self.pretty, self.verbose, **self.print_kwargs))
+        print(
+            context.data.component.to_string(
+                self.pretty, self.verbose, **self.print_kwargs
+            )
+        )
         print()
 
     def transform(self, result: list[Component]) -> list[Component]:

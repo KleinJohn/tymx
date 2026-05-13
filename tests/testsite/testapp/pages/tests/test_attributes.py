@@ -1,7 +1,7 @@
 import unittest
 
-from django_compose.base.attributes import Attributes
-from django_compose.base.attributes import classes, id, style
+from tymx.base.attributes import Attributes
+from tymx.base.attributes import classes, id, style
 
 
 class TestAttributesMerging(unittest.TestCase):

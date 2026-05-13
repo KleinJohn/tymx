@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Generator
 import unittest
 
-from django_compose.base.components.base_components import Component
+from tymx.base.components.base_components import Component
 
 
 def traverse_df(component: Component) -> Generator[Component, None, None]:

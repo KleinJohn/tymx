@@ -5,13 +5,13 @@ from typing import override
 
 from attrs import field
 
-import django_compose.base.components.html_components as html
-from django_compose.base.components import Component
-from django_compose.base.components.base_components import children_to_tuple
-from django_compose.base.context import Context, ContextData, DataDict
-from django_compose.base.router import Router
-from django_compose.base.types import Children
-from django_compose.base.views.view_base import ComponentView
+import tymx.base.components.html_components as html
+from tymx.base.components import Component
+from tymx.base.components.base_components import children_to_tuple
+from tymx.base.context import Context, ContextData, DataDict
+from tymx.base.router import Router
+from tymx.base.types import Children
+from tymx.base.views.view_base import ComponentView
 
 
 def _route_pattern_not_none(route_pattern: str | None) -> str:

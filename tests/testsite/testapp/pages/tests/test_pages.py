@@ -1,8 +1,8 @@
-from django_compose.base.app import DjangoApp
-from django_compose.base.components import Component
-from django_compose.base.components.base_components import wrap_components
-from django_compose.base.types import Children
-from django_compose.base.components.html_components import (
+from tymx.base.app import DjangoApp
+from tymx.base.components import Component
+from tymx.base.components.base_components import wrap_components
+from tymx.base.types import Children
+from tymx.base.components.html_components import (
     Div,
     Button,
     Label,
@@ -10,9 +10,9 @@ from django_compose.base.components.html_components import (
     H1,
     Input,
 )
-from django_compose.base.context import Context
-from django_compose.base.attributes import id, style, classes, disabled
-from django_compose.base import Page, Router
+from tymx.base.context import Context
+from tymx.base.attributes import id, style, classes, disabled
+from tymx.base import Page, Router
 
 
 class CustomButton(Component):

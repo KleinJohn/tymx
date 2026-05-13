@@ -2,14 +2,14 @@ import unittest
 
 from typing import override
 
-from django_compose.base.app import DjangoApp
-import django_compose.base.components.html_components as html
-from django_compose.base import Page, Router
-from django_compose.base.attributes import classes, id, style
-from django_compose.base.components import Component
-from django_compose.base.helpers.debug import validate_is_built
-from django_compose.base.context import Context
-from django_compose.base.types import Children
+from tymx.base.app import DjangoApp
+import tymx.base.components.html_components as html
+from tymx.base import Page, Router
+from tymx.base.attributes import classes, id, style
+from tymx.base.components import Component
+from tymx.base.helpers.debug import validate_is_built
+from tymx.base.context import Context
+from tymx.base.types import Children
 
 
 class CustomButton(Component):

@@ -7,15 +7,15 @@ from typing import TYPE_CHECKING, ClassVar, Self, override
 
 from attrs import evolve, field
 
-from django_compose.base.consumable import Consumable, ConsumerPolicy
-from django_compose.base.types import (
+from tymx.base.consumable import Consumable, ConsumerPolicy
+from tymx.base.types import (
     ModifierDict,
     ModifierLike,
 )
 
 if TYPE_CHECKING:
-    from django_compose.base.components import Component
-    from django_compose.base.context import Context, ContextFrame
+    from tymx.base.components import Component
+    from tymx.base.context import Context, ContextFrame
 
 
 # We need BaseModifiers so that we can ensure that you can't have Modifiers inside Modifiers
@@ -47,7 +47,9 @@ class Modifier(BaseModifier):
 
 
 def _convert_to_modifier_dict(modifiers: ModifierLike) -> ModifierDict:
-    def match_modifiers_recursive(modifier: ModifierLike, mod_dict: ModifierDict) -> None:
+    def match_modifiers_recursive(
+        modifier: ModifierLike, mod_dict: ModifierDict
+    ) -> None:
         match modifier:
             case None:
                 return

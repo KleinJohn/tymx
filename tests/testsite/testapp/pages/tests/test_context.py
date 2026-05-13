@@ -1,11 +1,11 @@
 import unittest
 
-from django_compose.base import Page, Router
-from django_compose.base.app import DjangoApp
-from django_compose.base.components.html_components import Div
-from django_compose.base.context import Context, ContextFrame, DataDict
-from django_compose.base.attributes import Attributes
-from django_compose.base.modifiers import Modifiers
+from tymx.base import Page, Router
+from tymx.base.app import DjangoApp
+from tymx.base.components.html_components import Div
+from tymx.base.context import Context, ContextFrame, DataDict
+from tymx.base.attributes import Attributes
+from tymx.base.modifiers import Modifiers
 
 
 def make_router_and_page() -> tuple[Router, Page]:

@@ -1,7 +1,7 @@
 from django.http import HttpRequest, HttpResponse
-from django_compose.base.components.html_components import H1, Button, Div, Span
-from django_compose.base.app import DjangoApp, Page
-from django_compose.base.modifiers import styles, id, disabled
+from tymx.base.components.html_components import H1, Button, Div, Span
+from tymx.base.app import DjangoApp, Page
+from tymx.base.modifiers import styles, id, disabled
 
 index_page = Page(
     name="index",

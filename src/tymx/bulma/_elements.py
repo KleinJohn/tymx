@@ -4,14 +4,14 @@ from typing import override
 
 from attrs import field
 
-import django_compose.base.attributes as a
-import django_compose.base.components.html_components as html
-from django_compose.base.components import Component
-from django_compose.base.components.base_components import NoInheritance
-from django_compose.base.context import Context
-from django_compose.base.helpers import enum_converter, optional_enum_converter
-from django_compose.base.types import Children
-from django_compose.bulma._colors import Color, color_converter
+import tymx.base.attributes as a
+import tymx.base.components.html_components as html
+from tymx.base.components import Component
+from tymx.base.components.base_components import NoInheritance
+from tymx.base.context import Context
+from tymx.base.helpers import enum_converter, optional_enum_converter
+from tymx.base.types import Children
+from tymx.bulma._colors import Color, color_converter
 
 from ._types import (
     ButtonAlignment,
@@ -69,13 +69,19 @@ class Button(Component):
     See https://bulma.io/documentation/elements/button/ for details.
     """
 
-    button_type: ButtonType = field(default=ButtonType.BUTTON, converter=enum_converter(ButtonType))
+    button_type: ButtonType = field(
+        default=ButtonType.BUTTON, converter=enum_converter(ButtonType)
+    )
     color_scheme: ColorScheme | None = field(
         default=None, converter=optional_enum_converter(ColorScheme)
     )
     size: Size | None = field(default=None, converter=optional_enum_converter(Size))
-    style: ButtonStyle | None = field(default=None, converter=optional_enum_converter(ButtonStyle))
-    state: ButtonState | None = field(default=None, converter=optional_enum_converter(ButtonState))
+    style: ButtonStyle | None = field(
+        default=None, converter=optional_enum_converter(ButtonStyle)
+    )
+    state: ButtonState | None = field(
+        default=None, converter=optional_enum_converter(ButtonState)
+    )
     responsive: bool = False
     fullwidth: bool = False
     loading: bool = False
@@ -249,7 +255,9 @@ class Image(Component):
     """
 
     src: str | None = None
-    size: ImageSize | None = field(default=None, converter=optional_enum_converter(ImageSize))
+    size: ImageSize | None = field(
+        default=None, converter=optional_enum_converter(ImageSize)
+    )
     rounded: bool = False
     fullwidth: bool = False
 

@@ -1,21 +1,21 @@
-from django_compose import bulma
-from django_compose.base.components.base_components import (
+from tymx import bulma
+from tymx.base.components.base_components import (
     Component,
     children_to_tuple,
     wrap_components,
 )
-from django_compose.base.attributes import disabled, id, style, classes
-from django_compose.base.app import DjangoApp, Page
-from django_compose.base.context import Context
-from django_compose.base.helpers.debug import validate_is_built
-from django_compose.base.modifiers.debug_modifiers import (
+from tymx.base.attributes import disabled, id, style, classes
+from tymx.base.app import DjangoApp, Page
+from tymx.base.context import Context
+from tymx.base.helpers.debug import validate_is_built
+from tymx.base.modifiers.debug_modifiers import (
     PrintComponentsModifier,
     PrintContextModifier,
 )
-from django_compose.base.router import Router
-from django_compose.base.types import Children
+from tymx.base.router import Router
+from tymx.base.types import Children
 
-import django_compose.base.components.html_components as html
+import tymx.base.components.html_components as html
 
 from attrs import field
 
