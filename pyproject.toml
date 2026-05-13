@@ -19,10 +19,12 @@ license = "MIT"
 license-files = ["LICEN[CS]E*"]
 dependencies = [
     "attrs>=26.1.0",
-    "django>=5.2.11",
     "htpy>=25.12.0",
-    "types-setuptools>=82.0.0.20260408",
-    "typing-extensions>=4.15.0",
+]
+
+[project.optional-dependencies]
+django = [
+    "django>=5.2.11",
 ]
 
 [project.urls]
