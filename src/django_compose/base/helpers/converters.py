@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from enum import StrEnum
-from typing import Callable, TypeVar
+from typing import TypeVar
 
 E = TypeVar("E", bound=StrEnum)
 

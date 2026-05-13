@@ -2,23 +2,27 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Sequence
-
 from typing import (
     Any,
-    Self,
     ClassVar,
+    Self,
     TypeVar,
     final,
     override,
 )
 
-from django_compose.base.context import Context, DataDict
+import htpy
+from attrs import evolve, field
+
 from django_compose.base.attributes import (
+    ALL_ATTRIBUTES,
     Attribute,
     Attributes,
     FrozenAttributes,
-    ALL_ATTRIBUTES,
 )
+from django_compose.base.config import attribute_string_handler
+from django_compose.base.context import Context, DataDict
+from django_compose.base.helpers import BaseModel, classinstancemethod
 from django_compose.base.modifiers.base_modifiers import (
     FrozenModifiers,
     Modifier,
@@ -30,14 +34,6 @@ from django_compose.base.types import (
     Children,
     ModifiersOrAttributes,
 )
-from django_compose.base.config import attribute_string_handler
-
-
-from django_compose.base.helpers import BaseModel, classinstancemethod
-
-from attrs import field, evolve
-
-import htpy
 
 T_Component = TypeVar("T_Component", bound="Component")
 
@@ -78,7 +74,7 @@ def children_to_tuple(
 
 
 def _extract_additional_attributes(extra_dict: dict[str, Any]) -> list[Attribute]:
-    attrs: list[Attribute] = []
+    attrs: list[Attribute[Any]] = []
     for attr, value in extra_dict.items():
         if attr in ALL_ATTRIBUTES:
             attrs.append(ALL_ATTRIBUTES[attr](value))
@@ -87,10 +83,10 @@ def _extract_additional_attributes(extra_dict: dict[str, Any]) -> list[Attribute
 
 def _split_attributes_and_modifiers(
     items: ModifiersOrAttributes,
-) -> tuple[list[Attribute], list[Modifier]]:
+) -> tuple[list[Attribute[Any]], list[Modifier]]:
     def split_recursive(
         item: ModifiersOrAttributes,
-        attrs: list[Attribute],
+        attrs: list[Attribute[Any]],
         mods: list[Modifier],
     ) -> None:
         match item:
@@ -113,7 +109,7 @@ def _split_attributes_and_modifiers(
             case _:
                 raise ValueError(f"Invalid attribute/modifier: {item}")
 
-    attrs: list[Attribute] = []
+    attrs: list[Attribute[Any]] = []
     mods: list[Modifier] = []
     split_recursive(items, attrs, mods)
     return attrs, mods
@@ -137,7 +133,7 @@ def _convert_inputs_to_attributes(items: ModifiersOrAttributes) -> FrozenAttribu
         case None | Attribute() | Attributes() | str():
             return FrozenAttributes(items)
         case Sequence():
-            attrs: list[Attribute] = []
+            attrs: list[Attribute[Any]] = []
             for a in items:
                 attrs.extend(_convert_inputs_to_attributes(a))
             return FrozenAttributes(attrs)
@@ -211,9 +207,7 @@ class ComponentBuilder(Builder):
         return result
 
     def _compose_built(self, built: list[Component]) -> list[Component]:
-        return children_to_list(
-            self.context.data.component.compose(self.context, built)
-        )
+        return children_to_list(self.context.data.component.compose(self.context, built))
 
     def _after_build(self, result: list[Component]) -> list[Component]:
         modifiers = self.context.data.modifiers
@@ -245,15 +239,11 @@ class Component(BaseModel, auto_frozen=True):
         super().__attrs_post_init__()
 
     @classinstancemethod
-    def with_attributes(
-        self: type[T_Component] | T_Component, **attributes: Any
-    ) -> T_Component:
+    def with_attributes(self: type[T_Component] | T_Component, **attributes: Any) -> T_Component:
         if isinstance(self, type):
             return self(_extract_additional_attributes(attributes))
         else:
-            new_attrs = self.attributes.merge(
-                _extract_additional_attributes(attributes)
-            )
+            new_attrs = self.attributes.merge(_extract_additional_attributes(attributes))
             return evolve(self, modifiers=[new_attrs, self.modifiers])
 
     @abstractmethod
@@ -317,9 +307,7 @@ class Component(BaseModel, auto_frozen=True):
 
         if not pretty:
             if self.children:
-                child_str = (
-                    f"[{', '.join(c.to_string(False, verbose) for c in self.children)}]"
-                )
+                child_str = f"[{', '.join(c.to_string(False, verbose) for c in self.children)}]"
             else:
                 child_str = ""
             return f"{v_str}{child_str}"
@@ -394,18 +382,14 @@ class Component(BaseModel, auto_frozen=True):
 
 
 class NoChildren(Component):
-
     @override
     def __attrs_post_init__(self) -> None:
         if self.children:
-            raise ValueError(
-                f"Component '{self.__class__.__name__}' cannot have children."
-            )
+            raise ValueError(f"Component '{self.__class__.__name__}' cannot have children.")
         super().__attrs_post_init__()
 
 
 class NoInheritance(Component):
-
     @property
     def target(self) -> ModifiersOrAttributes:
         """Used to give the attributes/modifiers to another component instead of inheriting them to children."""
@@ -452,10 +436,7 @@ class TemplateBuilder(ComponentBuilder):
     @override
     def _call_build(self) -> list[Component]:
         component = self.context.data.component
-        if (
-            isinstance(component, TemplateComponent)
-            and component.template_function is not None
-        ):
+        if isinstance(component, TemplateComponent) and component.template_function is not None:
             return children_to_list(component.template_function(self.context))
         return children_to_list(component.build(self.context))
 
@@ -471,9 +452,7 @@ class TemplateComponent(RenderableComponent, Component):
 
     @override
     def build(self, context: Context) -> Children:
-        raise NotImplementedError(
-            "Called build on TemplateComponent without implementation"
-        )
+        raise NotImplementedError("Called build on TemplateComponent without implementation")
 
     @override
     def full_build(self, context: Context) -> list[Component]:
@@ -486,9 +465,7 @@ class TemplateComponent(RenderableComponent, Component):
         if not issubclass(self.builder, TemplateBuilder):
             raise ValueError("TemplateComponent must be built with TemplateBuilder.")
         if self.stored_context is None:
-            raise ValueError(
-                "TemplateComponent must have stored_context set before rendering."
-            )
+            raise ValueError("TemplateComponent must have stored_context set before rendering.")
         result = self.builder(self.stored_context).build(self)
         return (child.render() for child in result)
 
@@ -550,7 +527,6 @@ class Text(NoInheritance, NoChildren, RenderableComponent, Component):
 
 @final
 class Fragment(NoInheritance, RenderableComponent, Component):
-
     @override
     def build(self, context: Context) -> Children:
         return self.children

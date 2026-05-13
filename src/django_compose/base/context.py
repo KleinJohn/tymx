@@ -1,14 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Generator
 from contextlib import contextmanager
-
 from typing import (
-    Any,
-    Generator,
-    Self,
     TYPE_CHECKING,
-    override,
+    Any,
     ClassVar,
+    Self,
+    override,
 )
 
 from attrs import evolve, field, fields
@@ -23,7 +22,6 @@ if TYPE_CHECKING:
 
 
 class DataDict(dict[type[T_Consumable], T_Consumable]):
-
     @override
     def __getitem__(self, key: type[T_Consumable]) -> T_Consumable:
         value = self.get(key)
@@ -44,7 +42,6 @@ class DataDict(dict[type[T_Consumable], T_Consumable]):
 
 
 class ContextFrame(BaseModel):
-
     component: Component
     _data: DataDict = field(alias="data", factory=DataDict)
     level: int
@@ -175,7 +172,6 @@ class Context(BaseModel):
 
 
 class ContextData(Consumable, frozen=True):
-
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.ALL_CHILDREN
     overwrite_with_none: ClassVar[bool] = False
 

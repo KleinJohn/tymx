@@ -1,26 +1,27 @@
 from __future__ import annotations
 
-from attrs import field
+from typing import override
 
-from django_compose.base.components import Component
-from django_compose.base.components.base_components import NoInheritance
-from django_compose.base.context import Context
-from django_compose.base.types import Children
-from django_compose.base.helpers import enum_converter, optional_enum_converter
+from attrs import field
 
 import django_compose.base.attributes as a
 import django_compose.base.components.html_components as html
+from django_compose.base.components import Component
+from django_compose.base.components.base_components import NoInheritance
+from django_compose.base.context import Context
+from django_compose.base.helpers import enum_converter, optional_enum_converter
+from django_compose.base.types import Children
 from django_compose.bulma._colors import Color, color_converter
 
 from ._types import (
+    ButtonAlignment,
+    ButtonState,
+    ButtonStyle,
     ButtonType,
     ColorScheme,
-    ButtonSize,
-    ButtonStyle,
-    ButtonState,
-    ButtonAlignment,
     ImageSize,
     Side,
+    Size,
 )
 
 
@@ -68,21 +69,13 @@ class Button(Component):
     See https://bulma.io/documentation/elements/button/ for details.
     """
 
-    button_type: ButtonType = field(
-        default=ButtonType.BUTTON, converter=enum_converter(ButtonType)
-    )
+    button_type: ButtonType = field(default=ButtonType.BUTTON, converter=enum_converter(ButtonType))
     color_scheme: ColorScheme | None = field(
         default=None, converter=optional_enum_converter(ColorScheme)
     )
-    size: ButtonSize | None = field(
-        default=None, converter=optional_enum_converter(ButtonSize)
-    )
-    style: ButtonStyle | None = field(
-        default=None, converter=optional_enum_converter(ButtonStyle)
-    )
-    state: ButtonState | None = field(
-        default=None, converter=optional_enum_converter(ButtonState)
-    )
+    size: Size | None = field(default=None, converter=optional_enum_converter(Size))
+    style: ButtonStyle | None = field(default=None, converter=optional_enum_converter(ButtonStyle))
+    state: ButtonState | None = field(default=None, converter=optional_enum_converter(ButtonState))
     responsive: bool = False
     fullwidth: bool = False
     loading: bool = False
@@ -91,9 +84,9 @@ class Button(Component):
     inverted: bool = False
     ghost: bool = False
     icon: Icon | None = None
-    icon_size: None | ButtonSize = field(
+    icon_size: None | Size = field(
         default=None,
-        converter=optional_enum_converter(ButtonSize),
+        converter=optional_enum_converter(Size),
     )
     icon_side: Side = field(
         default=Side.LEFT,
@@ -215,9 +208,7 @@ class Delete(Component):
         https://bulma.io/documentation/elements/delete/
     """
 
-    size: ButtonSize | None = field(
-        default=None, converter=optional_enum_converter(ButtonSize)
-    )
+    size: Size | None = field(default=None, converter=optional_enum_converter(Size))
 
     def build(self, context: Context) -> Children:
         return html.Button(a.classes("delete"))[self.children]
@@ -234,9 +225,7 @@ class Icon(NoInheritance, Component):
         https://bulma.io/documentation/elements/icon/
     """
 
-    size: ButtonSize | None = field(
-        default=None, converter=optional_enum_converter(ButtonSize)
-    )
+    size: Size | None = field(default=None, converter=optional_enum_converter(Size))
 
     def build(self, context: Context) -> Children:
         inner_icon = html.Span(("icon", self.size))[html.I(self.target)]
@@ -260,9 +249,7 @@ class Image(Component):
     """
 
     src: str | None = None
-    size: ImageSize | None = field(
-        default=None, converter=optional_enum_converter(ImageSize)
-    )
+    size: ImageSize | None = field(default=None, converter=optional_enum_converter(ImageSize))
     rounded: bool = False
     fullwidth: bool = False
 
@@ -298,3 +285,21 @@ class Notification(Component):
         if self.color:
             attrs.append(a.classes(self.color))
         return html.Div(attrs)[self.children]
+
+
+class ProgressBar(Component):
+    """Native HTML progress bars."""
+
+    value: str | None = field(converter=str, default=None)
+    max: str = field(converter=str, default="100")
+    size: Size | None = field(default=None, converter=optional_enum_converter(Size))
+
+    @override
+    def build(self, context: Context) -> Children:
+        classes: list[a.Attribute] = [a.classes("progress"), a.max(self.max)]
+        if self.value is not None:
+            classes.append(a.value(self.value))
+        if self.size:
+            classes.append(a.classes(self.size))
+
+        return html.Progress(classes)[self.children]

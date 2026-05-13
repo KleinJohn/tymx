@@ -1,11 +1,11 @@
 from .base_attributes import (
     Attribute,
+    Attributes,
     BooleanAttribute,
     ComposedAttribute,
     ComposePolicy,
-    SimpleAttribute,
-    Attributes,
     FrozenAttributes,
+    SimpleAttribute,
 )
 from .html_attributes import (
     accept,
@@ -127,21 +127,8 @@ from .html_attributes import (
     width,
     wrap,
 )
-
-
 from .htmx_attributes import (
     JsonAttribute,
-    hx_get,
-    hx_post,
-    hx_on,
-    hx_push_url,
-    hx_select,
-    hx_select_oob,
-    hx_swap,
-    hx_swap_oob,
-    hx_target,
-    hx_trigger,
-    hx_vals,
     hx_boost,
     hx_confirm,
     hx_delete,
@@ -150,23 +137,33 @@ from .htmx_attributes import (
     hx_disinherit,
     hx_encoding,
     hx_ext,
+    hx_get,
     hx_headers,
     hx_history,
     hx_history_elt,
     hx_include,
     hx_indicator,
     hx_inherit,
+    hx_on,
     hx_params,
     hx_patch,
+    hx_post,
     hx_preserve,
     hx_prompt,
+    hx_push_url,
     hx_put,
     hx_replace_url,
     hx_request,
+    hx_select,
+    hx_select_oob,
+    hx_swap,
+    hx_swap_oob,
     hx_sync,
+    hx_target,
+    hx_trigger,
     hx_validate,
+    hx_vals,
 )
-
 
 __all__ = [
     "Attribute",

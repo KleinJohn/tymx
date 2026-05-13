@@ -27,5 +27,6 @@ index_page = Page(
         )[
             "Hello, Bulma!",
         ],
+        bulma.ProgressBar(bulma.Color.DANGER, size=bulma.Size.SMALL),
     ]
 ]

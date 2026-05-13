@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any
 
 from attrs import field
-from typing_extensions import Any
 
 from django_compose.base.components import Component
 from django_compose.base.context import ConsumerPolicy

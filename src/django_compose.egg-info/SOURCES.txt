@@ -38,5 +38,9 @@ src/django_compose/base/views/view_base.py
 src/django_compose/bulma/__init__.py
 src/django_compose/bulma/_colors.py
 src/django_compose/bulma/_elements.py
+src/django_compose/bulma/_flex.py
 src/django_compose/bulma/_helpers.py
+src/django_compose/bulma/_responsive.py
+src/django_compose/bulma/_spacing.py
 src/django_compose/bulma/_types.py
+src/django_compose/bulma/_typography.py

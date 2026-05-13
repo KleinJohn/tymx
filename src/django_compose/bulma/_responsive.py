@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from enum import StrEnum
 from typing import ClassVar, Literal, Self, override
 
@@ -6,9 +7,7 @@ from attrs import asdict, define, field
 
 _none_filter = lambda attr, value: value is not None
 
-type _DisplayLiteral = Literal[
-    "block", "flex", "inline", "inline-block", "inline-flex", "table"
-]
+type _DisplayLiteral = Literal["block", "flex", "inline", "inline-block", "inline-flex", "table"]
 
 
 class DisplaySize(StrEnum):
@@ -166,8 +165,7 @@ class _DisplayBuilder(str):
                 tablet=tablet or self._responsive_displays.tablet,
                 desktop_only=desktop_only or self._responsive_displays.desktop_only,
                 desktop=desktop or self._responsive_displays.desktop,
-                widescreen_only=widescreen_only
-                or self._responsive_displays.widescreen_only,
+                widescreen_only=widescreen_only or self._responsive_displays.widescreen_only,
                 widescreen=widescreen or self._responsive_displays.widescreen,
                 fullhd=fullhd or self._responsive_displays.fullhd,
             ),
@@ -196,8 +194,7 @@ class _DisplayBuilder(str):
                 tablet=tablet or self._responsive_hidden.tablet,
                 desktop_only=desktop_only or self._responsive_hidden.desktop_only,
                 desktop=desktop or self._responsive_hidden.desktop,
-                widescreen_only=widescreen_only
-                or self._responsive_hidden.widescreen_only,
+                widescreen_only=widescreen_only or self._responsive_hidden.widescreen_only,
                 widescreen=widescreen or self._responsive_hidden.widescreen,
                 fullhd=fullhd or self._responsive_hidden.fullhd,
             ),

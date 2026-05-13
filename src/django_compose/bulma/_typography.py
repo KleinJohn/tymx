@@ -1,8 +1,9 @@
 from __future__ import annotations
+
 from enum import StrEnum
 from typing import Literal, Self, override
 
-from attrs import define, field, asdict
+from attrs import asdict, define, field
 
 type _SizeLiteral = Literal[1, 2, 3, 4, 5, 6, 7]
 
@@ -84,24 +85,15 @@ class _ResponsiveTextAlignment:
     touch: TextAlignment | None = field(default=None, validator=_validate_alignment)
     tablet: TextAlignment | None = field(default=None, validator=_validate_alignment)
     desktop: TextAlignment | None = field(default=None, validator=_validate_alignment)
-    widescreen: TextAlignment | None = field(
-        default=None, validator=_validate_alignment
-    )
+    widescreen: TextAlignment | None = field(default=None, validator=_validate_alignment)
     fullhd: TextAlignment | None = field(default=None, validator=_validate_alignment)
-    tablet_only: TextAlignment | None = field(
-        default=None, validator=_validate_alignment
-    )
-    desktop_only: TextAlignment | None = field(
-        default=None, validator=_validate_alignment
-    )
-    widescreen_only: TextAlignment | None = field(
-        default=None, validator=_validate_alignment
-    )
+    tablet_only: TextAlignment | None = field(default=None, validator=_validate_alignment)
+    desktop_only: TextAlignment | None = field(default=None, validator=_validate_alignment)
+    widescreen_only: TextAlignment | None = field(default=None, validator=_validate_alignment)
 
 
 @define(kw_only=True, slots=True, frozen=True)
 class _TypographyBuilder(str):
-
     _size: _SizeLiteral | None = field(default=None, alias="size")
     _responsive_sizes: _ResponsiveTextSize | None = field(
         factory=_ResponsiveTextSize, alias="responsive_sizes"
@@ -110,9 +102,7 @@ class _TypographyBuilder(str):
     _responsive_alignments: _ResponsiveTextAlignment | None = field(
         factory=_ResponsiveTextAlignment, alias="responsive_alignments"
     )
-    _transformation: TextTransformation | None = field(
-        default=None, alias="transformation"
-    )
+    _transformation: TextTransformation | None = field(default=None, alias="transformation")
     _weight: TextWeight | None = field(default=None, alias="weight")
     _font_family: FontFamily | None = field(default=None, alias="font_family")
 
@@ -133,8 +123,7 @@ class _TypographyBuilder(str):
                 size=size,
                 responsive_sizes=responsive_sizes or _ResponsiveTextSize(),
                 alignment=alignment,
-                responsive_alignments=responsive_alignments
-                or _ResponsiveTextAlignment(),
+                responsive_alignments=responsive_alignments or _ResponsiveTextAlignment(),
                 transformation=transformation,
                 weight=weight,
                 font_family=font_family,
@@ -245,8 +234,7 @@ class _TypographyBuilder(str):
                 fullhd=fullhd or self._responsive_alignments.fullhd,
                 tablet_only=tablet_only or self._responsive_alignments.tablet_only,
                 desktop_only=desktop_only or self._responsive_alignments.desktop_only,
-                widescreen_only=widescreen_only
-                or self._responsive_alignments.widescreen_only,
+                widescreen_only=widescreen_only or self._responsive_alignments.widescreen_only,
             ),
         )
 

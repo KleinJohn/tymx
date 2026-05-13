@@ -18,7 +18,7 @@ class ColorScheme(StrEnum):
     LIGHT = "is-light"
 
 
-class ButtonSize(StrEnum):
+class Size(StrEnum):
     SMALL = "is-small"
     NORMAL = "is-normal"
     MEDIUM = "is-medium"

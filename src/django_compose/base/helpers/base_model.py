@@ -1,11 +1,12 @@
 # from dataclasses import dataclass, field
 import builtins
 from abc import ABCMeta
+from collections.abc import Callable
 from threading import local
-from typing import Any, Callable, cast, dataclass_transform
+from typing import Any, cast, dataclass_transform
+
 from attrs import define, field, fields
 from attrs.exceptions import FrozenInstanceError
-
 
 _repr_context = local()
 
@@ -37,12 +38,8 @@ class ModelMeta(type):
         if namespace.get("_attrs_is_defining", False):
             return super().__new__(mcs, name, bases, namespace)  # type: ignore
 
-        inherited_auto_frozen = any(
-            getattr(b, "__is_auto_frozen__", False) for b in bases
-        )
-        is_auto_frozen = (
-            auto_frozen if auto_frozen is not None else inherited_auto_frozen
-        )
+        inherited_auto_frozen = any(getattr(b, "__is_auto_frozen__", False) for b in bases)
+        is_auto_frozen = auto_frozen if auto_frozen is not None else inherited_auto_frozen
         is_frozen = frozen if frozen is not None else is_auto_frozen
 
         cls: type[Any] = super().__new__(mcs, name, bases, namespace)  # type: ignore
@@ -67,9 +64,7 @@ class ModelMeta(type):
 
         new_cls.__is_frozen__ = is_frozen
         new_cls.__is_auto_frozen__ = is_auto_frozen
-        original_setattr = cast(
-            Callable[[Any, str, Any], None], getattr(new_cls, "__setattr__")
-        )
+        original_setattr = cast("Callable[[Any, str, Any], None]", new_cls.__setattr__)
 
         def overwrite_frozen_setattr(self: Any, key: str, value: Any) -> None:
             # If the class is flagged as frozen AND initialization is finished, block mutation
@@ -83,7 +78,7 @@ class ModelMeta(type):
             # Otherwise, proceed normally (this triggers attrs converters/validators)
             original_setattr(self, key, value)
 
-        setattr(new_cls, "__setattr__", overwrite_frozen_setattr)
+        new_cls.__setattr__ = overwrite_frozen_setattr
 
         return new_cls
 
@@ -114,9 +109,7 @@ class BaseModel(metaclass=ModelABCMeta):
                 if attr_field.repr is False:
                     continue
                 value = getattr(self, attr_field.name)
-                value_repr = (
-                    attr_field.repr(value) if callable(attr_field.repr) else repr(value)
-                )
+                value_repr = attr_field.repr(value) if callable(attr_field.repr) else repr(value)
                 field_reprs.append(f"{attr_field.name}={value_repr}")
             return f"{self.__class__.__qualname__}({', '.join(field_reprs)})"
         finally:

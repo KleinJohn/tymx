@@ -1,13 +1,11 @@
 from enum import Enum
-
-from typing_extensions import Any
-
-from django_compose.base.components import ThemedComponent, Component
-from django_compose.base.components.base_components import ModifiersOrAttributes
-from django_compose.base.theme import Theme, ThemeType
+from typing import Any
 
 import django_compose.base.components.html_components as html
 import django_compose.bulma.components as bulma
+from django_compose.base.components import Component, ThemedComponent
+from django_compose.base.components.base_components import ModifiersOrAttributes
+from django_compose.base.theme import Theme, ThemeType
 
 
 class ButtonStyle(str, Enum):
@@ -22,7 +20,6 @@ class ButtonStyle(str, Enum):
 
 
 class Button(ThemedComponent):
-
     def __init__(
         self,
         *modifiers: ModifiersOrAttributes,
@@ -33,9 +30,7 @@ class Button(ThemedComponent):
         self.use_props(style=style)
         self.style = str(style)
 
-    def from_theme(
-        self, theme: Theme, *smods: ModifiersOrAttributes, **skwargs: Any
-    ) -> Component:
+    def from_theme(self, theme: Theme, *smods: ModifiersOrAttributes, **skwargs: Any) -> Component:
         match theme.framework:
             case ThemeType.HTML:
                 return html.Button(*smods, **skwargs)

@@ -1,6 +1,8 @@
 from __future__ import annotations
-from typing import Any, Callable, Literal, TypeVar, final, override
+
+from collections.abc import Callable
 from enum import StrEnum
+from typing import Any, ClassVar, Literal, TypeVar, final, override
 
 from attrs import define, field
 
@@ -26,6 +28,9 @@ def color_converter(
 
 
 class ColorMixin:
+    def __init__(self, color: str, **kwargs: Any) -> None:
+        super().__init__(color, **kwargs)  # type: ignore
+
     @property
     def value(self) -> str:
         return super().value  # type: ignore
@@ -83,8 +88,8 @@ class ColorBase(ColorMixin, StrEnum):
 class _ColorBuilder(ColorMixin, str):
     _color: str = field(alias="color")
     _type: Literal["color", "text", "background"] = field(alias="type", default="color")
-    _variation: Literal["light", "dark", "soft", "bold", "on-scheme"] | int | None = (
-        field(alias="variation", default=None)
+    _variation: Literal["light", "dark", "soft", "bold", "on-scheme"] | int | None = field(
+        alias="variation", default=None
     )
     _invert: bool = field(alias="invert", default=False)
 
@@ -92,9 +97,7 @@ class _ColorBuilder(ColorMixin, str):
         cls,
         color: str,
         type: Literal["color", "text", "background"] = "color",
-        variation: (
-            Literal["light", "dark", "soft", "bold", "on-scheme"] | int | None
-        ) = None,
+        variation: (Literal["light", "dark", "soft", "bold", "on-scheme"] | int | None) = None,
         invert: bool = False,
     ):
         prefix = "is-"
@@ -107,11 +110,7 @@ class _ColorBuilder(ColorMixin, str):
         elif type == "background":
             prefix = "has-background-"
         if variation is not None:
-            var = (
-                f"-{variation}"
-                if not isinstance(variation, int)
-                else f"-{variation:02d}"
-            )
+            var = f"-{variation}" if not isinstance(variation, int) else f"-{variation:02d}"
 
         obj = super().__new__(cls, f"{prefix}{col}{var}{inv}")
 
@@ -186,6 +185,10 @@ class Color(ColorBase):
     CURRENT = "is-current"
     INHERIT = "is-inherit"
     TEXT = "is-text"
+
+    primary_colors: ClassVar[set[str]]
+    grey_shades: ClassVar[set[str]]
+    special_colors: ClassVar[set[str]]
 
     @classmethod
     def is_special_color(cls, color: str) -> bool:

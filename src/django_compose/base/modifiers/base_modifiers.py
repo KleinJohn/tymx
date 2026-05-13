@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections import OrderedDict
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Iterator, ClassVar, Self, override
+from collections.abc import Iterator, Sequence
+from typing import TYPE_CHECKING, ClassVar, Self, override
 
 from attrs import evolve, field
 
@@ -67,7 +67,6 @@ def _convert_to_modifier_dict(modifiers: ModifierLike) -> ModifierDict:
 
 
 class Modifiers(BaseModifier, frozen=False):
-
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.ALL_CHILDREN
     consume_first_matching: ClassVar[bool] = False
 
@@ -158,7 +157,6 @@ class Modifiers(BaseModifier, frozen=False):
 
 
 class FrozenModifiers(Modifiers, frozen=True):  # type: ignore
-
     def add(self, modifier: Modifier, overwrite: bool = True) -> None:
         raise TypeError("FrozenModifiers cannot be modified.")
 

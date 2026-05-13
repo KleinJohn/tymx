@@ -2,15 +2,15 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections import OrderedDict
-from collections.abc import Callable, Iterable, Sequence
-from typing import Any, Self, override, ClassVar, Iterator, TYPE_CHECKING
+from collections.abc import Callable, Iterable, Iterator, Sequence
+from typing import TYPE_CHECKING, Any, Self, override
 
 from attrs import evolve, field
 
-from django_compose.base.modifiers import BaseModifier
+from django_compose.base.consumable import Consumable, ConsumerPolicy
 from django_compose.base.helpers import BaseModel
+from django_compose.base.modifiers import BaseModifier
 from django_compose.base.types import AttributeLike
-from django_compose.base.consumable import ConsumerPolicy, Consumable
 
 if TYPE_CHECKING:
     from django_compose.base.components.base_components import Component
@@ -65,7 +65,7 @@ class Attribute[T](BaseModel, frozen=True):
     def __str__(self) -> str:
         raise NotImplementedError()
 
-    def merge(self, other: "Attribute") -> Self:
+    def merge(self, other: Attribute) -> Self:
         """Default behavior is to override own value with the other attribute's value."""
         if self.name != other.name:
             raise ValueError(
@@ -150,9 +150,7 @@ class ComposedAttribute(SimpleAttribute, frozen=True):
     ) -> Self:
         """The flag add_after determines whether to include kwargs before or after values."""
         if kwargs and not self.policy.kwarg_composer:
-            raise ValueError(
-                "kwarg_composer must be provided to use keyword arguments."
-            )
+            raise ValueError("kwarg_composer must be provided to use keyword arguments.")
         kwargs = _clean_kwargs(kwargs, underscores_to_hyphens=clean_underscores)
         # The items in value of type dict are not being cleaned.
         if isinstance(value, dict):
@@ -178,19 +176,15 @@ class ComposedAttribute(SimpleAttribute, frozen=True):
             composed_values=composed_values,
         )
 
-    def merge(self, other: Attribute) -> "ComposedAttribute":
+    def merge(self, other: Attribute) -> ComposedAttribute:
         if not isinstance(other, ComposedAttribute):
             return super().merge(other)
         if self.name != other.name:
             raise ValueError(
                 f"Cannot merge attributes with different names: {self.name} and {other.name}"
             )
-        self_values: tuple[str, ...] = (
-            self.composed_values if self.composed_values else ()
-        )
-        other_values: tuple[str, ...] = (
-            other.composed_values if other.composed_values else ()
-        )
+        self_values: tuple[str, ...] = self.composed_values if self.composed_values else ()
+        other_values: tuple[str, ...] = other.composed_values if other.composed_values else ()
         total_values = self_values + other_values
         if self.policy.remove_duplicates:
             # Remove duplicates while preserving order
@@ -240,8 +234,7 @@ def _convert_to_attributes_dict(
     attr_dict: OrderedDict[str, list[Attribute]] = OrderedDict()
     _match_attributes_recursive(attr_like, attr_dict)
     return OrderedDict(
-        (name, attr_list[0].merge_all(attr_list[1:]))
-        for name, attr_list in attr_dict.items()
+        (name, attr_list[0].merge_all(attr_list[1:])) for name, attr_list in attr_dict.items()
     )
 
 
@@ -262,13 +255,9 @@ class Attributes(BaseModifier, frozen=False):  # type: ignore
         if attribute.name not in self:
             self._attributes[attribute.name] = attribute
         elif overwrite:
-            self._attributes[attribute.name] = (
-                self._attributes[attribute.name] | attribute
-            )
+            self._attributes[attribute.name] = self._attributes[attribute.name] | attribute
         else:
-            self._attributes[attribute.name] = (
-                attribute | self._attributes[attribute.name]
-            )
+            self._attributes[attribute.name] = attribute | self._attributes[attribute.name]
 
     def update(self, attributes: AttributeLike, overwrite: bool = True) -> None:
         attr_dict = _convert_to_attributes_dict(attributes)
@@ -337,7 +326,6 @@ class Attributes(BaseModifier, frozen=False):  # type: ignore
 
 
 class FrozenAttributes(Attributes, frozen=True):  # type: ignore
-
     @override
     def add(self, attribute: Attribute, overwrite: bool = True) -> None:
         raise TypeError("FrozenAttributes cannot be modified.")

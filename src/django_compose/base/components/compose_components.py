@@ -1,14 +1,13 @@
 from typing import override
 
+import django_compose.base.attributes as a
+import django_compose.base.components.html_components as html
 from django_compose.base.components.base_components import (
     Children,
     Component,
     NoChildren,
 )
 from django_compose.base.context import Context
-
-import django_compose.base.components.html_components as html
-import django_compose.base.attributes as a
 
 
 class Stylesheet(NoChildren, Component):

@@ -61,7 +61,7 @@ ignore = [
 
 [tool.mypy]
 python_version = "3.12"
-plugins=["django_compose.base.helpers.mypy_compose_plugin.ComposePlugin"]
+plugins=["django_compose.base.helpers.mypy_compose_plugin"]
 disable_error_code = ["misc", "arg-type", "call-arg", "no-any-return"]
 strict = true
 warn_return_any = true

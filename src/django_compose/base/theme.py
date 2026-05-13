@@ -1,7 +1,8 @@
-from django_compose.base.context import Consumable, ConsumerPolicy
 from enum import Enum
 
 from attrs import field
+
+from django_compose.base.context import Consumable, ConsumerPolicy
 
 
 class ThemeType(str, Enum):

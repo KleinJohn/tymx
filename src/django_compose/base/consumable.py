@@ -88,8 +88,7 @@ class Consumable(BaseModel, frozen=True):
                 # we can't use current_depth here because there might be unbuilt components in
                 # between, so we need to check all components between
                 return all(
-                    not frame.component.builds_itself
-                    for frame in context.history[frame.level :]
+                    not frame.component.builds_itself for frame in context.history[frame.level :]
                 )
             case ConsumerPolicy.CUSTOM:
                 return self.custom_policy(context, frame)

@@ -1,16 +1,4 @@
 from ._colors import Color
-from ._flex import Flex
-from ._spacing import M, P
-from ._typography import Text, TextAlignment
-from ._responsive import Display
-from ._types import (
-    ButtonAlignment,
-    ColorScheme,
-    ButtonSize,
-    ButtonState,
-    ButtonStyle,
-    Side,
-)
 from ._elements import (
     Block,
     Box,
@@ -21,8 +9,21 @@ from ._elements import (
     Icon,
     Image,
     Notification,
+    ProgressBar,
 )
+from ._flex import Flex
 from ._helpers import cdn, fontawesome_cdn
+from ._responsive import Display
+from ._spacing import M, P
+from ._types import (
+    ButtonAlignment,
+    ButtonState,
+    ButtonStyle,
+    ColorScheme,
+    Side,
+    Size,
+)
+from ._typography import Text, TextAlignment
 
 __all__ = [
     "cdn",
@@ -40,7 +41,7 @@ __all__ = [
     "Buttons",
     "ButtonAlignment",
     "ColorScheme",
-    "ButtonSize",
+    "Size",
     "ButtonState",
     "ButtonStyle",
     "Content",
@@ -49,4 +50,5 @@ __all__ = [
     "Image",
     "Notification",
     "Side",
+    "ProgressBar",
 ]

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from enum import StrEnum
 from typing import Any
 
@@ -74,9 +75,7 @@ def _shrink_grow_validator(instance: Any, attribute: Any, value: int | None) -> 
 class FlexContainerBuilder(str):
     _direction: FlexDirection | None = field(alias="direction", default=None)
     _wrap: FlexWrap | None = field(alias="wrap", default=None)
-    _justify_content: FlexJustifyContent | None = field(
-        alias="justify_content", default=None
-    )
+    _justify_content: FlexJustifyContent | None = field(alias="justify_content", default=None)
     _align_content: FlexAlignContent | None = field(alias="align_content", default=None)
     _align_items: FlexAlignItems | None = field(alias="align_items", default=None)
 
@@ -193,21 +192,15 @@ class FlexContainerBuilder(str):
 
     @property
     def justify_space_between(self) -> FlexContainerBuilder:
-        return self.container_with_values(
-            justify_content=FlexJustifyContent.SPACE_BETWEEN
-        )
+        return self.container_with_values(justify_content=FlexJustifyContent.SPACE_BETWEEN)
 
     @property
     def justify_space_around(self) -> FlexContainerBuilder:
-        return self.container_with_values(
-            justify_content=FlexJustifyContent.SPACE_AROUND
-        )
+        return self.container_with_values(justify_content=FlexJustifyContent.SPACE_AROUND)
 
     @property
     def justify_space_evenly(self) -> FlexContainerBuilder:
-        return self.container_with_values(
-            justify_content=FlexJustifyContent.SPACE_EVENLY
-        )
+        return self.container_with_values(justify_content=FlexJustifyContent.SPACE_EVENLY)
 
     @property
     def justify_right(self) -> FlexContainerBuilder:

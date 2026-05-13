@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import ClassVar, Literal, Self, override
 
 from attrs import define, field
@@ -39,9 +40,7 @@ class _Spacing(str):
         l: _valid_values = None,
         **kwargs,
     ):
-        obj = super().__new__(
-            cls, cls.from_values(basename=basename, t=t, r=r, b=b, l=l), **kwargs
-        )
+        obj = super().__new__(cls, cls.from_values(basename=basename, t=t, r=r, b=b, l=l), **kwargs)
         object.__setattr__(obj, "_t", t)
         object.__setattr__(obj, "_r", r)
         object.__setattr__(obj, "_b", b)

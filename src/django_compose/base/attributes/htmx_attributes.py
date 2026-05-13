@@ -1,4 +1,4 @@
-from typing_extensions import Any, Self
+from typing import Any, Self
 
 from .base_attributes import (
     BooleanAttribute,
@@ -18,15 +18,9 @@ class JsonAttribute(SimpleAttribute):
         **kwargs: str,
     ) -> Self:
         if js:
-            value = (
-                "js:{" + ", ".join(f"{key}: {val}" for key, val in kwargs.items()) + "}"
-            )
+            value = "js:{" + ", ".join(f"{key}: {val}" for key, val in kwargs.items()) + "}"
         else:
-            value = (
-                "{"
-                + ", ".join(f'"{key}": "{val}"' for key, val in kwargs.items())
-                + "}"
-            )
+            value = "{" + ", ".join(f'"{key}": "{val}"' for key, val in kwargs.items()) + "}"
         return super().__call__(value, init_kwargs=init_kwargs)
 
 
