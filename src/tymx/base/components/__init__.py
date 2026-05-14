@@ -6,7 +6,6 @@ from .base_components import (
     RenderableComponent,
     TemplateComponent,
     Text,
-    ThemedComponent,
     children_field,
     children_to_tuple,
 )
@@ -19,7 +18,6 @@ __all__ = [
     "TemplateComponent",
     "Text",
     "Stylesheet",
-    "ThemedComponent",
     "Builder",
     "ComponentBuilder",
     "children_field",

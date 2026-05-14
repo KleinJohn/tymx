@@ -5,6 +5,7 @@ from collections.abc import Callable, Iterable, Sequence
 from typing import (
     Any,
     ClassVar,
+    Generic,
     Self,
     TypeVar,
     final,
@@ -21,6 +22,7 @@ from tymx.base.attributes import (
     FrozenAttributes,
 )
 from tymx.base.config import attribute_string_handler
+from tymx.base.consumable import Consumable
 from tymx.base.context import Context, DataDict
 from tymx.base.helpers import BaseModel, classinstancemethod
 from tymx.base.modifiers.base_modifiers import (
@@ -351,14 +353,12 @@ class Component(BaseModel, auto_frozen=True):
         modifiers: ModifiersOrAttributes = None,
         *,
         children: Children = None,
-        theme: Theme | None = None,
         is_built: bool = False,
         **kwargs: Any,
     ) -> Self:
         return self.copy(
             modifiers=modifiers,
             children=children,
-            theme=theme,
             is_built=is_built,
             **kwargs,
         )
@@ -433,6 +433,50 @@ class RenderableComponent(Component, ABC):
         )
 
 
+@final
+class Text(NoInheritance, NoChildren, RenderableComponent, Component):
+    text: str = ""
+
+    @override
+    def render(self) -> htpy.Node:
+        return self.text
+
+    @override
+    def _verbose_string_parts(self) -> Iterable[str]:
+        return (f"text='{self.text}'", str(self.attributes), str(self.modifiers))
+
+
+@final
+class Fragment(NoInheritance, RenderableComponent, Component):
+    @override
+    def build(self, context: Context) -> Children:
+        return self.children
+
+    @override
+    def render(self) -> htpy.Renderable:
+        return htpy.fragment[(child.render() for child in self.children)]
+
+    @override
+    def to_string(
+        self,
+        pretty: bool = False,
+        verbose: bool = False,
+        level: int = 0,
+        _last: bool = True,
+        _prefix: str = "",
+    ) -> str:
+        return "\n".join(
+            c.to_string(
+                pretty,
+                verbose,
+                level,
+                _last=(i == len(self.children) - 1),
+                _prefix=_prefix,
+            )
+            for i, c in enumerate(self.children)
+        )
+
+
 class TemplateBuilder(ComponentBuilder):
     """Builder for TemplateComponent that calls template_function instead of build (if possible)."""
 
@@ -491,45 +535,16 @@ class TemplateComponent(RenderableComponent, Component):
         )
 
 
-@final
-class Text(NoInheritance, NoChildren, RenderableComponent, Component):
-    text: str = ""
+class Provider(Component):
+    """Component that provides a value to its children."""
+
+    provides: Consumable
 
     @override
-    def render(self) -> htpy.Node:
-        return self.text
+    def provide(self, data: DataDict) -> None:
+        super().provide(data)
+        data[self.provides.__class__] = self.provides
 
-    @override
-    def _verbose_string_parts(self) -> Iterable[str]:
-        return (f"text='{self.text}'", str(self.attributes), str(self.modifiers))
-
-
-@final
-class Fragment(NoInheritance, RenderableComponent, Component):
     @override
     def build(self, context: Context) -> Children:
         return self.children
-
-    @override
-    def render(self) -> htpy.Renderable:
-        return htpy.fragment[(child.render() for child in self.children)]
-
-    @override
-    def to_string(
-        self,
-        pretty: bool = False,
-        verbose: bool = False,
-        level: int = 0,
-        _last: bool = True,
-        _prefix: str = "",
-    ) -> str:
-        return "\n".join(
-            c.to_string(
-                pretty,
-                verbose,
-                level,
-                _last=(i == len(self.children) - 1),
-                _prefix=_prefix,
-            )
-            for i, c in enumerate(self.children)
-        )

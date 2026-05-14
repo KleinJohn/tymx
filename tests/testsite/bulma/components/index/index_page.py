@@ -1,6 +1,8 @@
 from tymx.base import Page
 
 from tymx import bulma
+from tymx.base.components.base_components import Provider
+import tymx.base.attributes as a
 
 dependencies = [bulma.cdn, bulma.fontawesome_cdn]
 
@@ -8,25 +10,29 @@ index_page = Page(
     name="index",
     head=dependencies,
 )[
-    bulma.Box(
-        (
-            bulma.Text.size(mobile=6, tablet=5, desktop=4).centered,
-            bulma.Flex.justify_center.align_items_center.wrap,
-        )
-    )[
-        bulma.Block((bulma.Flex.align_self_baseline.grow(3),))["Hier ein wenig Text"],
-        bulma.Button(
+    Provider(provides=a.Attributes(a.classes("my-provider")))[
+        bulma.Box(
             (
-                bulma.M.all(2),
-                bulma.P.x2,
-                bulma.Color.DANGER.text.invert,
-                bulma.Color.DANGER.background,
-            ),
-            icon=bulma.Icon("fa fa-rocket"),
-            icon_side=bulma.Side.RIGHT,
+                bulma.Text.size(mobile=6, tablet=5, desktop=4).centered,
+                bulma.Flex.justify_center.align_items_center.wrap,
+            )
         )[
-            "Hello, Bulma!",
-        ],
-        bulma.ProgressBar(bulma.Color.DANGER, size=bulma.Size.SMALL),
+            bulma.Block((bulma.Flex.align_self_baseline.grow(3),))[
+                "Hier ein wenig Text"
+            ],
+            bulma.Button(
+                (
+                    bulma.M.all(2),
+                    bulma.P.x2,
+                    bulma.Color.DANGER.text.invert,
+                    bulma.Color.DANGER.background,
+                ),
+                icon=bulma.Icon("fa fa-rocket"),
+                icon_side=bulma.Side.RIGHT,
+            )[
+                "Hello, Bulma!",
+            ],
+            bulma.ProgressBar(bulma.Color.DANGER, size=bulma.Size.SMALL),
+        ]
     ]
 ]
