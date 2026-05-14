@@ -10,6 +10,10 @@ from tymx.base.components import Component
 from tymx.base.components.base_components import NoInheritance
 from tymx.base.context import Context
 from tymx.base.helpers import enum_converter, optional_enum_converter
+from tymx.base.helpers.converters import (
+    optional_string_like_converter,
+    string_like_converter,
+)
 from tymx.base.types import Children
 from tymx.bulma._colors import Color, color_converter
 
@@ -298,13 +302,13 @@ class Notification(Component):
 class ProgressBar(Component):
     """Native HTML progress bars."""
 
-    value: str | None = field(converter=str, default=None)
-    max: str = field(converter=str, default="100")
+    value: str | None = field(converter=optional_string_like_converter, default=None)
+    max_value: str = field(converter=string_like_converter, default="100")
     size: Size | None = field(default=None, converter=optional_enum_converter(Size))
 
     @override
     def build(self, context: Context) -> Children:
-        classes: list[a.Attribute] = [a.classes("progress"), a.max(self.max)]
+        classes: list[a.Attribute] = [a.classes("progress"), a.max(self.max_value)]
         if self.value is not None:
             classes.append(a.value(self.value))
         if self.size:

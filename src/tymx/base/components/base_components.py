@@ -237,6 +237,7 @@ class Component(BaseModel, auto_frozen=True):
         object.__setattr__(self, "modifiers", FrozenModifiers(mods))
         object.__setattr__(self, "attributes", FrozenAttributes(attrs))
         super().__attrs_post_init__()
+        self._validate()
 
     @classinstancemethod
     def with_attributes(
@@ -342,6 +343,9 @@ class Component(BaseModel, auto_frozen=True):
             str(self.modifiers),
         )
 
+    def _validate(self) -> None:
+        pass
+
     def __getitem__(self, *children: Children) -> Self:
         return self.copy(children=children)
 
@@ -384,15 +388,16 @@ class Component(BaseModel, auto_frozen=True):
 
 class NoChildren(Component):
     @override
-    def __attrs_post_init__(self) -> None:
+    def _validate(self) -> None:
+        super()._validate()
         if self.children:
             raise ValueError(
                 f"Component '{self.__class__.__name__}' cannot have children."
             )
-        super().__attrs_post_init__()
 
 
 class NoInheritance(Component):
+
     @property
     def target(self) -> ModifiersOrAttributes:
         """Used to give the attributes/modifiers to another component instead of inheriting them to children."""

@@ -31,6 +31,8 @@ type ModifiersOrAttributes = (
 
 type ModifierDict = Registry[Modifier]
 
+type StringLike = str | int | float | bool
+
 __all__ = [
     "BuildFunctionType",
     "Children",
