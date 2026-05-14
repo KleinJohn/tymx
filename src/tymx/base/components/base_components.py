@@ -172,8 +172,6 @@ class ComponentBuilder(Builder):
     3. Apply modifier.transform to the built result
     """
 
-    context: Context = field(kw_only=False)
-
     @override
     def build(self, component: Component) -> list[Component]:
         self._before_build(component)
@@ -229,8 +227,6 @@ class Component(BaseModel, auto_frozen=True):
     modifiers: FrozenModifiers = field(init=False)
     attributes: FrozenAttributes = field(init=False)
     children: tuple[Component, ...] = field(converter=children_to_tuple, default=None)
-    theme: Theme | None = None
-    htpy_kwargs: dict[str, str] = field(factory=dict)
     is_built: bool = field(default=False)
 
     @override
@@ -284,8 +280,6 @@ class Component(BaseModel, auto_frozen=True):
             data[Attributes] = self.attributes
         if self.modifiers:
             data[Modifiers] = self.modifiers
-        if self.theme:
-            data[Theme] = self.theme
 
     def consume(self, context: Context) -> None:
         inherited_attributes = context.get(Attributes) or Attributes()
@@ -294,7 +288,8 @@ class Component(BaseModel, auto_frozen=True):
         inherited_modifiers = context.get(Modifiers) or Modifiers()
         context.data.modifiers = inherited_modifiers | self.modifiers
 
-        inherited_theme = self.theme or context.get(Theme)
+        # in regular components, the theme is not provided, but inherited
+        inherited_theme = context.get(Theme)
         if inherited_theme:
             context.data[Theme] = inherited_theme
 
@@ -357,7 +352,6 @@ class Component(BaseModel, auto_frozen=True):
         *,
         children: Children = None,
         theme: Theme | None = None,
-        htpy_kwargs: dict[str, str] | None = None,
         is_built: bool = False,
         **kwargs: Any,
     ) -> Self:
@@ -365,7 +359,6 @@ class Component(BaseModel, auto_frozen=True):
             modifiers=modifiers,
             children=children,
             theme=theme,
-            htpy_kwargs=htpy_kwargs,
             is_built=is_built,
             **kwargs,
         )
@@ -496,37 +489,6 @@ class TemplateComponent(RenderableComponent, Component):
             is_built=True,
             stored_context=context,
         )
-
-
-class ThemedComponent(Component):
-    """A component that maps its children through a function during the build process."""
-
-    pass
-
-
-#     def __init__(self, *modifiers: ModifiersOrAttributes, **kwargs: Any) -> None:
-#         super().__init__(*modifiers, **kwargs)
-#         self._smods = modifiers  # stored args for from_theme
-#         self._skwargs = kwargs  # stored kwargs for from_theme
-
-#     @abstractmethod
-#     def from_theme(
-#         self, theme: Theme, *smods: ModifiersOrAttributes, **skwargs: Any
-#     ) -> Component: ...
-
-#     @override
-#     def full_build(self, context: Context) -> ComponentLike:
-#         theme = self._theme or Theme.of(context)
-#         if theme is None:
-#             raise ValueError("Theme is required to build ThemedComponent.")
-#         component = self.from_theme(theme, *self._smods, **self._skwargs)
-#         return component.full_build(context)
-
-#     @override
-#     def build(self, context: Context, children: Children) -> Children:
-#         raise NotImplementedError(
-#             "MappedComponent should not implement build, full_build is overridden."
-#         )
 
 
 @final

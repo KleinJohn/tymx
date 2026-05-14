@@ -1,5 +1,6 @@
 from typing import ClassVar, final, override
 
+from attrs import field
 import htpy
 
 from .base_components import NoChildren, RenderableComponent
@@ -7,6 +8,8 @@ from .base_components import NoChildren, RenderableComponent
 
 class HtmlBaseComponent(RenderableComponent):
     element: ClassVar
+
+    htpy_kwargs: dict[str, str] = field(factory=dict)
 
     @override
     def render(self) -> htpy.Renderable: ...
