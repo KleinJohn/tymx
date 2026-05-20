@@ -1,7 +1,7 @@
-from tymx.base.app import DjangoApp
+from tymx.django import App
 from .components.index.index_page import index_page
 
-app = DjangoApp(
+app = App(
     name="bulma",
     pages=[
         index_page,

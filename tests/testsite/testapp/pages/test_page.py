@@ -5,15 +5,15 @@ from tymx.base.components.base_components import (
     wrap_components,
 )
 from tymx.base.attributes import disabled, id, style, classes
-from tymx.base.app import DjangoApp, Page
+from tymx.base.app import Page
 from tymx.base.context import Context
 from tymx.base.helpers.debug import validate_is_built
 from tymx.base.modifiers.debug_modifiers import (
     PrintComponentsModifier,
     PrintContextModifier,
 )
-from tymx.base.router import Router
 from tymx.base.types import Children
+from tymx.django import App, Router
 
 import tymx.base.components.html_components as html
 
@@ -70,7 +70,7 @@ class TestComponent(Component):
 # test_component = TestComponent("test-class")
 test_component = TestComponent(classes("test-class"))
 
-context = Context(Router(DjangoApp(name="testapp", pages=[]), pages=[]), index_page)
+context = Context(Router(App(name="testapp", pages=[]), pages=[]), index_page)
 built_component = wrap_components(test_component.full_build(context))
 validate_is_built([built_component])
 print(built_component.to_string(verbose=True, pretty=True))

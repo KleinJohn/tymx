@@ -2,9 +2,9 @@ import unittest
 
 from typing import override
 
-from tymx.base.app import DjangoApp
+from tymx.base.app import AbstractApp
 import tymx.base.components.html_components as html
-from tymx.base import Page, Router
+from tymx.base import Page, AbstractRouter
 from tymx.base.attributes import classes, id, style
 from tymx.base.components import Component
 from tymx.base.helpers.debug import validate_is_built
@@ -38,7 +38,7 @@ class CustomDiv(Component):
 class BuilderRegressionTests(unittest.TestCase):
     def test_builds_components_returned_from_build(self) -> None:
         context = Context(
-            Router(DjangoApp(name="testapp", pages=[]), pages=[]),
+            AbstractRouter(AbstractApp(name="testapp", pages=[]), pages=[]),
             Page(name="test", head=[]),
         )
         component = CustomDiv(

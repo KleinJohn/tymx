@@ -1,8 +1,7 @@
-from .base import DjangoApp, Page, Route, Router
+from .base import AbstractApp, AbstractRoute, AbstractRouter
 
 __all__ = [
-    "DjangoApp",
-    "Page",
-    "Route",
-    "Router",
+    "AbstractApp",
+    "AbstractRoute",
+    "AbstractRouter",
 ]

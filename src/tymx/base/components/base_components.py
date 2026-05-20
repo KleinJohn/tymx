@@ -5,7 +5,6 @@ from collections.abc import Callable, Iterable, Sequence
 from typing import (
     Any,
     ClassVar,
-    Generic,
     Self,
     TypeVar,
     final,

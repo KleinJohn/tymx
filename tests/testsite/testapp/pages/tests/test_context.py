@@ -1,16 +1,16 @@
 import unittest
 
-from tymx.base import Page, Router
-from tymx.base.app import DjangoApp
+from tymx.base import Page, AbstractRouter
+from tymx.base.app import AbstractApp
 from tymx.base.components.html_components import Div
 from tymx.base.context import Context, ContextFrame, DataDict
 from tymx.base.attributes import Attributes
 from tymx.base.modifiers import Modifiers
 
 
-def make_router_and_page() -> tuple[Router, Page]:
+def make_router_and_page() -> tuple[AbstractRouter, Page]:
     page = Page(name="index")
-    router = Router(DjangoApp(name="testapp", pages=[]), pages=[page])
+    router = AbstractRouter(AbstractApp(name="testapp", pages=[]), pages=[page])
     return router, page
 
 

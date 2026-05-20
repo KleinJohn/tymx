@@ -9,7 +9,7 @@ from .base_components import (
     children_field,
     children_to_tuple,
 )
-from .compose_components import Stylesheet
+from .compose_components import Stylesheet, Page
 
 __all__ = [
     "Component",
@@ -18,6 +18,7 @@ __all__ = [
     "TemplateComponent",
     "Text",
     "Stylesheet",
+    "Page",
     "Builder",
     "ComponentBuilder",
     "children_field",

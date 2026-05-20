@@ -7,7 +7,7 @@ from tymx.base.components.html_components import A, H1, Button, Div, Input
 from tymx.base.attributes import classes, disabled, id, style
 from tymx.base.modifiers import Attributes, DebugModifier
 from tymx.base.app import Page
-from tymx.base.router import Router
+from tymx.base.router import AbstractRouter
 from tymx.base.theme import Theme
 
 
@@ -58,7 +58,9 @@ def page_tests():
         ],
     )
     title = H1("title", style("font-size:3em"), DebugModifier())["Service Page"]
-    context = Context(theme=Theme(), router=Router(pages=[home_page, index_page]))
+    context = Context(
+        theme=Theme(), router=AbstractRouter(pages=[home_page, index_page])
+    )
     # print(home_page.render())
 
 

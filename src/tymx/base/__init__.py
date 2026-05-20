@@ -1,4 +1,4 @@
-from .app import DjangoApp, Page
+from .app import AbstractApp, AbstractRoute, AbstractRouter
 from .attributes import Attribute, Attributes
 from .context import (
     Consumable,
@@ -6,14 +6,12 @@ from .context import (
     Context,
     ContextFrame,
 )
-from .router import Route, Router
-from .theme import Theme, ThemeType
+from .theme import Theme
 
 __all__ = [
-    "Page",
-    "DjangoApp",
-    "Router",
-    "Route",
+    "AbstractApp",
+    "AbstractRouter",
+    "AbstractRoute",
     "Theme",
     "Context",
     "ContextFrame",

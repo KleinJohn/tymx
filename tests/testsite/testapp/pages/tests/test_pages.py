@@ -1,4 +1,4 @@
-from tymx.base.app import DjangoApp
+from tymx.base.app import AbstractApp
 from tymx.base.components import Component
 from tymx.base.components.base_components import wrap_components
 from tymx.base.types import Children
@@ -12,7 +12,7 @@ from tymx.base.components.html_components import (
 )
 from tymx.base.context import Context
 from tymx.base.attributes import id, style, classes, disabled
-from tymx.base import Page, Router
+from tymx.base import Page, AbstractRouter
 
 
 class CustomButton(Component):
@@ -80,7 +80,7 @@ test_page = Page(name="test")[
 
 if __name__ == "__main__":
     context = Context(
-        router=Router(DjangoApp(name="test", pages=[]), pages=[test_page])
+        router=AbstractRouter(AbstractApp(name="test", pages=[]), pages=[test_page])
     )
     built_test_page = wrap_components(test_page.full_build(context))
     print(built_test_page.to_string(pretty=True, verbose=True))

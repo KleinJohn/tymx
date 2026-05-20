@@ -1,4 +1,4 @@
-from tymx.base import Page
+from tymx.base.components import Page
 
 from tymx import bulma
 from tymx.base.components.base_components import Provider
