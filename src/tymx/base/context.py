@@ -19,6 +19,7 @@ from tymx.base.modifiers.base_modifiers import Modifiers
 
 if TYPE_CHECKING:
     from tymx.base.components.base_components import Component
+    from tymx.base.app import AbstractRoute, AbstractRouter
 
 
 class DataDict(dict[type[T_Consumable], T_Consumable]):
@@ -91,8 +92,8 @@ class ContextFrame(BaseModel):
 class Context(BaseModel):
     """Context for building and rendering components."""
 
-    router: Any = field(kw_only=False)
-    page: Any | None = field(default=None, kw_only=False)
+    router: AbstractRouter = field(kw_only=False)
+    route: AbstractRoute
     history: list[ContextFrame] = field(factory=list)
     _data: ContextFrame | None = field(default=None, init=False)
 
@@ -147,7 +148,7 @@ class Context(BaseModel):
     def copy(self) -> Self:
         res = self.__class__(
             router=self.router,
-            page=self.page,
+            route=self.route,
             history=[frame.copy() for frame in self.history],
         )
         if self._data:
@@ -166,9 +167,7 @@ class Context(BaseModel):
 
     @property
     def current_url(self) -> str:
-        if not self.page:
-            raise ValueError("No page found in context.")
-        return self.router.routes[self.page.name].url
+        return self.router.get_url(self.route)
 
 
 class ContextData(Consumable, frozen=True):

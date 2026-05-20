@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from abc import abstractmethod, ABC
-from collections.abc import Iterable, Iterator
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, get_args
+
+from attrs import field
 
 from tymx.base.components import Component, Page
 from tymx.base.context import Context
@@ -16,19 +17,12 @@ _T_Route = TypeVar("_T_Route", bound="AbstractRoute")
 _T_Router = TypeVar("_T_Router", bound="AbstractRouter")
 
 
-class AbstractRoute(BaseModel):
-    app_name: str
-    page: Page
-
-    @property
-    @abstractmethod
-    def url(self) -> str:
-        """Only call this when Django is fully loaded (render time)"""
-        ...
+class AbstractRoute(BaseModel, frozen=True):
+    component: Component = field(kw_only=False)
 
 
 class AbstractRouter(Generic[_T_Route], ABC):
-    __factory__: type[_T_Route]
+    __route_factory__: type[_T_Route]
 
     def __init_subclass__(cls, *args, **kwargs):
         super().__init_subclass__(*args, **kwargs)
@@ -38,37 +32,28 @@ class AbstractRouter(Generic[_T_Route], ABC):
         for base in getattr(cls, "__orig_bases__", []):
             args = get_args(base)
             if args:
-                cls.__factory__ = args[0]
+                cls.__route_factory__ = args[0]
                 break
 
-    def __init__(self, app: AbstractApp, *, pages: Iterable[Page], **view_kwargs: Any):
+    def __init__(self, app: AbstractApp, *, routes: dict[str, _T_Route]):
         self.app = app
-        self.routes: dict[str, _T_Route] = {
-            page.name: self.__factory__(app_name=self.app.name, page=page)
-            for page in pages
-        }
-        self._view_kwargs = view_kwargs
-        self._iter = iter(self.routes.values())
+        self.routes = routes
 
-    def __iter__(self) -> Iterator[AbstractRoute]:
-        self._iter = iter(self.routes.values())
-        return self._iter
-
-    def __next__(self) -> AbstractRoute:
-        return next(self._iter)
-
-    def get_url(self, page_name: str) -> str:
+    def get_page_url(self, page_name: str) -> str:
         route = self.routes.get(page_name)
         if route is None:
             raise ValueError(f"Route '{page_name}' not found in router.")
-        return route.url
+        return self.get_url(route)
+
+    @abstractmethod
+    def get_url(self, route: _T_Route) -> str: ...
 
     @abstractmethod
     def get_urlpatterns(self) -> Any: ...
 
 
 class AbstractApp(Generic[_T_Router], ABC):
-    __factory__: type[_T_Router]
+    __router_factory__: type[_T_Router]
 
     def __init_subclass__(cls, *args, **kwargs):
         super().__init_subclass__(*args, **kwargs)
@@ -78,23 +63,30 @@ class AbstractApp(Generic[_T_Router], ABC):
         for base in getattr(cls, "__orig_bases__", []):
             args = get_args(base)
             if args:
-                cls.__factory__ = args[0]
+                cls.__router_factory__ = args[0]
                 break
 
     def __init__(
         self,
         *,
         name: str,
-        pages: Iterable[Page],
+        pages: dict[str, Page] | None = None,
+        routes: dict[str, _T_Route] | None = None,
     ):
+        if pages is None and routes is None:
+            raise ValueError("At least one of 'pages' or 'routes' must be provided.")
+        merged_routes = {
+            n: self.__router_factory__.__route_factory__(component=page)
+            for n, page in (pages or {}).items()
+        } | (routes or {})
         self.name = name
-        self.router = type(self).__factory__(app=self, pages=pages)
+        self.router = self.__router_factory__(app=self, routes=merged_routes)
         # App-level cache for built (document-level) page results. Keyed by page name.
         self.built_pages: dict[str, Component] = {}
 
     def build(self) -> None:
-        context = Context(router=self.router)
-        for route in self.router:
-            built = route.page.full_build(context)
+        for name, route in self.router.routes.items():
+            context = Context(router=self.router, route=route)
+            built = route.component.full_build(context)
             # can access [0] since page returns single html component
-            self.built_pages[route.page.name] = built[0]
+            self.built_pages[name] = built[0]

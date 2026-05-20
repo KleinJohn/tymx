@@ -3,13 +3,11 @@ from tymx.base.components import Page
 from tymx import bulma
 from tymx.base.components.base_components import Provider
 import tymx.base.attributes as a
+from tymx.base.components.compose_components import PageLink
 
 dependencies = [bulma.cdn, bulma.fontawesome_cdn]
 
-index_page = Page(
-    name="index",
-    head=dependencies,
-)[
+index_page = Page(head=dependencies)[
     Provider(provides=a.Attributes(a.classes("my-provider")))[
         bulma.Box(
             (
@@ -30,9 +28,11 @@ index_page = Page(
                 icon=bulma.Icon("fa fa-rocket"),
                 icon_side=bulma.Side.RIGHT,
             )[
-                "Hello, Bulma!",
+                PageLink(to="service")["Go to service page"],
             ],
             bulma.ProgressBar(bulma.Color.DANGER, size=bulma.Size.SMALL),
         ]
     ]
 ]
+
+service_page = Page()[bulma.Content[bulma.Block["Service Page!"],]]

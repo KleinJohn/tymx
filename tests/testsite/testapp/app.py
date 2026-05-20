@@ -1,11 +1,11 @@
 from tymx.django import App
-from .components.index.index_page import index_page
+from testapp.pages.test_page import index_page
 
 app = App(
-    name="bulma",
-    pages=[
-        index_page,
-    ],
+    name="testapp",
+    pages={
+        "index": index_page,
+    },
 )
 
 app.build()

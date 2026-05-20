@@ -47,7 +47,6 @@ class CustomDiv(Component):
 
 index_page = Page(
     (PrintComponentsModifier(), classes("index-page")),
-    name="index",
 )[
     CustomDiv(
         [classes("custom-div"), id("custom-div-id")],
@@ -70,11 +69,10 @@ class TestComponent(Component):
 # test_component = TestComponent("test-class")
 test_component = TestComponent(classes("test-class"))
 
-context = Context(Router(App(name="testapp", pages=[]), pages=[]), index_page)
-built_component = wrap_components(test_component.full_build(context))
-validate_is_built([built_component])
-print(built_component.to_string(verbose=True, pretty=True))
-print(built_component.render())
+# built_component = wrap_components(test_component.full_build(context))
+# validate_is_built([built_component])
+# print(built_component.to_string(verbose=True, pretty=True))
+# print(built_component.render())
 
 
 # router = Router("testapp", pages=[])

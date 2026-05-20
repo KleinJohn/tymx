@@ -17,10 +17,10 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import include, path
-from testapp.urls import app
+from tymx.django._helpers import include_tymx
+from bulma.app import bulma_app
 
 urlpatterns = [
-    path("", include("testapp.urls")),
-    path("bulma/", include("bulma.urls")),
+    path("bulma/", include_tymx(bulma_app)),
     path("admin/", admin.site.urls),
 ]
