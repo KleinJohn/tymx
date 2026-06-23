@@ -10,3 +10,5 @@ format:
 	uv run ruff format src
 test:
 	uv run pytest
+run_testsite:
+	uv run tests/testsite/manage.py runserver

@@ -18,6 +18,7 @@ index_page = Page(head=dependencies)[
             bulma.Block((bulma.Flex.align_self_baseline.grow(3),))[
                 "Hier ein wenig Text"
             ],
+            PageLink(("button", bulma.radiusless), to="service")["Go to service page"],
             bulma.Button(
                 (
                     bulma.M.all(2),
@@ -28,7 +29,7 @@ index_page = Page(head=dependencies)[
                 icon=bulma.Icon("fa fa-rocket"),
                 icon_side=bulma.Side.RIGHT,
             )[
-                PageLink(to="service")["Go to service page"],
+                "other button"
             ],
             bulma.ProgressBar(bulma.Color.DANGER, size=bulma.Size.SMALL),
         ]
