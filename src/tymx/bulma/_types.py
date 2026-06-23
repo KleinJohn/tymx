@@ -71,3 +71,9 @@ class ImageRatio(StrEnum):
     IS_9_BY_16 = "is-9by16"
     IS_1_BY_2 = "is-1by2"
     IS_1_BY_3 = "is-1by3"
+
+
+class RowType(StrEnum):
+    HEAD = "head"
+    BODY = "body"
+    FOOT = "foot"

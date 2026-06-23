@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import override
+from typing import cast, override
 
 from attrs import field
 
@@ -14,6 +14,7 @@ from tymx.base.helpers.converters import (
     optional_string_like_converter,
     string_like_converter,
 )
+from tymx.base.helpers.validation import children_are_type
 from tymx.base.types import Children
 from tymx.bulma._colors import Color, color_converter
 
@@ -24,6 +25,7 @@ from ._types import (
     ButtonType,
     ColorScheme,
     ImageSize,
+    RowType,
     Side,
     Size,
 )
@@ -174,8 +176,8 @@ class Buttons(Component):
         default=None, converter=optional_enum_converter(ButtonAlignment)
     )
 
-    def __attrs_post_init__(self) -> None:
-        super().__attrs_post_init__()
+    def _validate(self) -> None:
+        super()._validate()
         if not all(isinstance(child, Button) for child in self.children):
             raise ValueError("All children of Buttons must be instances of Button.")
 
@@ -315,3 +317,45 @@ class ProgressBar(Component):
             classes.append(a.classes(self.size))
 
         return html.Progress(classes)[self.children]
+
+
+class Table(Component):
+
+    def _validate(self) -> None:
+        if not children_are_type(self.children, [TableRow]):
+            raise ValueError("Children of Table have to be of type TableRow.")
+
+    def _split_row_types(self) -> tuple[list[TableRow], list[TableRow], list[TableRow]]:
+        head, body, foot = [], [], []
+        for child in cast(tuple[TableRow], self.children):
+            match child.row_type:
+                case RowType.HEAD:
+                    head.append(child)
+                case RowType.BODY:
+                    body.append(child)
+                case RowType.FOOT:
+                    foot.append(child)
+        return head, body, foot
+
+    def build(self, context: Context) -> Children:
+        head, body, foot = self._split_row_types()
+        return html.Table(a.classes("table"))[
+            html.Thead[head],
+            html.Tbody[body],
+            html.Tfoot[foot],
+        ]
+
+
+class TableRow(Component):
+
+    row_type: RowType = RowType.BODY
+
+    def build(self, context: Context) -> Children:
+        transformed: list[Component] = []
+        for child in self.children:
+            match child:
+                case html.Tr() | html.Th():
+                    transformed.append(child)
+                case _:
+                    transformed.append(html.Tr[child])
+        return html.Tr[self.children]
