@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Literal, Self, override
 
-from attrs import asdict, define, field
+from attrs import Attribute, asdict, define, field
 
 type _SizeLiteral = Literal[1, 2, 3, 4, 5, 6, 7]
 
@@ -12,14 +12,14 @@ _none_filter = lambda attr, x: x is not None
 
 
 def _validate_size(
-    instance: _TypographyBuilder, attribute: str, value: _SizeLiteral | None
+    instance: _TypographyBuilder, attribute: Attribute[_SizeLiteral | None], value: _SizeLiteral | None
 ) -> None:
     if value is not None and value not in (1, 2, 3, 4, 5, 6, 7):
         raise ValueError("size must be an integer between 1 and 7.")
 
 
 def _validate_alignment(
-    instance: _TypographyBuilder, attribute: str, value: TextAlignment | None
+    instance: _TypographyBuilder, attribute: Attribute[TextAlignment | None], value: TextAlignment | None
 ) -> None:
     if value is not None and value not in TextAlignment:
         raise ValueError("alignment must be a valid TextAlignment.")
@@ -95,11 +95,11 @@ class _ResponsiveTextAlignment:
 @define(kw_only=True, slots=True, frozen=True)
 class _TypographyBuilder(str):
     _size: _SizeLiteral | None = field(default=None, alias="size")
-    _responsive_sizes: _ResponsiveTextSize | None = field(
+    _responsive_sizes: _ResponsiveTextSize = field(
         factory=_ResponsiveTextSize, alias="responsive_sizes"
     )
     _alignment: TextAlignment | None = field(default=None, alias="alignment")
-    _responsive_alignments: _ResponsiveTextAlignment | None = field(
+    _responsive_alignments: _ResponsiveTextAlignment = field(
         factory=_ResponsiveTextAlignment, alias="responsive_alignments"
     )
     _transformation: TextTransformation | None = field(default=None, alias="transformation")
@@ -322,9 +322,9 @@ class _TypographyBuilder(str):
     def family_code(self) -> Self:
         return self.with_values(font_family=FontFamily.CODE)
 
-    @override
     @property
-    def center(self) -> Self:
+    def center(self) -> Self: # type: ignore
+        # Overrides str.center intentionally
         return self.centered
 
 

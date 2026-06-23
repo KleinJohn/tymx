@@ -4,7 +4,7 @@ from typing import ClassVar, Literal, Self, override
 
 from attrs import define, field
 
-type _valid_values = Literal[None, "0", "1", "2", "3", "4", "5", "6", "auto"]
+type _valid_values = Literal["0", "1", "2", "3", "4", "5", "6", "auto"]
 
 
 @define(kw_only=True, slots=True, frozen=True)
@@ -12,7 +12,6 @@ class _Spacing(str):
     """Represents a spacing value that can be used in Bulma classes."""
 
     valid_values: ClassVar[set[_valid_values]] = {
-        None,
         "0",
         "1",
         "2",
@@ -34,10 +33,10 @@ class _Spacing(str):
         cls,
         basename: str,
         *,
-        t: _valid_values = None,
-        r: _valid_values = None,
-        b: _valid_values = None,
-        l: _valid_values = None,
+        t: _valid_values | None = None,
+        r: _valid_values | None = None,
+        b: _valid_values | None = None,
+        l: _valid_values | None = None,
         **kwargs,
     ):
         obj = super().__new__(cls, cls.from_values(basename=basename, t=t, r=r, b=b, l=l), **kwargs)
@@ -51,10 +50,10 @@ class _Spacing(str):
     def validate_values(
         cls,
         *,
-        t: str | None = None,
-        r: str | None = None,
-        b: str | None = None,
-        l: str | None = None,
+        t: _valid_values | None = None,
+        r: _valid_values | None = None,
+        b: _valid_values | None = None,
+        l: _valid_values | None = None,
     ) -> None:
         for value in (t, r, b, l):
             if value not in cls.valid_values:
@@ -62,13 +61,14 @@ class _Spacing(str):
                     f"Invalid spacing value: {value}. Valid values are: {cls.valid_values}"
                 )
 
-    @override
     def __call__(self, all_sizes: str | int | None = None, **kwds) -> str:
         val = str(all_sizes) if all_sizes is not None else None
+        assert val is None or val in self.valid_values
         return self.with_values(t=val, r=val, b=val, l=val)
 
     def all(self, value: str | int | None) -> Self:
         val = str(value) if value is not None else None
+        assert val is None or val in self.valid_values
         return self.with_values(t=val, r=val, b=val, l=val)
 
     @classmethod
@@ -76,10 +76,10 @@ class _Spacing(str):
         cls,
         basename: str,
         *,
-        t: str | None = None,
-        r: str | None = None,
-        b: str | None = None,
-        l: str | None = None,
+        t: _valid_values | None = None,
+        r: _valid_values | None = None,
+        b: _valid_values | None = None,
+        l: _valid_values | None = None,
     ) -> str:
         cls.validate_values(t=t, r=r, b=b, l=l)
         if t is None and r is None and b is None and l is None:
@@ -109,10 +109,10 @@ class _Spacing(str):
     def with_values(
         self,
         *,
-        t: str | None = None,
-        r: str | None = None,
-        b: str | None = None,
-        l: str | None = None,
+        t: _valid_values | None = None,
+        r: _valid_values | None = None,
+        b: _valid_values | None = None,
+        l: _valid_values | None = None,
     ) -> Self:
         return self.__class__(
             basename=self._basename,
