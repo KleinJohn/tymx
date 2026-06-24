@@ -39,6 +39,10 @@ from tymx.base.types import (
 T_Component = TypeVar("T_Component", bound="Component")
 
 
+class ValidationError(Exception):
+    pass
+
+
 def wrap_components(components: Children) -> Component:
     """Wraps the given components in a Fragment for easier handling as a single component."""
     return Fragment(children=components, is_built=True)
@@ -186,8 +190,7 @@ class ComponentBuilder(Builder):
         component.consume(self.context)
         modifiers = self.context.data.modifiers
         if modifiers is not None:
-            for modifier in modifiers:
-                modifier.apply(self.context)
+            modifiers.apply(self.context)
 
     def _call_build(self) -> list[Component]:
         component = self.context.data.component
@@ -213,12 +216,13 @@ class ComponentBuilder(Builder):
     def _after_build(self, result: list[Component]) -> list[Component]:
         modifiers = self.context.data.modifiers
         if modifiers is not None:
-            for modifier in modifiers:
-                result = modifier.transform(result)
+            result = modifiers.transform(result)
         return result
 
 
 class Component(BaseModel, auto_frozen=True):
+    __validate__: bool = field(init=False, default=True, repr=False)
+
     builder: ClassVar[type[Builder]] = ComponentBuilder
     builds_itself: ClassVar[bool] = False
 
@@ -236,7 +240,9 @@ class Component(BaseModel, auto_frozen=True):
         object.__setattr__(self, "modifiers", FrozenModifiers(mods))
         object.__setattr__(self, "attributes", FrozenAttributes(attrs))
         super().__attrs_post_init__()
-        self._validate()
+        self.modifiers.post_init(self)
+        if self.__validate__:
+            self._validate()
 
     @classinstancemethod
     def with_attributes(
@@ -390,7 +396,7 @@ class NoChildren(Component):
     def _validate(self) -> None:
         super()._validate()
         if self.children:
-            raise ValueError(
+            raise ValidationError(
                 f"Component '{self.__class__.__name__}' cannot have children."
             )
 

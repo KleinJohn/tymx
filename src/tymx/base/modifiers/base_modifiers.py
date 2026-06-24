@@ -23,7 +23,14 @@ class BaseModifier(Consumable, frozen=False):  # type: ignore
     """Defines the interface for applying modifications to components during the build process."""
 
     @abstractmethod
+    def post_init(self, component: Component) -> None:
+        """Called after the component is initialized, but before validation. 
+        Can be used to perform additional setup or validation."""
+        pass
+
+    @abstractmethod
     def apply(self, context: Context) -> None: ...
+
     @abstractmethod
     def transform(self, result: list[Component]) -> list[Component]: ...
 
@@ -33,6 +40,10 @@ class BaseModifier(Consumable, frozen=False):  # type: ignore
 
 class Modifier(BaseModifier):
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.ALL_CHILDREN
+
+    @override
+    def post_init(self, component: Component) -> None:
+        pass
 
     @override
     def apply(self, context: Context) -> None:
@@ -117,13 +128,21 @@ class Modifiers(BaseModifier, frozen=False):
             if modifier.policy_applies(context, frame):
                 merged.add(modifier)
         return merged
+    
+    @override
+    def post_init(self, component: Component) -> None:
+        for modifier in self._modifiers.values():
+            modifier.post_init(component)
 
     @override
     def apply(self, context: Context) -> None:
-        pass
+        for modifier in self._modifiers.values():
+            modifier.apply(context)
 
     @override
     def transform(self, result: list[Component]) -> list[Component]:
+        for modifier in self._modifiers.values():
+            result = modifier.transform(result)
         return result
 
     def copy(self) -> Self:

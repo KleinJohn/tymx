@@ -300,6 +300,10 @@ class Attributes(BaseModifier, frozen=False):  # type: ignore
     def merge(self, other: Consumable | AttributeLike) -> Self:
         """Merges with other by overwriting with other's attributes."""
         return evolve(self, attributes=[self, other])
+    
+    @override
+    def post_init(self, component: Component) -> None:
+        pass
 
     @override
     def apply(self, context: Context) -> None:

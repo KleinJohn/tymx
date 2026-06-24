@@ -6,7 +6,7 @@ from attrs import field
 
 import tymx.base.attributes as a
 import tymx.base.components.html_components as html
-from tymx.base.components import Component
+from tymx.base.components import Component, ValidationError
 from tymx.base.components.base_components import NoInheritance
 from tymx.base.context import Context
 from tymx.base.helpers import enum_converter, optional_enum_converter
@@ -14,7 +14,7 @@ from tymx.base.helpers.converters import (
     optional_string_like_converter,
     string_like_converter,
 )
-from tymx.base.helpers.validation import children_are_type
+from tymx.base.helpers.validation import children_are_type, children_have_attribute
 from tymx.base.types import Children
 from tymx.bulma._colors import Color, color_converter
 
@@ -183,7 +183,7 @@ class Buttons(Component):
     def _validate(self) -> None:
         super()._validate()
         if not all(isinstance(child, Button) for child in self.children):
-            raise ValueError("All children of Buttons must be instances of Button.")
+            raise ValidationError("All children of Buttons must be instances of Button.")
 
     def _get_attributes(self) -> list[a.Attribute]:
         attrs: list[a.Attribute] = [a.classes("buttons")]
@@ -336,7 +336,7 @@ class Table(Component):
     def _validate(self) -> None:
         super()._validate()
         if not children_are_type(self.children, [TableRow]):
-            raise ValueError("Children of Table have to be of type TableRow.")
+            raise ValidationError("Children of Table have to be of type TableRow.")
 
     def _split_row_types(self) -> tuple[list[TableRow], list[TableRow], list[TableRow]]:
         head, body, foot = [], [], []
@@ -401,7 +401,7 @@ class Tags(Component):
     def _validate(self) -> None:
         super()._validate()
         if not children_are_type(self.children, [Tag]):
-            raise ValueError("Children of Tags have to be of type Tag.")
+            raise ValidationError("Children of Tags have to be of type Tag.")
 
     @override
     def build(self, context: Context) -> Children:

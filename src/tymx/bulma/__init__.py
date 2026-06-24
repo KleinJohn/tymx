@@ -12,6 +12,8 @@ from ._elements import (
     ProgressBar,
     Table,
     TableRow,
+    Tag,
+    Tags,
 )
 from ._flex import Flex
 from ._helpers import (
@@ -80,4 +82,6 @@ __all__ = [
     "ProgressBar",
     "Table",
     "TableRow",
+    "Tag",
+    "Tags",
 ]

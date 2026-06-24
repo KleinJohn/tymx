@@ -6,6 +6,7 @@ from .base_components import (
     RenderableComponent,
     TemplateComponent,
     Text,
+    ValidationError,
     children_field,
     children_to_tuple,
 )
@@ -21,6 +22,7 @@ __all__ = [
     "Page",
     "Builder",
     "ComponentBuilder",
+    "ValidationError",
     "children_field",
     "children_to_tuple",
     "PageLink",
