@@ -379,3 +379,31 @@ class TableRow(Component):
             else:
                 content.append(html.Td()[child])
         return html.Tr[content]
+
+
+class Tag(Component):
+    """Small tag labels to insert anywhere."""
+
+    size: Size | None = field(default=None, converter=optional_enum_converter(Size))
+
+    @override
+    def build(self, context: Context) -> Children:
+        classes: list[a.Attribute] = [a.classes("tag")]
+        if self.size:
+            classes.append(a.classes(self.size))
+        return html.Span(*classes)[self.children]
+    
+
+class Tags(Component):
+    """A container for multiple tags."""
+
+    @override
+    def _validate(self) -> None:
+        super()._validate()
+        if not children_are_type(self.children, [Tag]):
+            raise ValueError("Children of Tags have to be of type Tag.")
+
+    @override
+    def build(self, context: Context) -> Children:
+        return html.Div(a.classes("tags"))[self.children]
+

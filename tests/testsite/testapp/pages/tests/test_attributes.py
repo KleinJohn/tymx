@@ -48,6 +48,32 @@ class TestAttributesMerging(unittest.TestCase):
         # style composer appends a trailing semicolon
         self.assertEqual(str(merged["style"]), 'style="color:red;background:blue;"')
 
+    def test_attribute_contains_for_simple_and_composed_attributes(self):
+        element_id = id("hero")
+        class_attr = classes("btn", "primary")
+
+        self.assertIn("hero", element_id)
+        self.assertIn(id("hero"), element_id)
+        self.assertNotIn(id("other"), element_id)
+
+        self.assertIn("btn", class_attr)
+        self.assertIn(classes("btn"), class_attr)
+        self.assertIn(classes("btn", "primary"), class_attr)
+        self.assertNotIn(classes("btn", "ghost"), class_attr)
+
+    def test_attribute_is_contained_in_attributes_collection(self):
+        attrs = Attributes([
+            id("hero"),
+            classes("btn", "primary"),
+            style("color:red", background="blue"),
+        ])
+
+        self.assertIn(id("hero"), attrs)
+        self.assertIn(classes("btn"), attrs)
+        self.assertIn(style("color:red"), attrs)
+        self.assertNotIn(id("other"), attrs)
+        self.assertNotIn(classes("ghost"), attrs)
+
 
 if __name__ == "__main__":
     unittest.main()

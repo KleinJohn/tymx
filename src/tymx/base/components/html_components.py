@@ -20,7 +20,7 @@ class HtmlComponent(HtmlBaseComponent):
 
     @override
     def render(self) -> htpy.Renderable:
-        return self.element(**self.attributes.values(), **self.htpy_kwargs)[
+        return self.element(**self.attributes.items(), **self.htpy_kwargs)[
             (child.render() for child in self.children)
         ]
 
@@ -31,7 +31,7 @@ class HtmlVoidComponent(NoChildren, HtmlBaseComponent):
 
     @override
     def render(self) -> htpy.Renderable:
-        return self.element(**self.attributes.values(), **self.htpy_kwargs)
+        return self.element(**self.attributes.items(), **self.htpy_kwargs)
 
 
 @final

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections import OrderedDict
-from collections.abc import Callable, Iterable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence, KeysView, ValuesView
 from typing import TYPE_CHECKING, Any, Self, override
 
 from attrs import evolve, field
@@ -54,6 +54,8 @@ class Attribute[T](BaseModel, frozen=True):
         return self.merge(other)
 
     def __contains__(self, item: Any) -> bool:
+        if isinstance(item, Attribute):
+            return self == item
         return item == self.value
 
     def __eq__(self, other: Any) -> bool:
@@ -198,6 +200,16 @@ class ComposedAttribute(SimpleAttribute, frozen=True):
         return self.__call__(*total_values)
 
     def __contains__(self, item: Any) -> bool:
+        """Returns True if the item is in the composed values, or if the item is also a 
+        ComposedAttribute, whether their composed values are a subset."""
+        if isinstance(item, ComposedAttribute):
+            if self.composed_values is None or item.composed_values is None:
+                return False
+            return all(val in self.composed_values for val in item.composed_values)
+        elif isinstance(item, SimpleAttribute):
+            if self.composed_values is None or item.value is None:
+                return False
+            return item.name == self.name and item.value in self.composed_values
         if not isinstance(item, str) or self.composed_values is None:
             return False
         return item in self.composed_values
@@ -255,11 +267,17 @@ class Attributes(BaseModifier, frozen=False):  # type: ignore
         default=None,
     )
 
-    def values(self) -> dict[str, Any]:
+    def keys(self) -> KeysView[str]:
+        return self._attributes.keys()
+    
+    def values(self) -> ValuesView[Attribute]:
+        return self._attributes.values()
+
+    def items(self) -> dict[str, Any]:
         return {attr.name: attr.value for attr in self._attributes.values()}
 
     def add(self, attribute: Attribute, overwrite: bool = True) -> None:
-        if attribute.name not in self:
+        if attribute.name not in self.keys():
             self._attributes[attribute.name] = attribute
         elif overwrite:
             self._attributes[attribute.name] = (
@@ -302,10 +320,8 @@ class Attributes(BaseModifier, frozen=False):  # type: ignore
     def __iter__(self) -> Iterator[Attribute]:
         return iter(self._attributes.values())
 
-    def __contains__(self, item: str | Attribute) -> bool:
-        if isinstance(item, str):
-            return item in self._attributes
-        return item.name in self._attributes
+    def __contains__(self, attr: Attribute) -> bool:
+        return attr.name in self._attributes and attr in self._attributes[attr.name]
 
     def __str__(self) -> str:
         return " ".join(str(attr) for attr in self._attributes.values())
