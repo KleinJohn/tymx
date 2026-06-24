@@ -10,6 +10,8 @@ from ._elements import (
     Image,
     Notification,
     ProgressBar,
+    Table,
+    TableRow,
 )
 from ._flex import Flex
 from ._helpers import (
@@ -35,6 +37,7 @@ from ._types import (
     ColorScheme,
     Side,
     Size,
+    RowType,
 )
 from ._typography import Text, TextAlignment
 
@@ -65,6 +68,7 @@ __all__ = [
     "ButtonAlignment",
     "ColorScheme",
     "Size",
+    "RowType",
     "ButtonState",
     "ButtonStyle",
     "Content",
@@ -74,4 +78,6 @@ __all__ = [
     "Notification",
     "Side",
     "ProgressBar",
+    "Table",
+    "TableRow",
 ]

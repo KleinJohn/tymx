@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import cast, override
+from typing import override
 
 from attrs import field
 
@@ -41,6 +41,7 @@ class Block(Component):
 
     element: type[Component] = html.Div
 
+    @override
     def build(self, context: Context) -> Children:
         return self.element(a.classes("block"))[self.children]
 
@@ -55,6 +56,7 @@ class Box(Component):
 
     element: type[Component] = html.Div
 
+    @override
     def build(self, context: Context) -> Children:
         return self.element(a.classes("box"))[self.children]
 
@@ -145,6 +147,7 @@ class Button(Component):
 
         return attrs
 
+    @override
     def build(self, context: Context) -> Children:
         Element = self._get_element()
         attrs = self._get_attributes()
@@ -176,6 +179,7 @@ class Buttons(Component):
         default=None, converter=optional_enum_converter(ButtonAlignment)
     )
 
+    @override
     def _validate(self) -> None:
         super()._validate()
         if not all(isinstance(child, Button) for child in self.children):
@@ -189,6 +193,7 @@ class Buttons(Component):
             attrs.append(a.classes(self.alignment))
         return attrs
 
+    @override
     def build(self, context: Context) -> Children:
         attrs = self._get_attributes()
         return html.Div(attrs)[self.children]
@@ -206,6 +211,7 @@ class Content(Component):
 
     element: type[Component] = html.Div
 
+    @override
     def build(self, context: Context) -> Children:
         return self.element(a.classes("content"))[self.children]
 
@@ -222,6 +228,7 @@ class Delete(Component):
 
     size: Size | None = field(default=None, converter=optional_enum_converter(Size))
 
+    @override
     def build(self, context: Context) -> Children:
         return html.Button(a.classes("delete"))[self.children]
 
@@ -239,6 +246,7 @@ class Icon(NoInheritance, Component):
 
     size: Size | None = field(default=None, converter=optional_enum_converter(Size))
 
+    @override
     def build(self, context: Context) -> Children:
         inner_icon = html.Span(("icon", self.size))[html.I(self.target)]
         if self.children:
@@ -267,6 +275,7 @@ class Image(Component):
     rounded: bool = False
     fullwidth: bool = False
 
+    @override
     def build(self, context: Context) -> Children:
         fig_attrs: list[a.Attribute] = [a.classes("image")]
         img_attrs: list[a.Attribute] = []
@@ -294,6 +303,7 @@ class Notification(Component):
 
     color: str | None = field(default=None, converter=color_converter(Color))
 
+    @override
     def build(self, context: Context) -> Children:
         attrs: list[a.Attribute] = [a.classes("notification")]
         if self.color:
@@ -320,14 +330,18 @@ class ProgressBar(Component):
 
 
 class Table(Component):
+    """The inevitable HTML table, with special case cells."""
 
+    @override
     def _validate(self) -> None:
+        super()._validate()
         if not children_are_type(self.children, [TableRow]):
             raise ValueError("Children of Table have to be of type TableRow.")
 
     def _split_row_types(self) -> tuple[list[TableRow], list[TableRow], list[TableRow]]:
         head, body, foot = [], [], []
-        for child in cast(tuple[TableRow], self.children):
+        for child in self.children:
+            assert isinstance(child, TableRow)
             match child.row_type:
                 case RowType.HEAD:
                     head.append(child)
@@ -337,25 +351,31 @@ class Table(Component):
                     foot.append(child)
         return head, body, foot
 
+    @override
     def build(self, context: Context) -> Children:
         head, body, foot = self._split_row_types()
         return html.Table(a.classes("table"))[
             html.Thead[head],
             html.Tbody[body],
             html.Tfoot[foot],
-        ]
+        ] 
 
 
 class TableRow(Component):
 
     row_type: RowType = RowType.BODY
 
+    auto_wrap: bool = True
+    """If True, children that are not <th> or <td> will be wrapped in <td>/<th> elements."""
+
+    @override
     def build(self, context: Context) -> Children:
-        transformed: list[Component] = []
+        content: list[Component] = []
         for child in self.children:
-            match child:
-                case html.Tr() | html.Th():
-                    transformed.append(child)
-                case _:
-                    transformed.append(html.Tr[child])
-        return html.Tr[self.children]
+            if not self.auto_wrap or isinstance(child, (html.Th, html.Td)):
+                content.append(child)
+            elif self.row_type == RowType.HEAD:
+                content.append(html.Th()[child])
+            else:
+                content.append(html.Td()[child])
+        return html.Tr[content]

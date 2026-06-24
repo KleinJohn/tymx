@@ -32,6 +32,12 @@ index_page = Page(head=dependencies)[
                 "other button"
             ],
             bulma.ProgressBar(bulma.Color.DANGER, size=bulma.Size.SMALL),
+        ],
+        bulma.Box[
+            bulma.Table[
+                bulma.TableRow(row_type=bulma.RowType.HEAD)["Num row"],
+                [bulma.TableRow[[f"Row {i,j}" for j in range(1, 4)]] for i in range(1, 6)]
+            ]
         ]
     ]
 ]

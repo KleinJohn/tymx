@@ -56,7 +56,7 @@ class _Spacing(str):
         l: _valid_values | None = None,
     ) -> None:
         for value in (t, r, b, l):
-            if value not in cls.valid_values:
+            if value is not None and value not in cls.valid_values:
                 raise ValueError(
                     f"Invalid spacing value: {value}. Valid values are: {cls.valid_values}"
                 )
