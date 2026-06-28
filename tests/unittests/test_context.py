@@ -1,37 +1,37 @@
 import unittest
 
-from tymx.base import Page, AbstractRouter
-from tymx.base.app import AbstractApp
+from tymx import debug
+from tymx.base.components.base_components import Component
 from tymx.base.components.html_components import Div
 from tymx.base.context import Context, ContextFrame, DataDict
 from tymx.base.attributes import Attributes
 from tymx.base.modifiers import Modifiers
 
 
-def make_router_and_page() -> tuple[AbstractRouter, Page]:
-    page = Page(name="index")
-    router = AbstractRouter(AbstractApp(name="testapp", pages=[]), pages=[page])
-    return router, page
+def get_debug_context(component: Component) -> Context:
+    route = debug.DebugRoute(component=component)
+    app = debug.DebugApp(name="TestApp", routes={"debug": route})
+    router = debug.DebugRouter(app, routes={"debug": route})
+    return Context(router=router, route=route)
 
 
 class ContextTests(unittest.TestCase):
 
     def test_copy_without_current_frame_keeps_router_page_and_history(self) -> None:
-        router, page = make_router_and_page()
-        context = Context(router=router, page=page)
+        component = Div()
+        context = get_debug_context(component)
 
         copied = context.copy()
 
         self.assertIsNot(copied, context)
         self.assertIs(copied.router, context.router)
-        self.assertIs(copied.page, context.page)
         self.assertEqual(copied.history, [])
         self.assertIsNot(copied.history, context.history)
         self.assertIsNone(copied._data)
 
     def test_copy_clones_history_and_current_data(self) -> None:
-        router, page = make_router_and_page()
-        context = Context(router=router, page=page)
+        component = Div()
+        context = get_debug_context(component)
 
         previous_frame = ContextFrame(
             component=Div(),
