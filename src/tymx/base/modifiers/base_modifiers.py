@@ -3,14 +3,16 @@ from __future__ import annotations
 from abc import abstractmethod
 from collections import OrderedDict
 from collections.abc import Iterator, Sequence
-from typing import TYPE_CHECKING, ClassVar, Self, override
+from types import NotImplementedType
+from typing import TYPE_CHECKING, ClassVar, Self, overload, override
 
 from attrs import evolve, field
 
-from tymx.base.consumable import Consumable, ConsumerPolicy
+from tymx.base.consumable import Consumable, ConsumerPolicy, _combine_matmul_operands
 from tymx.base.types import (
     ModifierDict,
     ModifierLike,
+    ModifiersOrAttributes,
 )
 
 if TYPE_CHECKING:
@@ -24,7 +26,7 @@ class BaseModifier(Consumable, frozen=False):  # type: ignore
 
     @abstractmethod
     def post_init(self, component: Component) -> None:
-        """Called after the component is initialized, but before validation. 
+        """Called after the component is initialized, but before validation.
         Can be used to perform additional setup or validation."""
         pass
 
@@ -55,6 +57,40 @@ class Modifier(BaseModifier):
 
     def __str__(self) -> str:
         return self.__class__.__name__
+
+    @overload
+    def __matmul__(self, other: Component) -> NotImplementedType: ...
+
+    @overload
+    def __matmul__(
+        self, other: ModifiersOrAttributes
+    ) -> tuple[ModifiersOrAttributes, ...]: ...
+
+    def __matmul__(
+        self, other: ModifiersOrAttributes | Component
+    ) -> tuple[ModifiersOrAttributes, ...] | NotImplementedType:
+        from tymx.base.components.base_components import Component
+
+        if isinstance(other, Component):
+            return NotImplemented
+        return _combine_matmul_operands(self, other)
+
+    @overload
+    def __rmatmul__(self, other: Component) -> NotImplementedType: ...
+
+    @overload
+    def __rmatmul__(
+        self, other: ModifiersOrAttributes
+    ) -> tuple[ModifiersOrAttributes, ...]: ...
+
+    def __rmatmul__(
+        self, other: ModifiersOrAttributes | Component
+    ) -> tuple[ModifiersOrAttributes, ...] | NotImplementedType:
+        from tymx.base.components.base_components import Component
+
+        if isinstance(other, Component):
+            return NotImplemented
+        return _combine_matmul_operands(other, self)
 
 
 def _convert_to_modifier_dict(modifiers: ModifierLike) -> ModifierDict:
@@ -128,7 +164,7 @@ class Modifiers(BaseModifier, frozen=False):
             if modifier.policy_applies(context, frame):
                 merged.add(modifier)
         return merged
-    
+
     @override
     def post_init(self, component: Component) -> None:
         for modifier in self._modifiers.values():
@@ -171,6 +207,40 @@ class Modifiers(BaseModifier, frozen=False):
 
     def __or__(self, other: Modifiers) -> Modifiers:
         return self.merge(other)
+
+    @overload
+    def __matmul__(self, other: Component) -> NotImplementedType: ...
+
+    @overload
+    def __matmul__(
+        self, other: ModifiersOrAttributes
+    ) -> tuple[ModifiersOrAttributes, ...]: ...
+
+    def __matmul__(
+        self, other: ModifiersOrAttributes | Component
+    ) -> tuple[ModifiersOrAttributes, ...] | NotImplementedType:
+        from tymx.base.components.base_components import Component
+
+        if isinstance(other, Component):
+            return NotImplemented
+        return _combine_matmul_operands(self, other)
+
+    @overload
+    def __rmatmul__(self, other: Component) -> NotImplementedType: ...
+
+    @overload
+    def __rmatmul__(
+        self, other: ModifiersOrAttributes
+    ) -> tuple[ModifiersOrAttributes, ...]: ...
+
+    def __rmatmul__(
+        self, other: ModifiersOrAttributes | Component
+    ) -> tuple[ModifiersOrAttributes, ...] | NotImplementedType:
+        from tymx.base.components.base_components import Component
+
+        if isinstance(other, Component):
+            return NotImplemented
+        return _combine_matmul_operands(other, self)
 
     def __ior__(self, other: Modifiers) -> Modifiers:
         self.update(other)
