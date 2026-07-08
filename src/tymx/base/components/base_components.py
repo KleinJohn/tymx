@@ -372,6 +372,12 @@ class Component(BaseModel, auto_frozen=True):
             **kwargs,
         )
 
+    def __matmul__(self, other: ModifiersOrAttributes) -> Self:
+        return self.copy(modifiers=[self.attributes, self.modifiers, other])
+
+    def __rmatmul__(self, other: ModifiersOrAttributes) -> Self:
+        return self.copy(modifiers=[other, self.attributes, self.modifiers])
+
     def __str__(self) -> str:
         v_content = " | ".join(filter(bool, self._verbose_string_parts()))
         if v_content:

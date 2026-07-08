@@ -4,12 +4,71 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, ClassVar, Self, TypeVar
 
 from tymx.base.helpers.base_model import BaseModel
+from tymx.base.types import ModifiersOrAttributes
 
 if TYPE_CHECKING:
     from tymx.base.context import Context, ContextFrame
+    from tymx.base.modifiers.base_modifiers import Modifier
 
 
 T_Consumable = TypeVar("T_Consumable", bound="Consumable")
+
+
+def _flatten_matmul_operand(
+    operand: ModifiersOrAttributes,
+) -> list[ModifiersOrAttributes]:
+    from tymx.base.attributes.base_attributes import Attribute, Attributes
+    from tymx.base.modifiers.base_modifiers import Modifier, Modifiers
+
+    if operand is None:
+        return []
+    if isinstance(operand, tuple):
+        flattened: list[ModifiersOrAttributes] = []
+        for item in operand:
+            flattened.extend(_flatten_matmul_operand(item))
+        return flattened
+    if isinstance(operand, list):
+        flattened = []
+        for item in operand:
+            flattened.extend(_flatten_matmul_operand(item))
+        return flattened
+    if isinstance(operand, Attributes | Modifiers):
+        return list(operand)
+    if isinstance(operand, Attribute | Modifier):
+        return [operand]
+    raise TypeError(f"Unsupported matmul operand: {type(operand)}")
+
+
+def _combine_matmul_operands(
+    left: ModifiersOrAttributes, right: ModifiersOrAttributes
+) -> tuple[ModifiersOrAttributes, ...]:
+    from tymx.base.attributes.base_attributes import Attribute
+    from tymx.base.modifiers.base_modifiers import Modifier
+
+    merged: list[ModifiersOrAttributes] = []
+    attribute_positions: dict[str, int] = {}
+    modifier_positions: dict[type[Modifier], int] = {}
+
+    for item in (*_flatten_matmul_operand(left), *_flatten_matmul_operand(right)):
+        if isinstance(item, Attribute):
+            position = attribute_positions.get(item.name)
+            if position is None:
+                attribute_positions[item.name] = len(merged)
+                merged.append(item)
+            else:
+                merged[position] = item
+        elif isinstance(item, Modifier):
+            modifier_type = type(item)
+            position = modifier_positions.get(modifier_type)
+            if position is None:
+                modifier_positions[modifier_type] = len(merged)
+                merged.append(item)
+            else:
+                merged[position] = item
+        else:
+            raise TypeError(f"Unsupported matmul item: {type(item)}")
+
+    return tuple(merged)
 
 
 class ConsumerPolicy(Enum):
@@ -30,8 +89,6 @@ class ConsumerPolicy(Enum):
         is_direct: Returns True if the policy applies only to direct children (DIRECT_CHILDREN or DIRECT_BUILT_CHILDREN).
         is_built_only: Returns True if the policy applies only to built children (ALL_BUILT_CHILDREN or DIRECT_BUILT_CHILDREN).
     """
-
-    """Defines who can consume a Consumable."""
 
     NONE = auto()
     "Applies only to the unbuilt component itself"
