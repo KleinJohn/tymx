@@ -108,7 +108,7 @@ def _convert_to_modifier_dict(modifiers: ModifierLike) -> ModifierDict:
                 for item in modifier:
                     match_modifiers_recursive(item, mod_dict)
             case _:
-                raise ValueError("Invalid modifier type.")
+                raise ValueError(f"Invalid Modifier of type: {type(modifier)}.")
 
     mod_dict: ModifierDict = OrderedDict()
     match_modifiers_recursive(modifiers, mod_dict)

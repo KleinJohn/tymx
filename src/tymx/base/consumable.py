@@ -174,3 +174,7 @@ class Consumable(BaseModel, frozen=True):
         if other is None:
             return self
         return self.merge(other)
+
+    def on_bind(self, context: Context) -> None:
+        """Called when the consumable is bound to the context."""
+        pass

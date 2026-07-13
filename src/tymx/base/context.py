@@ -66,6 +66,10 @@ class ContextFrame(BaseModel):
     def modifiers(self, value: Modifiers) -> None:
         self._data[Modifiers] = value
 
+    @property
+    def data(self) -> DataDict:
+        return self._data
+
     def copy(self) -> Self:
         return self.__class__(
             component=self.component,
@@ -144,6 +148,20 @@ class Context(BaseModel):
             if key.consume_first_matching:
                 break
         return accumulated
+
+    def use(self, key: type[T_Consumable] | T_Consumable) -> T_Consumable:
+        """Injects the consumable into the context and returns it."""
+        consumable = key if isinstance(key, Consumable) else key()
+        self.data[consumable.__class__] = consumable
+        return consumable
+
+    def bind(self, key: type[T_Consumable]) -> T_Consumable:
+        """Retrieves the consumable, binds it to the context and returns it."""
+        consumable = self.get(key)
+        if consumable is None:
+            raise ValueError(f"Consumable of type {key} not found in context.")
+        consumable.on_bind(self)
+        return consumable
 
     def copy(self) -> Self:
         res = self.__class__(
