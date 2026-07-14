@@ -323,7 +323,7 @@ class Component(BaseModel, auto_frozen=True):
         if not self.children:
             return line
 
-        child_prefix = _prefix + ("    " if _last else "│   ")
+        child_prefix = _prefix + ("    " if _last else "│   ") if level > 0 else _prefix
         child_lines = [
             c.to_string(
                 True,
