@@ -87,7 +87,10 @@ class ContextFrame(BaseModel):
     def provide(self, item: Consumable, key: type[Consumable] | None = None) -> None:
         if key is None:
             key = item.__class__
-        self._inherited_data[key] = item
+        if key in self._inherited_data:
+            self._inherited_data[key] = self._inherited_data[key].merge(item)
+        else:
+            self._inherited_data[key] = item
 
     def __getitem__(self, key: type[T_Consumable]) -> T_Consumable:
         value = self.get(key)
@@ -99,7 +102,9 @@ class ContextFrame(BaseModel):
         return key in self._component_data
 
     def __str__(self) -> str:
-        return str([f.__name__ for f in self._component_data.keys()])
+        data = str([f.__name__ for f in self._component_data.keys()])
+        inherited_data = str([f.__name__ for f in self._inherited_data.keys()])
+        return f"ContextFrame(component={self.component.__class__.__name__}, level={self.level}, data={data}, inherited_data={inherited_data})"
 
 
 class Context(BaseModel):
@@ -155,16 +160,19 @@ class Context(BaseModel):
         return accumulated
 
     def use(self, item: type[T_Consumable] | T_Consumable) -> T_Consumable:
-        """Provides the consumable and instantiates it if necessary, then returns it."""
+        """Provides the consumable and instantiates it if necessary, then returns it.
+        Notifies the consumable's on_use() method."""
         consumable = item if isinstance(item, Consumable) else item()
         self.provide(consumable)
+        consumable.on_use(self)
         return consumable
 
-    def bind(self, item: type[T_Consumable]) -> T_Consumable:
-        """Retrieves the consumable, calls on_bind with this context and returns it."""
-        consumable = self.get(item)
+    def bind(self, key: type[T_Consumable]) -> T_Consumable:
+        """Retrieves the consumable and returns it.
+        Notifies the consumable's on_bind() method."""
+        consumable = self.get(key)
         if consumable is None:
-            raise ValueError(f"Consumable of type {item} not found in context.")
+            raise ValueError(f"Consumable of type {key} not found in context.")
         consumable.on_bind(self)
         return consumable
 

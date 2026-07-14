@@ -7,7 +7,7 @@ from attrs import evolve, field
 from tymx.base.consumable import ConsumerPolicy
 from tymx.base.context import Context
 from tymx.base.helpers.base_model import BaseModel
-from tymx.base.modifiers.base_modifiers import Modifier
+from tymx.base.modifiers.base_modifiers import Modifier, Modifiers
 
 _T = TypeVar("_T")
 
@@ -16,8 +16,8 @@ def state_converter(default: _T) -> State[_T]:
     return State(value=default)
 
 
-class StateLocator(Modifier):
-    pass
+class ComponentStateWrapper(Modifier):
+    consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.DIRECT_BUILT_CHILDREN
 
 
 class Stateful(Modifier):
@@ -26,7 +26,16 @@ class Stateful(Modifier):
 
     @override
     def on_bind(self, context: Context) -> None:
-        pass
+        assert (
+            context.data.modifiers is not None
+        ), "Context data modifiers should not be None"
+        context.provide(Modifiers([ComponentStateWrapper()]))
+
+    @override
+    def on_use(self, context: Context) -> None:
+        print(
+            f"Consumable {self.__class__.__name__} used in component {type(context.data.component)}"
+        )
 
 
 class State[T](BaseModel, frozen=True):

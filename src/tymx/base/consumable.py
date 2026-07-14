@@ -178,3 +178,7 @@ class Consumable(BaseModel, frozen=True):
     def on_bind(self, context: Context) -> None:
         """Called when the consumable is bound to the context."""
         pass
+
+    def on_use(self, context: Context) -> None:
+        """Called when the consumable is used in the context."""
+        pass

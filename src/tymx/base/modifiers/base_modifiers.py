@@ -253,3 +253,7 @@ class FrozenModifiers(Modifiers, frozen=True):  # type: ignore
 
     def update(self, modifiers: ModifierLike, overwrite: bool = True) -> None:
         raise TypeError("FrozenModifiers cannot be modified.")
+
+    def copy_non_frozen(self) -> Modifiers:
+        """Creates a non-frozen copy of this FrozenModifiers"""
+        return Modifiers(self)

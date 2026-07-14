@@ -433,3 +433,6 @@ class FrozenAttributes(Attributes, frozen=True):  # type: ignore
     @override
     def update(self, attributes: AttributeLike, overwrite: bool = True) -> None:
         raise TypeError("FrozenAttributes cannot be modified.")
+
+    def copy_non_frozen(self) -> Attributes:
+        return Attributes(self)

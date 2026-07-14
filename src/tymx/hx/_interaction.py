@@ -1,8 +1,9 @@
 from inspect import ismethod
-from typing import Callable
+from typing import Callable, ClassVar
 
 from attrs import field
 
+from tymx.base.consumable import ConsumerPolicy
 from tymx.base.helpers.converters import enum_converter
 from tymx.base.modifiers.base_modifiers import Modifier
 from tymx.hx._helpers import HttpMethod
@@ -10,6 +11,8 @@ from tymx.hx._state import StateChange, Stateful
 
 
 class Interaction(Modifier):
+    consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.DIRECT_BUILT_CHILDREN
+
     method: HttpMethod = field(converter=enum_converter(HttpMethod))
     on: str | None = None
     target: str | None = None
@@ -28,9 +31,10 @@ def interaction(
     callback: Callable[[], StateChange], on: str | None = None, method=HttpMethod.GET
 ) -> Interaction:
     stateful = _get_stateful(callback)
-    # TODO: use stateful.__route__ to determine the target
-    print(f"Interaction callback is bound to Stateful: {stateful}")
-    return Interaction(on=on, method=method)
+    route = stateful.__route__
+    if route is None:
+        route = f"/{stateful.__class__.__name__}/{callback.__name__}"
+    return Interaction(on=on, method=method, target=route)
 
 
 def on_click(callback: Callable[[], StateChange], method=HttpMethod.GET) -> Interaction:
