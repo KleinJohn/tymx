@@ -285,9 +285,9 @@ class Component(BaseModel, auto_frozen=True):
     def provide(self, context: Context) -> None:
         """Prepares context.data._inherited_data for children to consume."""
         if self.attributes:
-            context.provide(self.attributes.copy_non_frozen(), key=Attributes)
+            context.provide(self.attributes.copy_non_frozen())
         if self.modifiers:
-            context.provide(self.modifiers.copy_non_frozen(), key=Modifiers)
+            context.provide(self.modifiers.copy_non_frozen())
 
     def consume(self, context: Context) -> None:
         """Prepares context.data._component_data for this component to use."""
