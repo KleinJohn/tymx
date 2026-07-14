@@ -6,17 +6,10 @@ from attrs import field
 import tymx.base.components.html_components as html
 
 from tymx.base.components.base_components import Component, NoChildren
-from tymx.base.context import Context, DataDict
+from tymx.base.context import Context
 from tymx.base.types import Children
 from tymx.hx import State, StateChange, Stateful, state_converter, on_click
 from tymx import debug
-
-
-def get_debug_context(component: Component) -> Context:
-    route = debug.DebugRoute(component=component)
-    app = debug.DebugApp(name="TestApp", routes={"debug": route})
-    router = debug.DebugRouter(app, routes={"debug": route})
-    return Context(router=router, route=route)
 
 
 class NameState(Stateful):
@@ -53,6 +46,6 @@ class MyComponent(Component):
 
 if __name__ == "__main__":
     component = MyComponent()
-    context = get_debug_context(component)
+    context = debug.get_context(component)
     built = component.full_build(context)[0]
     print(built.to_string(pretty=True, verbose=True))

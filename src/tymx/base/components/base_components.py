@@ -198,9 +198,8 @@ class ComponentBuilder(Builder):
 
     def _build_returned(self, returned: list[Component]) -> list[Component]:
         result: list[Component] = []
-        provide_data = DataDict()
-        self.context.data.component.provide(provide_data)
-        with self.context.frame(provide_data):
+        self.context.data.component.provide(self.context)
+        with self.context.frame():
             for child in returned:
                 if child.is_built:
                     result.append(child)
@@ -274,8 +273,8 @@ class Component(BaseModel, auto_frozen=True):
 
         The given children are at this point already built.
         By default, the component is replaced with its children. Renderable components
-        instead return themselves with the built children replacing the unbuilt ones
-        and the is_built flag set to True.
+        instead return a copy of themselves with the built children replacing the
+        unbuilt ones and the is_built flag set to True.
         """
         return children
 
@@ -283,23 +282,18 @@ class Component(BaseModel, auto_frozen=True):
         """The component should return to its original state after building."""
         return self.builder(context).build(self)
 
-    def provide(self, data: DataDict) -> None:
+    def provide(self, context: Context) -> None:
+        """Prepares context.data._inherited_data for children to consume."""
         if self.attributes:
-            data[Attributes] = self.attributes
+            context.provide(self.attributes, key=Attributes)
         if self.modifiers:
-            data[Modifiers] = self.modifiers
+            context.provide(self.modifiers, key=Modifiers)
 
     def consume(self, context: Context) -> None:
-        inherited_attributes = context.get(Attributes) or Attributes()
-        context.data.attributes = inherited_attributes | self.attributes
-
-        inherited_modifiers = context.get(Modifiers) or Modifiers()
-        context.data.modifiers = inherited_modifiers | self.modifiers
-
-        # in regular components, the theme is not provided, but inherited
-        inherited_theme = context.get(Theme)
-        if inherited_theme:
-            context.data[Theme] = inherited_theme
+        """Prepares context.data._component_data for this component to use."""
+        context.consume(Attributes, default=Attributes(), merge=self.attributes)
+        context.consume(Modifiers, default=Modifiers(), merge=self.modifiers)
+        context.consume(Theme)
 
     def copy(self, **update_kwargs: Any) -> Self:
         return evolve(self, **update_kwargs)
@@ -422,7 +416,7 @@ class NoInheritance(Component):
 
     @final
     @override
-    def provide(self, data: DataDict) -> None:
+    def provide(self, context: Context) -> None:
         # Do not provide any attributes, modifiers, or theme etc.
         pass
 
@@ -557,9 +551,9 @@ class Provider(Component):
     provides: Consumable
 
     @override
-    def provide(self, data: DataDict) -> None:
-        super().provide(data)
-        data[self.provides.__class__] = self.provides
+    def provide(self, context: Context) -> None:
+        super().provide(context)
+        context.provide(self.provides)
 
     @override
     def build(self, context: Context) -> Children:

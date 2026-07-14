@@ -86,7 +86,7 @@ class AbstractApp(Generic[_T_Router], ABC):
 
     def build(self) -> None:
         for name, route in self.router.routes.items():
-            context = Context(router=self.router, route=route)
+            context = Context(router=self.router)
             built = route.component.full_build(context)
             # can access [0] since page returns single html component
             self.built_pages[name] = built[0]

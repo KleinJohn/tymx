@@ -11,13 +11,6 @@ from tymx.base.types import Children
 from tymx import debug
 
 
-def get_debug_context(component: Component) -> Context:
-    route = debug.DebugRoute(component=component)
-    app = debug.DebugApp(name="TestApp", routes={"debug": route})
-    router = debug.DebugRouter(app, routes={"debug": route})
-    return Context(router=router, route=route)
-
-
 class CustomButton(Component):
 
     @override
@@ -47,7 +40,7 @@ class BuilderRegressionTests(unittest.TestCase):
             [classes("custom-div"), id("custom-div-id")]
         ).with_attributes(style="color: red;")["Click Me!"]
 
-        context = get_debug_context(component)
+        context = debug.get_context(component)
         built_components = component.full_build(context)
 
         self.assertTrue(built_components)

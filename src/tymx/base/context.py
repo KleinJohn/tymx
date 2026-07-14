@@ -4,7 +4,6 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from typing import (
     TYPE_CHECKING,
-    Any,
     ClassVar,
     Self,
     override,
@@ -19,7 +18,7 @@ from tymx.base.modifiers.base_modifiers import Modifiers
 
 if TYPE_CHECKING:
     from tymx.base.components.base_components import Component
-    from tymx.base.app import AbstractRoute, AbstractRouter
+    from tymx.base.app import AbstractRouter
 
 
 class DataDict(dict[type[T_Consumable], T_Consumable]):
@@ -43,39 +42,52 @@ class DataDict(dict[type[T_Consumable], T_Consumable]):
 
 
 class ContextFrame(BaseModel):
+    """
+    The component_data is the data used to build the component.
+    The inherited_data is the data which can be inherited by child components.
+    """
+
     component: Component
-    _data: DataDict = field(alias="data", factory=DataDict)
+    _component_data: DataDict = field(alias="data", factory=DataDict)
+    _inherited_data: DataDict = field(alias="inherited_data", factory=DataDict)
     level: int
 
     def get(self, key: type[T_Consumable]) -> T_Consumable | None:
-        return self._data.get(key)
+        return self._inherited_data.get(key)
 
     @property
     def attributes(self) -> Attributes | None:
-        return self._data.get(Attributes)
+        return self._component_data.get(Attributes)
 
     @attributes.setter
     def attributes(self, value: Attributes) -> None:
-        self._data[Attributes] = value
+        self._component_data[Attributes] = value
 
     @property
     def modifiers(self) -> Modifiers | None:
-        return self._data.get(Modifiers)
+        return self._component_data.get(Modifiers)
 
     @modifiers.setter
     def modifiers(self, value: Modifiers) -> None:
-        self._data[Modifiers] = value
-
-    @property
-    def data(self) -> DataDict:
-        return self._data
+        self._component_data[Modifiers] = value
 
     def copy(self) -> Self:
         return self.__class__(
             component=self.component,
-            data=self._data.copy(),
+            data=self._component_data.copy(),
+            inherited_data=self._inherited_data.copy(),
             level=self.level,
         )
+
+    def add(self, item: Consumable, key: type[Consumable] | None = None) -> None:
+        if key is None:
+            key = item.__class__
+        self._component_data[key] = item
+
+    def provide(self, item: Consumable, key: type[Consumable] | None = None) -> None:
+        if key is None:
+            key = item.__class__
+        self._inherited_data[key] = item
 
     def __getitem__(self, key: type[T_Consumable]) -> T_Consumable:
         value = self.get(key)
@@ -83,21 +95,17 @@ class ContextFrame(BaseModel):
             raise KeyError(f"Key {key} not found in context frame.")
         return value
 
-    def __setitem__(self, key: type[T_Consumable], value: T_Consumable) -> None:
-        self._data[key] = value
-
     def __contains__(self, key: type[T_Consumable]) -> bool:
-        return key in self._data
+        return key in self._component_data
 
     def __str__(self) -> str:
-        return str([f.__name__ for f in self._data.keys()])
+        return str([f.__name__ for f in self._component_data.keys()])
 
 
 class Context(BaseModel):
     """Context for building and rendering components."""
 
     router: AbstractRouter = field(kw_only=False)
-    route: AbstractRoute
     history: list[ContextFrame] = field(factory=list)
     _data: ContextFrame | None = field(default=None, init=False)
 
@@ -114,22 +122,19 @@ class Context(BaseModel):
         return self.history[-1].component
 
     @contextmanager
-    def frame(self, provide_data: DataDict) -> Generator[None, None, None]:
-        saved_data = self._data
-        frame = evolve(self.data, data=provide_data)
-        self._data = None
-        self.push_frame(frame)
+    def frame(self) -> Generator[None, None, None]:
+        self.push_frame(self.data)
+        self._data = None  # prevent calling context.data on instance in history
         try:
             yield
         finally:
-            self.pop_frame()
-            self._data = saved_data
+            self._data = self.pop_frame()
 
     def push_frame(self, frame: ContextFrame) -> None:
         self.history.append(frame)
 
-    def pop_frame(self) -> None:
-        self.history.pop()
+    def pop_frame(self) -> ContextFrame:
+        return self.history.pop()
 
     def create_data(self, component: Component) -> None:
         self._data = ContextFrame(component=component, level=len(self.history))
@@ -149,24 +154,53 @@ class Context(BaseModel):
                 break
         return accumulated
 
-    def use(self, key: type[T_Consumable] | T_Consumable) -> T_Consumable:
-        """Injects the consumable into the context and returns it."""
-        consumable = key if isinstance(key, Consumable) else key()
-        self.data[consumable.__class__] = consumable
+    def use(self, item: type[T_Consumable] | T_Consumable) -> T_Consumable:
+        """Injects the consumable into the context, provides and returns it."""
+        consumable = item if isinstance(item, Consumable) else item()
+        self.data.provide(consumable)
         return consumable
 
-    def bind(self, key: type[T_Consumable]) -> T_Consumable:
-        """Retrieves the consumable, binds it to the context and returns it."""
-        consumable = self.get(key)
+    def bind(self, item: type[T_Consumable]) -> T_Consumable:
+        """Retrieves the consumable, calls on_bind with this context and returns it."""
+        consumable = self.get(item)
         if consumable is None:
-            raise ValueError(f"Consumable of type {key} not found in context.")
+            raise ValueError(f"Consumable of type {item} not found in context.")
         consumable.on_bind(self)
         return consumable
+
+    def consume(
+        self,
+        key: type[T_Consumable],
+        default: T_Consumable | None = None,
+        merge: T_Consumable | None = None,
+    ) -> None:
+        """Retrieves the consumable from the history, uses default if not found, then
+        merges with the given item, if supplied, and adds it to the current frame.
+
+        `context.consume(Attributes, default=Attributes(), merge=self.attributes)`
+
+        is equivalent to:
+
+        `inherited_attributes = context.get(Attributes) or Attributes()`<br>
+        `context.data.add(inherited_attributes | self.attributes, key=Attributes)`
+        """
+        inherited_consumable = self.get(key)
+        consumable = (
+            inherited_consumable if inherited_consumable is not None else default
+        )
+        if consumable is None:
+            return
+        if merge is not None:
+            consumable = consumable.merge(merge)
+        self.data.add(consumable, key=key)
+
+    def provide(self, item: Consumable, key: type[Consumable] | None = None) -> None:
+        """Adds the consumable to the current frame to be inherited by child components."""
+        self.data.provide(item, key=key)
 
     def copy(self) -> Self:
         res = self.__class__(
             router=self.router,
-            route=self.route,
             history=[frame.copy() for frame in self.history],
         )
         if self._data:
@@ -182,10 +216,6 @@ class Context(BaseModel):
 
     def __bool__(self) -> bool:
         return bool(self.history)
-
-    @property
-    def current_url(self) -> str:
-        return self.router.get_url(self.route)
 
 
 class ContextData(Consumable, frozen=True):
