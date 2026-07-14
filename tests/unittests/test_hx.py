@@ -35,7 +35,7 @@ class MyComponent(Component):
     def build(self, context: Context) -> Children:
         # TODO: context should enable to provide in build(), not only in provide()
         # the content of context.data.data should be what is built eventually
-        name_state = context.use(NameState)
+        name_state = context.use(NameState(name="Initial Name"))
         return html.Div[
             Nameplate(),
             html.Button(on_click(name_state.retrieve))["Retrieve name"],

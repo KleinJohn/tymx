@@ -155,9 +155,9 @@ class Context(BaseModel):
         return accumulated
 
     def use(self, item: type[T_Consumable] | T_Consumable) -> T_Consumable:
-        """Injects the consumable into the context, provides and returns it."""
+        """Provides the consumable and instantiates it if necessary, then returns it."""
         consumable = item if isinstance(item, Consumable) else item()
-        self.data.provide(consumable)
+        self.provide(consumable)
         return consumable
 
     def bind(self, item: type[T_Consumable]) -> T_Consumable:
