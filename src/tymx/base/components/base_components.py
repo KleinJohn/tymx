@@ -360,10 +360,11 @@ class Component(BaseModel, auto_frozen=True):
         is_built: bool = False,
         **changes: Any,
     ) -> Self:
-        """Copy without null. children=None will not change children."""
+        """Copy without null. children=None will not change children.
+        Modifiers and Attributes will be merged with existing ones."""
         all_changes = {
             **changes,
-            "modifiers": modifiers,
+            "modifiers": [self.attributes, self.modifiers, modifiers],
             "children": children,
             "is_built": is_built,
         }

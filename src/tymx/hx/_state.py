@@ -4,6 +4,7 @@ from typing import ClassVar, TypeVar, override
 
 from attrs import evolve, field
 
+from tymx.base.components.base_components import Component
 from tymx.base.consumable import ConsumerPolicy
 from tymx.base.context import Context
 from tymx.base.helpers.base_model import BaseModel
@@ -17,7 +18,16 @@ def state_converter(default: _T) -> State[_T]:
 
 
 class ComponentStateWrapper(Modifier):
-    consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.DIRECT_BUILT_CHILDREN
+    consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.DIRECT_CHILDREN
+
+    @override
+    def transform(self, result: list[Component]) -> list[Component]:
+        assert (
+            len(result) == 1
+        ), "Interaction modifier can only be applied to a single component"
+        for c in result:
+            print(c.to_string(verbose=True))
+        return result
 
 
 class Stateful(Modifier):

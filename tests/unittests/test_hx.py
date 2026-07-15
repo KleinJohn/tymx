@@ -4,7 +4,7 @@ from attrs import field
 
 import tymx.base.components.html_components as html
 
-from tymx.base.components.base_components import Component, NoChildren, Provider
+from tymx.base.components.base_components import Component, NoChildren
 from tymx.base.context import Context
 from tymx.base.types import Children
 from tymx.hx import State, StateChange, Stateful, state_converter, on_click
@@ -25,7 +25,10 @@ class Nameplate(NoChildren, Component):
     @override
     def build(self, context: Context) -> Children:
         name_state = context.bind(NameState)
-        return html.Div[html.Span["The name is: "], str(name_state.name)]
+        return html.Div[
+            html.Span["The name is: "],
+            str(name_state.name),
+        ]
 
 
 class MyComponent(Component):
