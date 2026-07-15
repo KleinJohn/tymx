@@ -295,8 +295,9 @@ class Component(BaseModel, auto_frozen=True):
         context.consume(Modifiers, default=Modifiers(), merge=self.modifiers)
         context.consume(Theme)
 
-    def copy(self, **update_kwargs: Any) -> Self:
-        return evolve(self, **update_kwargs)
+    def copy(self, **changes: Any) -> Self:
+        """Copy with null. children=null will nullify children!"""
+        return evolve(self, **changes)
 
     def to_string(
         self,
@@ -357,14 +358,17 @@ class Component(BaseModel, auto_frozen=True):
         *,
         children: Children = None,
         is_built: bool = False,
-        **kwargs: Any,
+        **changes: Any,
     ) -> Self:
-        return self.copy(
-            modifiers=modifiers,
-            children=children,
-            is_built=is_built,
-            **kwargs,
-        )
+        """Copy without null. children=None will not change children."""
+        all_changes = {
+            **changes,
+            "modifiers": modifiers,
+            "children": children,
+            "is_built": is_built,
+        }
+        all_changes = {k: v for k, v in all_changes.items() if v is not None}
+        return self.copy(**all_changes)
 
     def __matmul__(self, other: ModifiersOrAttributes) -> Self:
         return self.copy(modifiers=[self.attributes, self.modifiers, other])

@@ -31,12 +31,6 @@ class Stateful(Modifier):
         ), "Context data modifiers should not be None"
         context.provide(Modifiers([ComponentStateWrapper()]))
 
-    @override
-    def on_use(self, context: Context) -> None:
-        print(
-            f"Consumable {self.__class__.__name__} used in component {type(context.data.component)}"
-        )
-
 
 class State[T](BaseModel, frozen=True):
     value: T = field(kw_only=False)

@@ -1,6 +1,6 @@
 from typing import Any, Self
 
-from .base_attributes import (
+from tymx.base.attributes import (
     BooleanAttribute,
     ComposedAttribute,
     ComposePolicy,
@@ -8,7 +8,7 @@ from .base_attributes import (
 )
 
 
-class JsonAttribute(SimpleAttribute):
+class JsonAttribute(SimpleAttribute, frozen=True):
     def __call__(
         self,
         value: str | None = None,
@@ -18,9 +18,15 @@ class JsonAttribute(SimpleAttribute):
         **kwargs: str,
     ) -> Self:
         if js:
-            value = "js:{" + ", ".join(f"{key}: {val}" for key, val in kwargs.items()) + "}"
+            value = (
+                "js:{" + ", ".join(f"{key}: {val}" for key, val in kwargs.items()) + "}"
+            )
         else:
-            value = "{" + ", ".join(f'"{key}": "{val}"' for key, val in kwargs.items()) + "}"
+            value = (
+                "{"
+                + ", ".join(f'"{key}": "{val}"' for key, val in kwargs.items())
+                + "}"
+            )
         return super().__call__(value, init_kwargs=init_kwargs)
 
 

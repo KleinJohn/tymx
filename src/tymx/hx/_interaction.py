@@ -1,13 +1,16 @@
 from inspect import ismethod
-from typing import Callable, ClassVar
+from typing import Callable, ClassVar, override
 
 from attrs import field
 
+from tymx.base.components.base_components import Component
 from tymx.base.consumable import ConsumerPolicy
 from tymx.base.helpers.converters import enum_converter
 from tymx.base.modifiers.base_modifiers import Modifier
+from tymx.base.attributes import Attribute
 from tymx.hx._helpers import HttpMethod
 from tymx.hx._state import StateChange, Stateful
+from tymx.hx import a
 
 
 class Interaction(Modifier):
@@ -16,6 +19,15 @@ class Interaction(Modifier):
     method: HttpMethod = field(converter=enum_converter(HttpMethod))
     on: str | None = None
     target: str | None = None
+
+    @override
+    def transform(self, result: list[Component]) -> list[Component]:
+        assert (
+            len(result) == 1
+        ), "Interaction modifier can only be applied to a single component"
+        attributes: list[Attribute] = [a.hx_get(self.target)]
+        result[0] = result[0](attributes)
+        return result
 
 
 def _get_stateful(callback: Callable[[], StateChange]) -> Stateful:
