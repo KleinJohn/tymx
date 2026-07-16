@@ -22,7 +22,7 @@ from tymx.base.attributes import (
 )
 from tymx.base.config import attribute_string_handler
 from tymx.base.consumable import Consumable
-from tymx.base.context import Context, DataDict
+from tymx.base.context import Context
 from tymx.base.helpers import BaseModel, classinstancemethod
 from tymx.base.modifiers.base_modifiers import (
     FrozenModifiers,

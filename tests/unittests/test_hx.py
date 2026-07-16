@@ -25,9 +25,12 @@ class Nameplate(NoChildren, Component):
     @override
     def build(self, context: Context) -> Children:
         name_state = context.bind(NameState)
-        return html.Div[
-            html.Span["The name is: "],
-            str(name_state.name),
+        return [
+            html.Div[
+                html.Span["The name is: "],
+                str(name_state.name),
+            ],
+            html.Section["Second section"],
         ]
 
 

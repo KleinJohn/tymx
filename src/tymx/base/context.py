@@ -82,7 +82,10 @@ class ContextFrame(BaseModel):
     def add(self, item: Consumable, key: type[Consumable] | None = None) -> None:
         if key is None:
             key = item.__class__
-        self._component_data[key] = item
+        if key in self._component_data:
+            self._component_data[key] = self._component_data[key].merge(item)
+        else:
+            self._component_data[key] = item
 
     def provide(self, item: Consumable, key: type[Consumable] | None = None) -> None:
         if key is None:
@@ -205,6 +208,10 @@ class Context(BaseModel):
     def provide(self, item: Consumable, key: type[Consumable] | None = None) -> None:
         """Adds the consumable to the current frame to be inherited by child components."""
         self.data.provide(item, key=key)
+
+    def add(self, item: Consumable, key: type[Consumable] | None = None) -> None:
+        """Adds the consumable to the current frame to be used by the current component."""
+        self.data.add(item, key=key)
 
     def copy(self) -> Self:
         res = self.__class__(

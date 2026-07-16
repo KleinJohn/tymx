@@ -4,11 +4,13 @@ from typing import ClassVar, TypeVar, override
 
 from attrs import evolve, field
 
+import tymx.base.components.html_components as html
+
 from tymx.base.components.base_components import Component
 from tymx.base.consumable import ConsumerPolicy
 from tymx.base.context import Context
 from tymx.base.helpers.base_model import BaseModel
-from tymx.base.modifiers.base_modifiers import Modifier, Modifiers
+from tymx.base.modifiers import Modifier, Modifiers, Key
 
 _T = TypeVar("_T")
 
@@ -17,17 +19,18 @@ def state_converter(default: _T) -> State[_T]:
     return State(value=default)
 
 
-class ComponentStateWrapper(Modifier):
-    consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.DIRECT_CHILDREN
+class ComponentWrapper(Modifier):
+    consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.NONE
 
     @override
     def transform(self, result: list[Component]) -> list[Component]:
-        assert (
-            len(result) == 1
-        ), "Interaction modifier can only be applied to a single component"
-        for c in result:
-            print(c.to_string(verbose=True))
-        return result
+        if not result:
+            return result
+        if len(result) == 1:
+            component = result[0]
+        else:
+            component = html.Div(children=result)
+        return [component(Key().as_attribute())]
 
 
 class Stateful(Modifier):
@@ -36,10 +39,7 @@ class Stateful(Modifier):
 
     @override
     def on_bind(self, context: Context) -> None:
-        assert (
-            context.data.modifiers is not None
-        ), "Context data modifiers should not be None"
-        context.provide(Modifiers([ComponentStateWrapper()]))
+        context.add(Modifiers(ComponentWrapper()))
 
 
 class State[T](BaseModel, frozen=True):

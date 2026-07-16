@@ -3,11 +3,12 @@ from .base_modifiers import (
     Modifier,
     Modifiers,
 )
-from .component_modifiers import NoValidation
+from .component_modifiers import NoValidation, Key
 
 __all__ = [
     "BaseModifier",
     "Modifier",
     "Modifiers",
     "NoValidation",
+    "Key",
 ]
