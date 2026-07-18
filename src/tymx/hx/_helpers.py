@@ -1,6 +1,8 @@
 from enum import StrEnum
 from typing import Literal
 
+from attrs import field
+
 from tymx.base.helpers.base_model import BaseModel
 
 
@@ -210,3 +212,26 @@ class HxSwap(BaseModel, init=False, frozen=True):
 
     def __bool__(self) -> bool:
         return bool(self.target or self.modifiers)
+
+
+class HxSync(BaseModel, frozen=True):
+    """See: https://htmx.org/attributes/hx-sync/"""
+
+    selector: str = field(kw_only=False)
+    strategy: (
+        Literal[
+            "drop",
+            "abort",
+            "replace",
+            "queue",
+            "queue first",
+            "queue last",
+            "queue all",
+        ]
+        | None
+    ) = None
+
+    def __str__(self) -> str:
+        if self.strategy is None:
+            return self.selector
+        return f"{self.selector}:{self.strategy}"

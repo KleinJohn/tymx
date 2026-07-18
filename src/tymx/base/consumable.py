@@ -123,7 +123,7 @@ class ConsumerPolicy(Enum):
         }
 
 
-class Consumable(BaseModel, frozen=True):
+class Consumable(BaseModel):
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.NONE
     consume_first_matching: ClassVar[bool] = False
 
