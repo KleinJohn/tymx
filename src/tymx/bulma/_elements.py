@@ -9,12 +9,13 @@ import tymx.base.components.html_components as html
 from tymx.base.components import Component, ValidationError
 from tymx.base.components.base_components import NoInheritance
 from tymx.base.context import Context
-from tymx.base.helpers import enum_converter, optional_enum_converter
 from tymx.base.helpers.converters import (
+    enum_converter,
+    optional_enum_converter,
     optional_string_like_converter,
     string_like_converter,
 )
-from tymx.base.helpers.validation import children_are_type, children_have_attribute
+from tymx.base.helpers.validation import children_are_type
 from tymx.base.types import Children
 from tymx.bulma._colors import Color, color_converter
 
@@ -183,7 +184,9 @@ class Buttons(Component):
     def _validate(self) -> None:
         super()._validate()
         if not all(isinstance(child, Button) for child in self.children):
-            raise ValidationError("All children of Buttons must be instances of Button.")
+            raise ValidationError(
+                "All children of Buttons must be instances of Button."
+            )
 
     def _get_attributes(self) -> list[a.Attribute]:
         attrs: list[a.Attribute] = [a.classes("buttons")]
@@ -358,7 +361,7 @@ class Table(Component):
             html.Thead[head],
             html.Tbody[body],
             html.Tfoot[foot],
-        ] 
+        ]
 
 
 class TableRow(Component):
@@ -392,7 +395,7 @@ class Tag(Component):
         if self.size:
             classes.append(a.classes(self.size))
         return html.Span(*classes)[self.children]
-    
+
 
 class Tags(Component):
     """A container for multiple tags."""
@@ -406,4 +409,3 @@ class Tags(Component):
     @override
     def build(self, context: Context) -> Children:
         return html.Div(a.classes("tags"))[self.children]
-

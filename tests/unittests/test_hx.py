@@ -38,7 +38,7 @@ class MyComponent(Component):
 
     @override
     def build(self, context: Context) -> Children:
-        name_state = context.use(NameState(name="Initial Name"))
+        name_state = context.use(NameState)
         return html.Div[
             Nameplate(),
             html.Button(on_click(name_state.retrieve))["Retrieve Name"],

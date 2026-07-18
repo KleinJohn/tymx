@@ -5,10 +5,10 @@ from attrs import field
 
 from tymx.base.components.base_components import Component
 from tymx.base.consumable import ConsumerPolicy
-from tymx.base.helpers.converters import enum_converter
+from tymx.base.helpers.converters import enum_converter, string_type_converter
 from tymx.base.modifiers.base_modifiers import Modifier
 from tymx.base.attributes import Attribute
-from tymx.hx._helpers import HttpMethod
+from tymx.hx._helpers import HttpMethod, HxSwap, HxTrigger
 from tymx.hx._state import StateChange, Stateful
 from tymx.hx import a
 
@@ -17,8 +17,15 @@ class Interaction(Modifier):
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.DIRECT_BUILT_CHILDREN
 
     method: HttpMethod = field(converter=enum_converter(HttpMethod))
+    trigger: str | None = field(
+        default=None, converter=string_type_converter(HxTrigger, optional=True)
+    )
     on: str | None = None
     target: str | None = None
+    swap: str | None = field(
+        default=None,
+        converter=string_type_converter(HxSwap, optional=True),
+    )
 
     @override
     def transform(self, result: list[Component]) -> list[Component]:
