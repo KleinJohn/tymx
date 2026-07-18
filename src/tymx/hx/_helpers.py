@@ -15,10 +15,10 @@ class HttpMethod(StrEnum):
 class SwapTarget(StrEnum):
     INNER = "innerHTML"
     OUTER = "outerHTML"
-    AFTER_BEGIN = "afterbegin"
-    BEFORE_BEGIN = "beforebegin"
-    AFTER_END = "afterend"
-    BEFORE_END = "beforeend"
+    AFTERBEGIN = "afterbegin"
+    BEFOREBEGIN = "beforebegin"
+    AFTEREND = "afterend"
+    BEFOREEND = "beforeend"
     DELETE = "delete"
     NONE = "none"
 
@@ -167,8 +167,9 @@ class HxSwap(BaseModel, init=False, frozen=True):
         target: SwapTarget | str | None = None,
         /,
         *,
-        transition: bool = False,
-        ignore_title: bool = False,
+        transition: bool | None = None,
+        ignore_title: bool | None = None,
+        focus_scroll: bool | None = None,
         swap: str | None = None,
         settle: str | None = None,
         scroll: Literal["top", "bottom"] | None = None,
@@ -181,9 +182,31 @@ class HxSwap(BaseModel, init=False, frozen=True):
         if show_element and not show:
             raise ValueError("`show_element` requires `show` to be set")
 
+        bool_to_str = lambda b: str(b).lower() if b is not None else None
+
+        options = {
+            "transition": bool_to_str(transition),
+            "ignore_title": bool_to_str(ignore_title),
+            "focus_scroll": bool_to_str(focus_scroll),
+            "swap": swap,
+            "settle": settle,
+            "scroll": scroll,
+            "show": show,
+        }
+        options = {k: v for k, v in options.items() if v is not None}
+
+        if scroll_element:
+            options["scroll"] = f"{scroll_element}:{scroll}"
+        if show_element:
+            options["show"] = f"{show_element}:{show}"
+
+        object.__setattr__(self, "target", str(target) if target is not None else None)
+        object.__setattr__(self, "modifiers", [f"{k}:{v}" for k, v in options.items()])
+
     def __str__(self) -> str:
-        return (
-            f"{self.target} {" ".join(self.modifiers)}"
-            if self.modifiers
-            else self.target
-        )
+        if not self.target:
+            return " ".join(self.modifiers)
+        return " ".join((self.target, *self.modifiers))
+
+    def __bool__(self) -> bool:
+        return bool(self.target or self.modifiers)
