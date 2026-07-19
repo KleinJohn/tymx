@@ -235,3 +235,6 @@ class HxSync(BaseModel, frozen=True):
         if self.strategy is None:
             return self.selector
         return f"{self.selector}:{self.strategy}"
+
+    def __bool__(self) -> bool:
+        return bool(self.selector or self.strategy)

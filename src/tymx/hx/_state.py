@@ -22,6 +22,8 @@ def state_converter(default: _T) -> State[_T]:
 class ComponentWrapper(Modifier):
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.NONE
 
+    key: Key
+
     @override
     def transform(self, result: list[Component]) -> list[Component]:
         if not result:
@@ -30,16 +32,18 @@ class ComponentWrapper(Modifier):
             component = result[0]
         else:
             component = html.Div(children=result)
-        return [component(Key().as_attribute())]
+        return [component(self.key.as_attribute())]
 
 
 class Stateful(Modifier):
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.ALL_CHILDREN
     __route__: ClassVar[str | None] = None
 
+    key: Key = field(factory=Key)
+
     @override
     def on_bind(self, context: Context) -> None:
-        context.add(Modifiers(ComponentWrapper()))
+        context.add(Modifiers(ComponentWrapper(key=self.key)))
 
 
 class State[T](BaseModel, frozen=True):

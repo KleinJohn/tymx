@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 # We need BaseModifiers so that we can ensure that you can't have Modifiers inside Modifiers
-class BaseModifier(Consumable, frozen=False):  # type: ignore
+class BaseModifier(Consumable):
     """Defines the interface for applying modifications to components during the build process."""
 
     @abstractmethod
@@ -40,7 +40,7 @@ class BaseModifier(Consumable, frozen=False):  # type: ignore
         return self.__class__.__name__
 
 
-class Modifier(BaseModifier):
+class Modifier(BaseModifier, auto_frozen=True):
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.ALL_CHILDREN
 
     @override

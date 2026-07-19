@@ -36,7 +36,10 @@ class Key(Modifier):
         return cls.__key_counter__
 
     def as_attribute(self) -> a.Attribute:
-        return a.id(f"component-{self._value}")
+        return a.id(self.as_id())
+
+    def as_id(self) -> str:
+        return f"component-{self._value}"
 
     @override
     def transform(self, result: list[Component]) -> list[Component]:
