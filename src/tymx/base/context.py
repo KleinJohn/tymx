@@ -213,15 +213,15 @@ class Context(BaseModel):
         """Adds the consumable to the current frame to be used by the current component."""
         self.data.add(item, key=key)
 
-    def update_inherited(
-        self, key: type[T_Consumable], modifier: Callable[[T_Consumable], T_Consumable]
-    ) -> bool:
-        """Modifies the consumable in the current frame to be inherited by child components."""
-        for frame in reversed(self.history):
-            if key in frame._inherited_data:
-                frame._inherited_data[key] = modifier(frame._inherited_data[key])
-                return True
-        return False
+    # def update_inherited(
+    #     self, key: type[T_Consumable], modifier: Callable[[T_Consumable], T_Consumable]
+    # ) -> bool:
+    #     """Modifies the consumable in the current frame to be inherited by child components."""
+    #     for frame in reversed(self.history):
+    #         if key in frame._inherited_data:
+    #             frame._inherited_data[key] = modifier(frame._inherited_data[key])
+    #             return True
+    #     return False
 
     def copy(self) -> Self:
         res = self.__class__(

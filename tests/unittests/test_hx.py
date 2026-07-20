@@ -1,18 +1,17 @@
 from typing import override
 
-from attrs import field
-
 import tymx.base.components.html_components as html
 
 from tymx.base.components.base_components import Component, NoChildren
 from tymx.base.context import Context
 from tymx.base.types import Children
-from tymx.hx import State, StateChange, Stateful, state_converter, on_click
+from tymx.hx import State, StateChange, Stateful, on_click
 from tymx import debug
+from tymx.hx._state import state_field
 
 
 class NameState(Stateful):
-    name: State[str] = field(default=State("Unknown"), converter=state_converter)
+    name: State[str] = state_field()
 
     def retrieve(self) -> StateChange[str, str]:
         # retrieve name from db...
@@ -28,7 +27,7 @@ class Nameplate(NoChildren, Component):
         return [
             html.Div[
                 html.Span["The name is: "],
-                str(name_state.name),
+                name_state.name.value,
             ],
             html.Section["Second section"],
         ]
@@ -52,3 +51,4 @@ if __name__ == "__main__":
     context = debug.get_context(component)
     built = component.full_build(context)[0]
     print(built.to_string(pretty=True, verbose=True))
+    print(built.render())
