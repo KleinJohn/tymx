@@ -347,7 +347,7 @@ class Attributes(BaseModifier, frozen=False):  # type: ignore
             attributes.update(self)
 
     @override
-    def transform(self, result: list[Component]) -> list[Component]:
+    def transform(self, context: Context, result: list[Component]) -> list[Component]:
         return result
 
     def __call__(self) -> Self:

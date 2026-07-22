@@ -36,9 +36,9 @@ class CustomDiv(Component):
 
 class BuilderRegressionTests(unittest.TestCase):
     def test_builds_components_returned_from_build(self) -> None:
-        component = CustomDiv(
-            [classes("custom-div"), id("custom-div-id")]
-        ).with_attributes(style="color: red;")["Click Me!"]
+        component = CustomDiv([classes("custom-div"), id("custom-div-id")]).attrs(
+            style="color: red;"
+        )["Click Me!"]
 
         context = debug.get_context(component)
         built_components = component.full_build(context)

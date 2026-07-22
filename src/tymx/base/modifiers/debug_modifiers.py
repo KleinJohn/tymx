@@ -20,7 +20,7 @@ class PrintContextModifier(Modifier):
     def apply(self, context: Context) -> None:
         print(context)
 
-    def transform(self, result: list[Component]) -> list[Component]:
+    def transform(self, context: Context, result: list[Component]) -> list[Component]:
         return result
 
 
@@ -41,7 +41,7 @@ class PrintComponentsModifier(Modifier):
         )
         print()
 
-    def transform(self, result: list[Component]) -> list[Component]:
+    def transform(self, context: Context, result: list[Component]) -> list[Component]:
         print("After build:")
         for component in result:
             print(component.to_string(self.pretty, self.verbose, **self.print_kwargs))

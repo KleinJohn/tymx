@@ -124,10 +124,10 @@ class Context(BaseModel):
         return self._data
 
     @property
-    def parent(self) -> Component | None:
+    def parent(self) -> ContextFrame | None:
         if not self.history:
             return None
-        return self.history[-1].component
+        return self.history[-1]
 
     @contextmanager
     def frame(self) -> Generator[None, None, None]:

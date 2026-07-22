@@ -19,6 +19,7 @@ _T_Router = TypeVar("_T_Router", bound="AbstractRouter")
 
 class AbstractRoute(BaseModel, frozen=True):
     component: Component = field(kw_only=False)
+    route_pattern: str | None = None
 
 
 class AbstractRouter(Generic[_T_Route], ABC):
@@ -44,6 +45,11 @@ class AbstractRouter(Generic[_T_Route], ABC):
         if route is None:
             raise ValueError(f"Route '{page_name}' not found in router.")
         return self.get_url(route)
+
+    def register(self, route_pattern: str, component: Component, **kwargs: Any) -> None:
+        self.routes[route_pattern] = self.__route_factory__(
+            component=component, route_pattern=route_pattern, **kwargs
+        )
 
     @abstractmethod
     def get_url(self, route: _T_Route) -> str: ...

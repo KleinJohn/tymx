@@ -215,12 +215,13 @@ class ComponentBuilder(Builder):
     def _after_build(self, result: list[Component]) -> list[Component]:
         modifiers = self.context.data.modifiers
         if modifiers is not None:
-            result = modifiers.transform(result)
+            result = modifiers.transform(self.context, result)
         return result
 
 
 class Component(BaseModel, auto_frozen=True):
-    __validate__: bool = field(init=False, default=True, repr=False)
+
+    __metadata__: ClassVar[dict[str, Any] | None] = None
 
     builder: ClassVar[type[Builder]] = ComponentBuilder
     builds_itself: ClassVar[bool] = False
@@ -233,6 +234,8 @@ class Component(BaseModel, auto_frozen=True):
     children: tuple[Component, ...] = field(converter=children_to_tuple, default=None)
     is_built: bool = field(default=False)
 
+    do_validation: bool = field(init=False, default=True, repr=False)
+
     @override
     def __attrs_post_init__(self) -> None:
         attrs, mods = _split_attributes_and_modifiers(self._items)
@@ -240,13 +243,11 @@ class Component(BaseModel, auto_frozen=True):
         object.__setattr__(self, "attributes", FrozenAttributes(attrs))
         super().__attrs_post_init__()
         self.modifiers.post_init(self)
-        if self.__validate__:
+        if self.do_validation:
             self._validate()
 
     @classinstancemethod
-    def with_attributes(
-        self: type[T_Component] | T_Component, **attributes: Any
-    ) -> T_Component:
+    def attrs(self: type[T_Component] | T_Component, **attributes: Any) -> T_Component:
         if isinstance(self, type):
             return self(_extract_additional_attributes(attributes))
         else:
@@ -254,6 +255,18 @@ class Component(BaseModel, auto_frozen=True):
                 _extract_additional_attributes(attributes)
             )
             return evolve(self, modifiers=[new_attrs, self.modifiers])
+
+    @classmethod
+    def get_metadata(cls, key: str, default: Any = None) -> Any:
+        if cls.__metadata__ is None:
+            return default
+        return cls.__metadata__.get(key, default)
+
+    @classmethod
+    def set_metadata(cls, key: str, value: Any) -> None:
+        if cls.__metadata__ is None:
+            cls.__metadata__ = {}
+        cls.__metadata__[key] = value
 
     @abstractmethod
     def build(self, context: Context) -> Children:

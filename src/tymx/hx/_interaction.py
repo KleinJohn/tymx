@@ -6,6 +6,7 @@ from attrs import field
 
 from tymx.base.components.base_components import Component
 from tymx.base.consumable import ConsumerPolicy
+from tymx.base.context import Context
 from tymx.base.helpers.converters import enum_converter, string_type_converter
 from tymx.base.modifiers.base_modifiers import Modifier
 from tymx.base.attributes import Attribute
@@ -92,7 +93,7 @@ class Interaction(Modifier):
         return attributes
 
     @override
-    def transform(self, result: list[Component]) -> list[Component]:
+    def transform(self, context: Context, result: list[Component]) -> list[Component]:
         assert (
             len(result) == 1
         ), "Interaction modifier can only be applied to a single component"
@@ -119,9 +120,7 @@ def interaction(
     push_url: bool | None = None,
 ) -> Interaction:
     stateful = _get_stateful(callback)
-    route = stateful.__route__
-    if route is None:
-        route = f"/{stateful.__class__.__name__}/{callback.__name__}"
+    route = stateful.route(callback)
     return Interaction(
         method=method,
         route=route,

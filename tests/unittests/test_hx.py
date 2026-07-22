@@ -1,6 +1,8 @@
 from typing import override
 
+from tymx.base.components.compose_components import Page
 import tymx.base.components.html_components as html
+import tymx.base.attributes as a
 
 from tymx.base.components.base_components import Component, NoChildren
 from tymx.base.context import Context
@@ -11,25 +13,41 @@ from tymx.hx._state import state_field
 
 
 class NameState(Stateful):
-    name: State[str] = state_field()
+    is_charlie: State[bool] = state_field(default=False)
+    selected: State[str] = state_field(default="Alice")
 
-    def retrieve(self) -> StateChange[str, str]:
+    def retrieve(self) -> StateChange[bool, bool]:
         # retrieve name from db...
-        new_name = "New Name"
-        return self.name.set(new_name)
+        new_is_charlie = self.selected._value == "Charlie"
+        return self.is_charlie.set(new_is_charlie)
+
+    def change_selected(self) -> StateChange[str, str]:
+        new_selected = "Charlie"
+        return self.selected.set(new_selected)
 
 
 class Nameplate(NoChildren, Component):
+
+    def build_selection(self, context: Context, selected_name: str) -> Children:
+        return html.Select[
+            html.Option((a.value("Alice"), a.selected(selected_name == "Alice")))[
+                "Alice"
+            ],
+            html.Option((a.value("Bob"), a.selected(selected_name == "Bob")))["Bob"],
+            html.Option((a.value("Charlie"), a.selected(selected_name == "Charlie")))[
+                "Charlie"
+            ],
+        ]
 
     @override
     def build(self, context: Context) -> Children:
         name_state = context.bind(NameState)
         return [
             html.Div[
-                html.Span["The name is: "],
-                name_state.name.value,
+                html.Span["Is the name Charlie?: "],
+                name_state.is_charlie.as_text(lambda x: "Yes" if x else "No"),
             ],
-            html.Section["Second section"],
+            name_state.selected.as_template(self.build_selection),
         ]
 
 
@@ -47,8 +65,8 @@ class MyComponent(Component):
 
 
 if __name__ == "__main__":
-    component = MyComponent()
-    context = debug.get_context(component)
-    built = component.full_build(context)[0]
+    page = Page()[MyComponent]
+    context = debug.get_context(page)
+    built = page.full_build(context)[0]
     print(built.to_string(pretty=True, verbose=True))
     print(built.render())

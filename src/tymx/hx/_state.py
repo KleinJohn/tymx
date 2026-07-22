@@ -1,16 +1,18 @@
 from __future__ import annotations
 
-from typing import ClassVar, TypeVar, override
+from collections.abc import Callable
+from typing import ClassVar, Self, TypeVar, override
 
 from attrs import Factory, evolve, field, fields
 
 import tymx.base.components.html_components as html
 
-from tymx.base.components.base_components import Component
+from tymx.base.components.base_components import Component, Text
 from tymx.base.consumable import ConsumerPolicy
 from tymx.base.context import Context
 from tymx.base.helpers.base_model import BaseModel
 from tymx.base.modifiers import Modifier, Modifiers, Key
+from tymx.base.types import Children
 
 _T = TypeVar("_T")
 
@@ -19,10 +21,10 @@ def state_converter(self: Stateful, key: str, default: _T) -> State[_T]:
     return State(type(self), key=key, value=default)
 
 
-def state_field(**kwargs):
+def state_field(default: _T, **kwargs) -> State[_T]:
     return field(
         default=Factory(
-            lambda self: state_converter(self, "name", "Initial Name"), takes_self=True
+            lambda self: state_converter(self, "name", default), takes_self=True
         ),
         metadata={"is_state": True},
     )
@@ -32,16 +34,17 @@ class ComponentWrapper(Modifier):
     consumer_policy: ClassVar[ConsumerPolicy] = ConsumerPolicy.NONE
 
     key: Key
+    route_pattern: str
 
     @override
-    def transform(self, result: list[Component]) -> list[Component]:
+    def transform(self, context: Context, result: list[Component]) -> list[Component]:
         if not result:
             return result
         if len(result) == 1:
             component = result[0]
         else:
             component = html.Div(children=result)
-        # TODO: register component in context.router
+        # context.router.register(f"{self.key}", component)
         return [component(self.key.as_attribute())]
 
 
@@ -52,15 +55,43 @@ class Stateful(Modifier):
 
     key: Key = field(factory=Key)
 
+    def _as_value(self, context: Context) -> Self:
+        stateful = context.get(self.__class__)
+        if stateful is None:
+            raise ValueError(
+                f"Stateful component of type {self.__class__} not found in context"
+            )
+        return stateful
+
+    def as_template(
+        self, callback: Callable[[Context, Self], Children]
+    ) -> Callable[[Context], Children]:
+        return lambda context: callback(context, self._as_value(context))
+
+    def route(self, callback: Callable) -> str:
+        if self.__route__ is None:
+            return f"/{self.__class__.__name__}/{callback.__name__}"
+        return self.__route__
+
     @override
     def __attrs_post_init__(self) -> None:
+        super().__attrs_post_init__()
         for f in fields(type(self)):
             if f.metadata.get("is_state"):
                 object.__setattr__(getattr(self, f.name), "_field_name", f.name)
 
     @override
+    def on_use(self, context: Context) -> None:
+        print(f"on_use called for {self.__class__.__name__} with key {self.key}")
+        print(f"Parent: {context.parent.component}")
+
+    @override
     def on_bind(self, context: Context) -> None:
-        context.add(Modifiers(ComponentWrapper(key=self.key)))
+        context.add(
+            Modifiers(
+                ComponentWrapper(key=self.key, route_pattern=self.route(self.on_bind))
+            )
+        )
 
 
 class State[T](BaseModel, frozen=True):
@@ -72,7 +103,7 @@ class State[T](BaseModel, frozen=True):
         new_state = evolve(self, value=new_value)
         return StateChange(self, new_state)
 
-    def value(self, context: Context) -> T:
+    def _as_value(self, context: Context) -> T:
         stateful = context.get(self._stateful_t)
         if stateful is None:
             raise ValueError(
@@ -80,8 +111,16 @@ class State[T](BaseModel, frozen=True):
             )
         return getattr(stateful, self._field_name)._value
 
-    def __str__(self) -> str:
-        return str(self._value)
+    def as_text(
+        self,
+        transform: Callable[[T], str] = str,
+    ) -> Callable[[Context], Text]:
+        return lambda context: Text(text=transform(self._as_value(context)))
+
+    def as_template(
+        self, callback: Callable[[Context, T], Children]
+    ) -> Callable[[Context], Children]:
+        return lambda context: callback(context, self._as_value(context))
 
 
 class StateChange[U, V](BaseModel, frozen=True):

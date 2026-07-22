@@ -6,6 +6,7 @@ from attrs import field
 
 if TYPE_CHECKING:
     from tymx.base.components import Component
+    from tymx.base.context import Context
 
 import tymx.base.attributes as a
 
@@ -22,7 +23,7 @@ class NoValidation(Modifier):
 
     @override
     def post_init(self, component: Component) -> None:
-        object.__setattr__(component, "__validate__", False)
+        object.__setattr__(component, "do_validation", False)
 
 
 class Key(Modifier):
@@ -42,7 +43,7 @@ class Key(Modifier):
         return f"component-{self._value}"
 
     @override
-    def transform(self, result: list[Component]) -> list[Component]:
+    def transform(self, context: Context, result: list[Component]) -> list[Component]:
         assert len(result) == 1, "Key can only be applied to a single component"
         result[0] = result[0](self.as_attribute())
         return result

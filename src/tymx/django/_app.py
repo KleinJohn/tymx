@@ -5,6 +5,7 @@ from typing import Any, override
 from attrs import field
 from django.views import View
 
+from tymx.base.components.base_components import Component
 from tymx.django._views import ComponentView
 
 if find_spec("django") is None:
@@ -20,7 +21,6 @@ from tymx.base.app import AbstractRouter, AbstractRoute, AbstractApp
 
 
 class Route(AbstractRoute, frozen=True):
-    route_pattern: str | None = None
     view: type[View] = ComponentView
     view_kwargs: dict[str, Any] = field(factory=dict)
 

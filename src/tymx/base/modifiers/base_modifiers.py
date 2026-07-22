@@ -34,7 +34,9 @@ class BaseModifier(Consumable):
     def apply(self, context: Context) -> None: ...
 
     @abstractmethod
-    def transform(self, result: list[Component]) -> list[Component]: ...
+    def transform(
+        self, context: Context, result: list[Component]
+    ) -> list[Component]: ...
 
     def __str__(self) -> str:
         return self.__class__.__name__
@@ -52,7 +54,7 @@ class Modifier(BaseModifier, auto_frozen=True):
         pass
 
     @override
-    def transform(self, result: list[Component]) -> list[Component]:
+    def transform(self, context: Context, result: list[Component]) -> list[Component]:
         return result
 
     def __str__(self) -> str:
@@ -176,9 +178,9 @@ class Modifiers(BaseModifier, frozen=False):
             modifier.apply(context)
 
     @override
-    def transform(self, result: list[Component]) -> list[Component]:
+    def transform(self, context: Context, result: list[Component]) -> list[Component]:
         for modifier in self._modifiers.values():
-            result = modifier.transform(result)
+            result = modifier.transform(context, result)
         return result
 
     def copy(self) -> Self:
